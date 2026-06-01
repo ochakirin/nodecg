@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .btn-container { display: flex; gap: 10px; margin-bottom: 10px; }
+        button { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; border-radius: 4px; border: none; }
+        .start { background-color: #28a745; color: white; }
+        .stop { background-color: #dc3545; color: white; }
+        .reset { background-color: #6c757d; color: white; }
+        .time-display { font-size: 24px; text-align: center; font-family: monospace; font-weight: bold; padding: 5px; background: #222; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="time-display" id="dash-time">00:00</div>
+    <div class="btn-container">
+        <button class="start" id="btn-start">スタート</button>
+        <button class="stop" id="btn-stop">ストップ</button>
+    </div>
+    <button class="reset" id="btn-reset">リセット</button>
+
+    <script src="timer.js"></script>
+</body>
+</html>
