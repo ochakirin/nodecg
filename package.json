@@ -1,0 +1,10 @@
+{
+  "name": "my-nodecg-stream",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "nodecg start"
+  },
+  "dependencies": {
+    "nodecg": "^2.0.0" 
+  }
+}
