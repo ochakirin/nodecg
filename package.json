@@ -1,0 +1,21 @@
+{
+  "name": "my-background-bundle",
+  "version": "1.0.0",
+  "description": "Background image graphics for NodeCG",
+  "nodecg": {
+    "compatibleRange": "^1.0.0 || ^2.0.0",
+    "graphics": [
+      {
+        "file": "index.html",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "assetCategories": [
+      {
+        "name": "backgrounds",
+        "title": "Background Images"
+      }
+    ]
+  }
+}
