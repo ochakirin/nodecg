@@ -7,24 +7,5 @@
 </head>
 <body>
     <div id="background-container"></div>
-
-    <script>
-        // NodeCGが用意してくれるアセット用のレプリカント（自動同期データ）を取得
-        const bgAssets = nodecg.Replicant('assets:backgrounds');
-
-        // アセットのデータが更新されたら（または初回読み込み時）に実行
-        bgAssets.on('change', (newAssets) => {
-            const container = document.getElementById('background-container');
-            
-            if (newAssets && newAssets.length > 0) {
-                // ダッシュボードにアップロードされている最初の画像を使用
-                const latestBgUrl = newAssets[0].url;
-                container.style.backgroundImage = `url('${latestBgUrl}')`;
-            } else {
-                // 画像がアップロードされていない場合のデフォルト（黒背景など）
-                container.style.backgroundImage = 'none';
-            }
-        });
-    </script>
 </body>
 </html>
