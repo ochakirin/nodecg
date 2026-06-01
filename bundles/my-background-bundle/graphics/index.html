@@ -2,10 +2,26 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Background Graphic</title>
+    <title>Background & Timer Graphic</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="background-container"></div>
+
+    <div id="timer-display">00:00</div>
+
+    <script>
+        // 管理画面で作った 'streamTimer' というReplicantに接続
+        const timerRep = nodecg.Replicant('streamTimer');
+
+        // タイマーの値（秒数）が変わったら、画面の文字をリアルタイムに書き換える
+        timerRep.on('change', (newVal) => {
+            if (newVal) {
+                const mins = Math.floor(newVal.seconds / 60).toString().padStart(2, '0');
+                const secs = (newVal.seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+            }
+        });
+    </script>
 </body>
 </html>
