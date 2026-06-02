@@ -6,162 +6,86 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
         .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        #reload-btn { background: #673AB7; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; transition: background 0.1s; }
-        #reload-btn:hover { background: #5e35b1; }
-        #reload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .table-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 500px; overflow: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-        th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; }
-        td { padding: 10px 12px; border-bottom: 1px solid #eaecef; color: #444; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
-        tr:hover td { background: #f8f9fa; }
+        .preview-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 520px; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #673AB7; color: white; font-weight: bold; padding: 10px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; }
+        td { padding: 8px 10px; border: 1px solid #eaecef; color: #333; text-align: center; }
+        .team-id-cell { font-weight: bold; background: #f6f8fa; color: #555; width: 80px; }
+        .lap-count-cell { font-weight: bold; color: #673AB7; width: 80px; }
+        .time-cell { font-family: 'Courier New', Courier, monospace; text-align: left; padding-left: 15px; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
+        .live-tag { font-size: 11px; color: #fff; background: #673AB7; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>📊 ラップ記録シート 現在のデータプレビュー</h3>
-        <button id="reload-btn">データを再読み込み</button>
+        <h3>📊 シートプレビュー（内部データ直結）</h3>
+        <span class="live-tag">● 同期中</span>
     </div>
 
-    <div class="table-container">
-        <table id="data-table"></table>
-        <div id="status" class="status-msg">読み込み中...</div>
+    <div class="preview-container">
+        <table id="preview-table">
+            <thead>
+                <tr>
+                    <th>対象</th>
+                    <th>周回数</th>
+                    <th>最新ラップ / 履歴（最新が右）</th>
+                </tr>
+            </thead>
+            <tbody id="preview-tbody"></tbody>
+        </table>
+        <div id="status" class="status-msg">ラップの記録を待機中...</div>
     </div>
 
     <script>
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
+        // lap.html や ranking.html と同じ、NodeCG内部の共有メモリを監視
+        const localRankingRep = nodecg.Replicant('localRankingData');
 
-        let localGridData = []; // 手元で保持する2次元表データ
-
-        function parseCSV(text) {
-            const rows = [];
-            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
-            text.split(/\r?\n/).forEach(line => {
-                if (!line.trim()) return;
-                const matches = line.matchAll(pattern);
-                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
-                rows.push(row);
-            });
-            return rows;
-        }
-
-        async function loadPreviewData(forceRender = true) {
-            try {
-                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
-                if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
-                
-                const text = await res.text();
-                const rows = parseCSV(text);
-                if (rows.length === 0) return;
-
-                // 🔴 メモリ上に元の形をキープ。ただし手元の方が進んでいる列はGoogleの古いデータで上書きしない
-                if (localGridData.length === 0) {
-                    localGridData = rows;
-                } else {
-                    // 列単位で長さをチェックしてマージ
-                    for (let col = 0; col < rows[0].length; col++) {
-                        const googleLaps = rows.slice(1).map(r => r[col]).filter(c => c && c !== '-');
-                        const localLaps = localGridData.slice(1).map(r => r[col]).filter(c => c && c !== '-');
-                        
-                        if (googleLaps.length >= localLaps.length) {
-                            // Googleの方が新しいか同じなら、その列を更新
-                            for (let row = 1; row < rows.length; row++) {
-                                if (!localGridData[row]) localGridData[row] = new Array(rows[0].length).fill('');
-                                localGridData[row][col] = rows[row][col] || '';
-                            }
-                        }
-                    }
-                }
-
-                if (forceRender) renderTable();
-
-            } catch (e) {
-                console.error(e);
-                document.getElementById('status').innerText = 'データの読み込みに失敗しました。';
-            }
-        }
-
-        function renderTable() {
-            const table = document.getElementById('data-table');
+        function renderPreview(rankingObj) {
+            const tbody = document.getElementById('preview-tbody');
             const status = document.getElementById('status');
             
-            table.innerHTML = '';
-            if (localGridData.length === 0) return;
+            tbody.innerHTML = '';
+            
+            // 登録されているチームデータを取得
+            const teamDataList = Object.values(rankingObj || {});
+
+            if (teamDataList.length === 0) {
+                status.style.display = 'block';
+                return;
+            }
+
             status.style.display = 'none';
 
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            localGridData[0].forEach(cellText => {
-                const th = document.createElement('th');
-                th.innerText = cellText;
-                headerRow.appendChild(th);
+            // プレビューはランキング順ではなく「チーム番号順（チーム1〜20）」に並べ替えて表示します
+            teamDataList.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/[^0-9]/g, '')) || 0;
+                const numB = parseInt(b.name.replace(/[^0-9]/g, '')) || 0;
+                return numA - numB;
             });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
 
-            const tbody = document.createElement('tbody');
-            for (let i = 1; i < localGridData.length; i++) {
-                const dataRow = document.createElement('tr');
-                let hasData = false;
-                
-                localGridData[i].forEach(cellText => {
-                    const td = document.createElement('td');
-                    td.innerText = cellText || '-';
-                    if (cellText && cellText !== '-') hasData = true;
-                    dataRow.appendChild(td);
-                });
-                // 完全に空の行でなければ追加
-                if (hasData || i === 1) tbody.appendChild(dataRow);
-            }
-            table.appendChild(tbody);
-            document.getElementById('reload-btn').disabled = false;
+            teamDataList.forEach(team => {
+                const tr = document.createElement('tr');
+
+                // 周回数が0回の場合はハイフン表示
+                const displayTime = team.lapCount > 0 ? team.lastTime : '--:--:--';
+
+                tr.innerHTML = `
+                    <td class="team-id-cell">${team.name}</td>
+                    <td class="lap-count-cell">${team.lapCount} 回</td>
+                    <td class="time-cell">${displayTime}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
-        // 🔴 ラップボタンが押された瞬間、プレビュー表の対応するマスをタイムラグなしで直接書き換える
-        nodecg.listenFor('lapButtonClicked', (data) => {
-            if (!data || localGridData.length === 0) return;
-
-            const colIdx = data.teamNum - 1; // チーム1 = 0列目
-            
-            if (data.action === 'forward') {
-                // 該当列の空いている一番上の行を探す
-                let targetRow = 1;
-                while (localGridData[targetRow] && localGridData[targetRow][colIdx] && localGridData[targetRow][colIdx] !== '-') {
-                    targetRow++;
-                }
-                // 必要に応じて行を拡張
-                if (!localGridData[targetRow]) {
-                    localGridData[targetRow] = new Array(localGridData[0].length).fill('');
-                }
-                localGridData[targetRow][colIdx] = data.timeStr;
-            } 
-            else if (data.action === 'backward') {
-                // 該当列の一番下のデータ行を探して消す
-                let targetRow = localGridData.length - 1;
-                while (targetRow > 0 && (!localGridData[targetRow][colIdx] || localGridData[targetRow][colIdx] === '-')) {
-                    targetRow--;
-                }
-                if (targetRow > 0) {
-                    localGridData[targetRow][colIdx] = '';
-                }
+        // メモリの更新を検知して0.1秒でプレビューを書き換え
+        localRankingRep.on('change', (newVal) => {
+            if (newVal) {
+                renderPreview(newVal);
             }
-
-            renderTable();
-
-            // 4秒後にバックグラウンドでGoogleの最新CSVと整合性チェック
-            setTimeout(() => {
-                loadPreviewData(true);
-            }, 4000);
         });
-
-        document.getElementById('reload-btn').addEventListener('click', () => {
-            document.getElementById('reload-btn').disabled = true;
-            localGridData = []; // 手動更新時はクリアして強制フェッチ
-            loadPreviewData(true);
-        });
-
-        loadPreviewData(true);
     </script>
 </body>
 </html>
