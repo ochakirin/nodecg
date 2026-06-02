@@ -1,7 +1,7 @@
 {
   "name": "my-background-bundle",
   "version": "2.0.0",
-  "description": "Background, Timer, and Quiz System for NodeCG",
+  "description": "Background, Timer, and 5-Bomber System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "dashboardPanels": [
@@ -28,19 +28,6 @@
         "file": "doraleague.html",
         "width": 1920,
         "height": 1080
-      }
-    ],
-    "assetCategories": [
-      {
-        "name": "backgrounds",
-        "title": "Background Images"
-      }
-    ],
-    "soundCues": [
-      {
-        "name": "correct-sound",
-        "title": "正解音",
-        "defaultFile": "assets/my-background-bundle/sounds/正解.mp3"
       }
     ]
   }
