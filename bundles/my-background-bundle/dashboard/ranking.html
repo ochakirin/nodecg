@@ -13,8 +13,7 @@
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
-        .live-tag { font-size: 11px; color: #fff; background: #ff5722; padding: 3px 8px; border-radius: 12px; font-weight: bold; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .live-tag { font-size: 11px; color: #fff; background: #ff5722; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -40,7 +39,6 @@
     </div>
 
     <script>
-        // 🔴 lap.html と直結している内部共有メモリを監視
         const localRankingRep = nodecg.Replicant('localRankingData');
 
         function renderRanking(rankingObj) {
@@ -49,17 +47,15 @@
             
             tbody.innerHTML = '';
             
-            // オブジェクト形式から配列に変換
-            const teamDataList = Object.values(rankingObj || {});
-
-            if (teamDataList.length === 0) {
+            if (!rankingObj || Object.keys(rankingObj).length === 0) {
                 status.style.display = 'block';
                 return;
             }
 
             status.style.display = 'none';
+            const teamDataList = Object.values(rankingObj);
 
-            // ソートロジック（周回数が多い順 ➔ タイムが早い順）
+            // ソート（周回数が多い順 ➔ タイムが早い順）
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                 if (a.lapCount > 0) {
@@ -96,7 +92,6 @@
             }
         }
 
-        // メモリの変更を検知して0.1秒で画面を書き換える
         localRankingRep.on('change', (newVal) => {
             if (newVal) {
                 renderRanking(newVal);
