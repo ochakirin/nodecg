@@ -17,27 +17,6 @@
         }
         h3 { margin: 0; font-size: 16px; color: #333; }
         
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .switch-label {
-            display: flex;
-            align-items: center;
-            font-size: 13px;
-            font-weight: bold;
-            color: #555;
-            cursor: pointer;
-            user-select: none;
-        }
-        .switch-label input {
-            margin-right: 6px;
-            transform: scale(1.2);
-            cursor: pointer;
-        }
-
         #refresh-btn { 
             background: #FF9800; 
             color: white; 
@@ -59,28 +38,13 @@
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
-        
-        .sync-indicator {
-            font-size: 11px;
-            color: #2ea44f;
-            margin-left: 5px;
-            display: none;
-            animation: blink 2s infinite;
-        }
-        @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>🏆 チームランキング</h3>
-        <div class="controls">
-            <label class="switch-label">
-                <input type="checkbox" id="auto-sync-checkbox"> 自動更新（30秒周期）
-                <span id="sync-status" class="sync-indicator">● 稼働中</span>
-            </label>
-            <button id="refresh-btn">手動同期</button>
-        </div>
+        <h3>🏆 リアルタイム チームランキング (GAS直結)</h3>
+        <button id="refresh-btn">CSVから強制再読込</button>
     </div>
 
     <div class="rank-container">
@@ -94,17 +58,75 @@
             </thead>
             <tbody id="rank-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">読み込み中...</div>
+        <div id="status" class="status-msg">GASからのデータ受信を待機中...</div>
     </div>
 
     <script>
+        // バックアップ用（ボタンを押した時のみ使用）
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        let autoSyncInterval = null;
-        
-        // 🔴 過去に読み込みに成功した「CSV全体の最大文字数」を記録する変数
-        let maxCSVLength = 0;
+        // 🔴 GASから直接データが叩き込まれるReplicantを監視
+        const rankingDirectData = nodecg.Replicant('rankingDirectData', { defaultValue: [] });
 
+        // 配列データを受け取ってソート・描画するコア関数
+        function renderRanking(teamDataList) {
+            const tbody = document.getElementById('rank-tbody');
+            const status = document.getElementById('status');
+            
+            tbody.innerHTML = '';
+            if (!teamDataList || teamDataList.length === 0) {
+                status.style.display = 'block';
+                status.innerText = 'データがありません。ラップボタンを押すか再読込してください。';
+                return;
+            }
+
+            status.style.display = 'none';
+
+            // 1. 周回数 ➔ 2. タイム の順でソート
+            teamDataList.sort((a, b) => {
+                if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
+                if (a.lapCount > 0) {
+                    if (a.lastTime < b.lastTime) return -1;
+                    if (a.lastTime > b.lastTime) return 1;
+                }
+                return 0;
+            });
+
+            // 同順位を計算しながらHTMLを出力
+            let currentRank = 1;
+            for (let i = 0; i < teamDataList.length; i++) {
+                const currentTeam = teamDataList[i];
+
+                if (i > 0) {
+                    const prevTeam = teamDataList[i - 1];
+                    const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
+                    const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
+
+                    if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
+                        currentRank = i + 1;
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                const rankClass = currentRank <= 3 ? 'rank-top' : '';
+
+                tr.innerHTML = `
+                    <td class="${rankClass}">${currentRank}位</td>
+                    <td>${currentTeam.name}</td>
+                    <td class="time-cell">${currentTeam.lastTime}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // 🔴 Replicantの中身が変わった（＝GASからデータが届いた）ら1ミリ秒の無駄もなく画面を更新
+        rankingDirectData.on('change', (newVal) => {
+            if (newVal) {
+                renderRanking(newVal);
+            }
+        });
+
+        // 【バックアップ】CSVから直接パースして無理やり復元する手動関数
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -117,127 +139,31 @@
             return rows;
         }
 
-        async function fetchAndRenderRanking(isManual = false) {
-            const tbody = document.getElementById('rank-tbody');
-            const status = document.getElementById('status');
+        document.getElementById('refresh-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-btn');
-
             btn.disabled = true;
-
             try {
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
-                if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
-                
                 const text = await res.text();
-                
-                // 🔴 【巻き戻りチェック機構】
-                // 新しく取得したデータの文字数が、これまでの最大文字数より短い場合は「巻き戻り」と判定
-                // ※ただし「手動同期」ボタンが押されたときは強制的に上書きを許可する（リセット対応用）
-                if (!isManual && text.length < maxCSVLength) {
-                    console.warn(`[警告] Googleが古いデータを返したため同期をスルーしました。 (現在: ${text.length}文字 / 過去最大: ${maxCSVLength}文字)`);
-                    btn.disabled = false;
-                    return; // 処理をここで終了して、現在の画面表示をキープ
-                }
-
-                // 正常な最新データ、または手動更新なら文字数の最大値を更新
-                maxCSVLength = text.length;
-
                 const rows = parseCSV(text);
-                if (rows.length === 0) {
-                    status.style.display = 'block';
-                    status.innerText = 'データが見つかりません。';
-                    return;
-                }
+                if (rows.length === 0) return;
 
                 const headers = rows[0];
-                const teamDataList = [];
-
+                const list = [];
                 for (let colIdx = 0; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
-
                     const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-');
-                    const lapCount = laps.length;
-                    const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
-
-                    teamDataList.push({
-                        name: teamName,
-                        lapCount: lapCount,
-                        lastTime: lastTime
-                    });
+                    list.push({ name: teamName, lapCount: laps.length, lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--' });
                 }
-
-                // ソート
-                teamDataList.sort((a, b) => {
-                    if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
-                    if (a.lapCount > 0) {
-                        if (a.lastTime < b.lastTime) return -1;
-                        if (a.lastTime > b.lastTime) return 1;
-                    }
-                    return 0;
-                });
-
-                tbody.innerHTML = '';
-                status.style.display = 'none';
-
-                let currentRank = 1;
-                for (let i = 0; i < teamDataList.length; i++) {
-                    const currentTeam = teamDataList[i];
-
-                    if (i > 0) {
-                        const prevTeam = teamDataList[i - 1];
-                        const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
-                        const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
-
-                        if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
-                            currentRank = i + 1;
-                        }
-                    }
-
-                    const tr = document.createElement('tr');
-                    const rankClass = currentRank <= 3 ? 'rank-top' : '';
-
-                    tr.innerHTML = `
-                        <td class="${rankClass}">${currentRank}位</td>
-                        <td>${currentTeam.name}</td>
-                        <td class="time-cell">${currentTeam.lastTime}</td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-
+                // 手動同期した内容をReplicantにも保存
+                rankingDirectData.value = list;
             } catch (e) {
-                console.error("ランキングデータ更新失敗:", e);
-                status.style.display = 'block';
-                status.innerText = '同期に失敗しました。次回周期で再試行します。';
+                console.error(e);
             } finally {
                 btn.disabled = false;
             }
-        }
-
-        const checkbox = document.getElementById('auto-sync-checkbox');
-        const indicator = document.getElementById('sync-status');
-
-        checkbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                indicator.style.display = 'inline';
-                fetchAndRenderRanking(false); 
-                autoSyncInterval = setInterval(() => { fetchAndRenderRanking(false); }, 30000);
-            } else {
-                indicator.style.display = 'none';
-                if (autoSyncInterval) {
-                    clearInterval(autoSyncInterval);
-                    autoSyncInterval = null;
-                }
-            }
         });
-
-        // 🔴 手動同期ボタンが押されたときだけ「true」を渡して、文字数チェックをバイパスする
-        document.getElementById('refresh-btn').addEventListener('click', () => {
-            fetchAndRenderRanking(true);
-        });
-        
-        // 起動時に初回読み込み
-        fetchAndRenderRanking(false);
     </script>
 </body>
 </html>
