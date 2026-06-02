@@ -91,3 +91,75 @@
     <div class="grid-container" id="teams-grid"></div>
 
     <script>
+        // タイマーのリプリカントに接続して秒数を同期
+        const timerRep = nodecg.Replicant('streamTimer');
+        
+        // 🔴 ご提示いただいたGASのデプロイURLを反映しました
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
+
+        let currentSeconds = 0;
+
+        timerRep.on('change', (newVal) => {
+            if (newVal) currentSeconds = newVal.seconds;
+        });
+
+        // 現在のタイマーの秒数を hh:mm:ss 形式に変換する関数
+        function getFormattedTime() {
+            const hrs = Math.floor(currentSeconds / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((currentSeconds % 3600) / 60).toString().padStart(2, '0');
+            const secs = (currentSeconds % 60).toString().padStart(2, '0');
+            return `${hrs}:${mins}:${secs}`;
+        }
+
+        // GASへ通信を行って書き込み・消去を依頼する関数
+        async function sendToGas(teamNum, action, buttons) {
+            // 通信が終わるまでボタンを無効化（連打バグ防止）
+            buttons.forEach(b => b.disabled = true);
+
+            const timeStr = getFormattedTime();
+            const payload = { action, teamNum, timeStr };
+
+            try {
+                // GASへのPOST送信
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // クロスドメイン(CORS)ブロックを回避
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                console.log(`チーム ${teamNum}: ${action} 送信完了 (${timeStr})`);
+            } catch (error) {
+                console.error('GASとの通信に失敗しました:', error);
+            } finally {
+                // 通信完了後にボタンを再び有効化
+                buttons.forEach(b => b.disabled = false);
+            }
+        }
+
+        // JavaScriptで1行に5個×4行（計20チーム）のHTML要素を自動作成
+        const grid = document.getElementById('teams-grid');
+        for (let i = 1; i <= 20; i++) {
+            const box = document.createElement('div');
+            box.className = 'team-box';
+
+            box.innerHTML = `
+                <div class="team-title">番号: ${i}</div>
+                <div class="btn-group">
+                    <button class="btn-forward">進む</button>
+                    <button class="btn-backward">戻る</button>
+                </div>
+            `;
+
+            const btnForward = box.querySelector('.btn-forward');
+            const btnBackward = box.querySelector('.btn-backward');
+            const targetButtons = [btnForward, btnBackward];
+
+            // 各ボタンにクリックイベントを設定
+            btnForward.addEventListener('click', () => sendToGas(i, 'forward', targetButtons));
+            btnBackward.addEventListener('click', () => sendToGas(i, 'backward', targetButtons));
+
+            grid.appendChild(box);
+        }
+    </script>
+</body>
+</html>
