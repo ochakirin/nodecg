@@ -4,44 +4,37 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; padding: 15px; background: #f0f2f5; color: #1c1e21; }
-        h3 { font-size: 16px; margin: 15px 0 8px; color: #555; border-left: 4px solid #FF5722; padding-left: 8px; }
-        
+        h3 { font-size: 15px; margin: 15px 0 8px; color: #555; border-left: 4px solid #FF5722; padding-left: 8px; }
         select, button { width: 100%; padding: 12px; margin-bottom: 12px; font-size: 15px; border-radius: 6px; border: 1px solid #ddd; outline: none; }
-        select:focus { border-color: #FF5722; }
-
-        .list-container { background: white; border-radius: 8px; padding: 5px; max-height: 380px; overflow-y: auto; border: 1px solid #ddd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
-        .list-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-        .list-item:last-child { border-bottom: none; }
+        .list-container { background: white; border-radius: 8px; padding: 5px; min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+        .list-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
         .list-item:hover { background: #fff7f5; }
-        .list-item input { margin-right: 12px; transform: scale(1.3); cursor: pointer; }
-        
-        #reset-btn { background: #e74c3c; color: white; border: none; font-weight: bold; margin-top: 15px; cursor: pointer; transition: opacity 0.2s; }
-        #reset-btn:hover { opacity: 0.8; }
-        #reset-btn:active { transform: translateY(1px); }
+        .list-item input { margin-right: 12px; transform: scale(1.3); }
+        #reset-btn { background: #e74c3c; color: white; border: none; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        .error-msg { color: #d32f2f; background: #fdecea; padding: 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
-    <h3>▼ カテゴリ選択（1行目）</h3>
+    <div id="error-display"></div>
+
+    <h3>▼ カテゴリ選択</h3>
     <select id="category-select">
-        <option>データを読み込んでいます...</option>
+        <option value="">データを読み込んでいます...</option>
     </select>
 
-    <h3>▼ 項目リスト（2行目以降）</h3>
+    <h3>▼ 項目リスト</h3>
     <div class="list-container" id="item-list">
         カテゴリを選択してください。
     </div>
 
-    <button id="reset-btn">表示を消去（リセット）</button>
+    <button id="reset-btn">表示をリセット</button>
 
     <script>
         const activeData = nodecg.Replicant('activeData', { defaultValue: { title: '', text: '', ts: 0 } });
-        
-        // 🔴 ご提示いただいた公開URLを設定しました
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
 
         let sheetData = {};
 
-        // CSVを正しく解析する関数（引用符などに対応）
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -55,32 +48,37 @@
         }
 
         async function init() {
+            const select = document.getElementById('category-select');
+            const errorDisplay = document.getElementById('error-display');
+            
             try {
-                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now()); // キャッシュ対策
-                const text = await res.text();
+                // キャッシュを回避するためにタイムスタンプを付与
+                const response = await fetch(SHEET_URL + '&t=' + Date.now());
+                if (!response.ok) throw new Error(`通信エラー: ${response.status}`);
+                
+                const text = await response.text();
                 const rows = parseCSV(text);
 
-                if (rows.length === 0) throw new Error('Empty Sheet');
+                if (rows.length === 0) throw new Error('シートにデータが見つかりません。');
 
-                const titles = rows[0]; // 1行目をカテゴリタイトルに
+                const titles = rows[0];
                 sheetData = {};
-
                 titles.forEach((title, colIdx) => {
                     if (!title) return;
-                    // その列の2行目以降を配列として格納
                     sheetData[title] = rows.slice(1).map(r => r[colIdx]).filter(cell => cell);
                 });
 
-                const select = document.getElementById('category-select');
                 select.innerHTML = '<option value="">カテゴリを選択してください</option>';
                 Object.keys(sheetData).forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t; opt.innerText = t;
                     select.appendChild(opt);
                 });
+
             } catch (e) {
-                console.error(e);
-                document.getElementById('category-select').innerHTML = '<option>データの読み込みに失敗しました</option>';
+                console.error("Fetch Error:", e);
+                errorDisplay.innerHTML = `<div class="error-msg">⚠️ 読み込みに失敗しました。<br>${e.message}</div>`;
+                select.innerHTML = '<option value="">読み込み失敗</option>';
             }
         }
 
@@ -95,5 +93,22 @@
                     label.className = 'list-item';
                     label.innerHTML = `<input type="radio" name="bomber-item" value="${item}"> <span>${item}</span>`;
                     label.querySelector('input').addEventListener('change', () => {
-                        // 🔴 ここでデータを配信画面に飛ばす
-                        activeData.value = { title: title, text: item, ts: Date
+                        activeData.value = { title: title, text: item, ts: Date.now() };
+                    });
+                    container.appendChild(label);
+                });
+            } else {
+                container.innerText = 'カテゴリを選択してください。';
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            activeData.value = { title: '', text: '', ts: Date.now() };
+            const checked = document.querySelector('input[name="bomber-item"]:checked');
+            if (checked) checked.checked = false;
+        });
+
+        init();
+    </script>
+</body>
+</html>
