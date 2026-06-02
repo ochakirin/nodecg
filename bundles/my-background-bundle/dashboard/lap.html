@@ -69,10 +69,53 @@
             localRankingRep.value = { ...localRankingRep.value };
         }
 
-        async function handleLapAction(teamNum, action, buttons) {
+        // 🔴 エラーの原因だった async を削除し、通常の関数に修正しました
+        function handleLapAction(teamNum, action, buttons) {
             // 1. ボタンの連打による多重送信を防ぐため一瞬だけ無効化
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
 
             // 2. メモリ（NodeCG）を0.1秒で即座に更新（ランキング・プレビューへ一瞬で反映）
-            updateLocal
+            updateLocalRanking(teamNum, action, timeStr);
+
+            // 3. Googleへの送信を「投げっぱなし」にして応答を待たない
+            fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, teamNum, timeStr })
+            }).catch(error => {
+                console.error('バックアップ送信エラー:', error);
+            });
+
+            // 4. コマンドを発射した瞬間に、ボタンを即座に復帰させる（待ち時間ゼロ）
+            setTimeout(() => {
+                buttons.forEach(b => b.disabled = false);
+            }, 100); // 0.1秒のウェイトで連続タップの操作感を最適化
+        }
+
+        // 20チーム分のボタン生成
+        const grid = document.getElementById('teams-grid');
+        for (let i = 1; i <= 20; i++) {
+            const box = document.createElement('div');
+            box.className = 'team-box';
+            box.innerHTML = `
+                <div class="team-title">チーム ${i}</div>
+                <div class="btn-group">
+                    <button class="btn-forward">進む</button>
+                    <button class="btn-backward">戻る</button>
+                </div>
+            `;
+
+            const btnForward = box.querySelector('.btn-forward');
+            const btnBackward = box.querySelector('.btn-backward');
+            const targetButtons = [btnForward, btnBackward];
+
+            btnForward.addEventListener('click', () => handleLapAction(i, 'forward', targetButtons));
+            btnBackward.addEventListener('click', () => handleLapAction(i, 'backward', targetButtons));
+
+            grid.appendChild(box);
+        }
+    </script>
+</body>
+</html>
