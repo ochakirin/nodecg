@@ -1,6 +1,6 @@
 {
   "name": "my-background-bundle",
-  "version": "2.0.1",
+  "version": "2.2.0",
   "description": "Background, Timer, and 5-Bomber System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
@@ -9,7 +9,8 @@
         "name": "timer-control",
         "title": "タイマーコントローラー",
         "file": "timer.html",
-        "headerColor": "#52575c"
+        "headerColor": "#52575c",
+        "width": 3
       },
       {
         "name": "5-bomber",
