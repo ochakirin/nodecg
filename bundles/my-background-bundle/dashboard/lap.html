@@ -23,10 +23,6 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
-        
-        // 🔴 メッセージではなく、確実なReplicant経由で全チームの最新操作を同期する
-        const lapClickEvent = nodecg.Replicant('lapClickEvent', { defaultValue: { teamNum: 0, action: '', timeStr: '', ts: 0 } });
-        
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
         let currentSeconds = 0;
@@ -49,14 +45,6 @@
             const payload = { action, teamNum, timeStr };
 
             try {
-                // 🔴 タイムスタンプ（ts）を毎回新しく書き換えることで、ランキング側に確実に変更を通知する
-                lapClickEvent.value = {
-                    teamNum: teamNum,
-                    action: action,
-                    timeStr: timeStr,
-                    ts: Date.now()
-                };
-
                 await fetch(GAS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -64,7 +52,6 @@
                     body: JSON.stringify(payload)
                 });
                 console.log(`チーム ${teamNum}: ${action} 送信完了 (${timeStr})`);
-
             } catch (error) {
                 console.error('GASとの通信に失敗しました:', error);
             } finally {
