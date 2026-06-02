@@ -1,4 +1,6 @@
+'use strict';
+
 module.exports = function (nodecg) {
-    // GASからのダイレクトデータを受け取るためのReplicantを登録
+    // サーバー起動時に安全にReplicantを定義
     nodecg.Replicant('rankingDirectData', { defaultValue: [] });
 };
