@@ -1,22 +1,46 @@
 {
   "name": "my-background-bundle",
-  "version": "1.0.0",
-  "description": "Background and Timer graphics for NodeCG",
+  "version": "2.0.0",
+  "description": "Background, Timer, and Quiz System for NodeCG",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
-    "graphics": [
-      {
-        "file": "index.html",
-        "width": 1920,
-        "height": 1080
-      }
-    ],
     "dashboardPanels": [
       {
         "name": "timer-control",
         "title": "タイマーコントローラー",
         "file": "timer.html",
         "headerColor": "#52575c"
+      },
+      {
+        "name": "5-bomber",
+        "title": "5ボンバー",
+        "file": "5bomber.html",
+        "headerColor": "#FF5722"
+      }
+    ],
+    "graphics": [
+      {
+        "file": "index.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "doraleague.html",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "assetCategories": [
+      {
+        "name": "backgrounds",
+        "title": "Background Images"
+      }
+    ],
+    "soundCues": [
+      {
+        "name": "correct-sound",
+        "title": "正解音",
+        "defaultFile": "assets/my-background-bundle/sounds/正解.mp3"
       }
     ]
   }
