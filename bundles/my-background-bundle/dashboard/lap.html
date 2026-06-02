@@ -23,10 +23,6 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
-        
-        // 🔴 ランキング側に「どのチームが」「どういう操作をして」「何秒だったか」を直接伝える構造に変更
-        const rankingTrigger = nodecg.Replicant('rankingTrigger', { defaultValue: { ts: 0, teamNum: 0, action: '', timeStr: '' } });
-        
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
         let currentSeconds = 0;
@@ -49,13 +45,12 @@
             const payload = { action, teamNum, timeStr };
 
             try {
-                // 🔴 Google側に行く「直前」に、NodeCG内で先行してランキングへタイムを通知する（これで超爆速になります）
-                rankingTrigger.value = {
-                    ts: Date.now(),
+                // 🔴 Replicantを使わず、ダイレクトなメッセージ通信（Emit）でランキングへ送信
+                nodecg.sendMessage('lapButtonClicked', {
                     teamNum: teamNum,
                     action: action,
                     timeStr: timeStr
-                };
+                });
 
                 await fetch(GAS_URL, {
                     method: 'POST',
