@@ -8,7 +8,7 @@
         h3 { margin: 0; font-size: 16px; color: #333; }
         .rank-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 520px; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; }
+        th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; text-align: center; }
         td { padding: 10px 12px; border-bottom: 1px solid #eaecef; color: #333; text-align: center; }
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
@@ -29,8 +29,7 @@
                 <tr>
                     <th>順位</th>
                     <th>チーム</th>
-                    <th>周回数</th>
-                    <th>最新ラップタイム</th>
+                    <th>通過ラップ数</th> <th>最新ラップタイム</th>
                 </tr>
             </thead>
             <tbody id="rank-tbody"></tbody>
@@ -41,7 +40,6 @@
     <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        // 巻き戻り防止用の保持変数
         let currentMaxTotalLaps = 0;
 
         function parseCSV(text) {
@@ -84,16 +82,9 @@
                     });
                 }
 
-                // 🔴【巻き戻りガード】古いキャッシュデータが降ってきたら描画を完全スルー
-                if (incomingTotalLaps < currentMaxTotalLaps) {
-                    console.warn("Googleのキャッシュ遅延によるデータの巻き戻りを検知。描画を維持します。");
-                    return; 
-                }
-
-                // 正常データなら最大値を更新
+                if (incomingTotalLaps < currentMaxTotalLaps) return;
                 currentMaxTotalLaps = incomingTotalLaps;
 
-                // ソート（周回数 ➔ タイム）
                 teamDataList.sort((a, b) => {
                     if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                     if (a.lapCount > 0) {
@@ -103,7 +94,6 @@
                     return 0;
                 });
 
-                // 描画処理
                 const tbody = document.getElementById('rank-tbody');
                 document.getElementById('status').style.display = 'none';
                 tbody.innerHTML = '';
@@ -128,7 +118,7 @@
                     tr.innerHTML = `
                         <td class="${rankClass}">${currentRank}位</td>
                         <td style="font-weight: bold;">${currentTeam.name}</td>
-                        <td><span style="background: #e0f2f1; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapCount} 周</span></td>
+                        <td><span style="background: #e0f2f1; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapCount} 回</span></td>
                         <td class="time-cell">${currentTeam.lastTime}</td>
                     `;
                     tbody.appendChild(tr);
@@ -139,7 +129,6 @@
             }
         }
 
-        // 3秒周期で自動更新
         fetchAndRender();
         setInterval(fetchAndRender, 3000);
     </script>
