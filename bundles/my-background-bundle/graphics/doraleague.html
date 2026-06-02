@@ -8,7 +8,6 @@
         #header-title { position: absolute; top: 50px; width: 100%; text-align: center; font-size: 60px; font-weight: bold; text-shadow: 4px 4px 8px black; color: #38bdf8; }
         #answer-display { position: absolute; bottom: 100px; width: 100%; text-align: center; font-size: 150px; font-weight: bold; color: #FFEB3B; text-shadow: 6px 6px 12px black; transition: transform 0.1s; }
         .pop { transform: scale(1.1); }
-        /* 音声有効化の案内（初回のみ） */
         #audio-hint { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; cursor: pointer; z-index: 100; }
     </style>
 </head>
@@ -21,15 +20,13 @@
         const activeTitle = nodecg.Replicant('activeTitle');
         const activeAnswer = nodecg.Replicant('activeAnswer');
         
-        // パスを確実に通すため、絶対パス形式で指定
-        const correctSound = new Audio(`/bundles/${nodecg.bundleName}/sounds/正解.mp3`);
+        // correct.mp3 を絶対パスで指定
+        const correctSound = new Audio(`/bundles/${nodecg.bundleName}/sounds/correct.mp3`);
 
-        // タイトルの監視
         activeTitle.on('change', (newVal) => {
             document.getElementById('header-title').innerText = newVal ? `【 ${newVal} 】` : '';
         });
 
-        // 回答の監視
         activeAnswer.on('change', (newVal) => {
             const ansEl = document.getElementById('answer-display');
             if (!newVal) {
@@ -39,10 +36,10 @@
 
             ansEl.innerText = newVal;
 
-            // 音声を再生（一度止めてから再生することで連続対応）
+            // 音声再生
             correctSound.pause();
             correctSound.currentTime = 0;
-            correctSound.play().catch(err => console.error("音声再生に失敗:", err));
+            correctSound.play().catch(err => console.error("音声再生エラー:", err));
 
             // アニメーション
             ansEl.classList.add('pop');
