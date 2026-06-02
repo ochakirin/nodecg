@@ -59,7 +59,7 @@
             color: #333;
             text-align: center;
         }
-        .rank-top { font-weight: bold; color: #d32f2f; } /* 上位の強調 */
+        .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
     </style>
@@ -88,8 +88,10 @@
     </div>
 
     <script>
-        // ラップ記録用シートの公開CSV URL
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
+
+        // 🔴 ラップ記録側からの自動更新通知を受け取るReplicant
+        const rankingTrigger = nodecg.Replicant('rankingTrigger');
 
         function parseCSV(text) {
             const rows = [];
@@ -114,6 +116,9 @@
             btn.disabled = true;
 
             try {
+                // スプレッドシート側の反映速度を考慮し、フェッチ前にわずかにウェイトをかける（必要に応じて調整）
+                await new Promise(resolve => setTimeout(resolve, 800));
+
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
                 if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
                 
@@ -125,17 +130,14 @@
                     return;
                 }
 
-                const headers = rows[0]; // 「チーム 1」などのヘッダー行
+                const headers = rows[0];
                 const teamDataList = [];
 
-                // 20チーム分のデータを縦にスキャンして集計
                 for (let colIdx = 0; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
 
-                    // その列の2行目以降のタイムを配列で取得（空セルは除外）
                     const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-');
-                    
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
 
@@ -146,43 +148,34 @@
                     });
                 }
 
-                // 🔴 指定された条件での並び替え（ソート）ロジック
                 teamDataList.sort((a, b) => {
-                    // 1. 周回数が多いほうが上
                     if (b.lapCount !== a.lapCount) {
                         return b.lapCount - a.lapCount;
                     }
-                    // 2. 周回数が同じで、どちらも1周以上している場合はタイムが早いほうが上
                     if (a.lapCount > 0) {
                         if (a.lastTime < b.lastTime) return -1;
                         if (a.lastTime > b.lastTime) return 1;
                     }
-                    // 3. タイムも同じ、または1周もしていない場合は同等
                     return 0;
                 });
 
                 status.style.display = 'none';
 
-                // 🔴 同順位の計算ロジック
                 let currentRank = 1;
                 for (let i = 0; i < teamDataList.length; i++) {
                     const currentTeam = teamDataList[i];
 
-                    // 前のチームと比較して、「周回数」も「最新タイム」も全く同じなら同じ順位にする
                     if (i > 0) {
                         const prevTeam = teamDataList[i - 1];
                         const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
                         const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
 
-                        // 1周もしていない同士、または周回数とタイムが完全一致なら順位を据え置き
                         if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
-                            currentRank = i + 1; // 異なる場合は、スキップ数を考慮した順位（3位が2人いたら次は5位）にする
+                            currentRank = i + 1;
                         }
                     }
 
                     const tr = document.createElement('tr');
-                    
-                    // 1～3位は目立たせるためのクラスを付与
                     const rankClass = currentRank <= 3 ? 'rank-top' : '';
 
                     tr.innerHTML = `
@@ -202,9 +195,17 @@
             }
         }
 
+        // 🔴 他のパネルでボタンが押された（トリガーの値が増えた）ら自動で順位を更新
+        rankingTrigger.on('change', (newVal, oldVal) => {
+            // 初回起動時（oldValがundefinedの時）の重複走査を防止
+            if (oldVal !== undefined) {
+                updateRanking();
+            }
+        });
+
         document.getElementById('refresh-btn').addEventListener('click', updateRanking);
         
-        // 起動時に初期実行
+        // 起動時に初期読み込み
         updateRanking();
     </script>
 </body>
