@@ -3,34 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            padding: 15px; 
-            background: #f0f2f5; 
-            margin: 0; 
-        }
-        .header-area { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 15px; 
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        
-        #refresh-btn { 
-            background: #FF9800; 
-            color: white; 
-            border: none; 
-            padding: 8px 16px; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 13px; 
-            transition: background 0.1s; 
-        }
-        #refresh-btn:hover { background: #e65100; }
-        #refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
         .rank-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 520px; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; }
@@ -38,13 +13,14 @@
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
+        .auto-tag { font-size: 11px; color: #2ea44f; background: #e6ffed; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>🏆 リアルタイム チームランキング (GAS直結)</h3>
-        <button id="refresh-btn">CSVから強制再読込</button>
+        <h3>🏆 チームランキング</h3>
+        <span class="auto-tag">● 5秒周期 自動同期中</span>
     </div>
 
     <div class="rank-container">
@@ -58,17 +34,12 @@
             </thead>
             <tbody id="rank-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">GASからのデータ受信を待機中...</div>
+        <div id="status" class="status-msg">Googleスプレッドシートからデータ取得中...</div>
     </div>
 
     <script>
-        // バックアップ用（ボタンを押した時のみ使用）
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
+        const rankingDirectData = nodecg.Replicant('rankingDirectData');
 
-        // 🔴 GASから直接データが叩き込まれるReplicantを監視
-        const rankingDirectData = nodecg.Replicant('rankingDirectData', { defaultValue: [] });
-
-        // 配列データを受け取ってソート・描画するコア関数
         function renderRanking(teamDataList) {
             const tbody = document.getElementById('rank-tbody');
             const status = document.getElementById('status');
@@ -76,13 +47,13 @@
             tbody.innerHTML = '';
             if (!teamDataList || teamDataList.length === 0) {
                 status.style.display = 'block';
-                status.innerText = 'データがありません。ラップボタンを押すか再読込してください。';
+                status.innerText = 'データを読み込み中、またはシートが空です...';
                 return;
             }
 
             status.style.display = 'none';
 
-            // 1. 周回数 ➔ 2. タイム の順でソート
+            // ソート
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                 if (a.lapCount > 0) {
@@ -92,7 +63,6 @@
                 return 0;
             });
 
-            // 同順位を計算しながらHTMLを出力
             let currentRank = 1;
             for (let i = 0; i < teamDataList.length; i++) {
                 const currentTeam = teamDataList[i];
@@ -119,49 +89,10 @@
             }
         }
 
-        // 🔴 Replicantの中身が変わった（＝GASからデータが届いた）ら1ミリ秒の無駄もなく画面を更新
+        // サーバーが5秒ごとに更新したReplicantを検知して描画
         rankingDirectData.on('change', (newVal) => {
             if (newVal) {
                 renderRanking(newVal);
-            }
-        });
-
-        // 【バックアップ】CSVから直接パースして無理やり復元する手動関数
-        function parseCSV(text) {
-            const rows = [];
-            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
-            text.split(/\r?\n/).forEach(line => {
-                if (!line.trim()) return;
-                const matches = line.matchAll(pattern);
-                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
-                rows.push(row);
-            });
-            return rows;
-        }
-
-        document.getElementById('refresh-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('refresh-btn');
-            btn.disabled = true;
-            try {
-                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
-                const text = await res.text();
-                const rows = parseCSV(text);
-                if (rows.length === 0) return;
-
-                const headers = rows[0];
-                const list = [];
-                for (let colIdx = 0; colIdx < headers.length; colIdx++) {
-                    const teamName = headers[colIdx];
-                    if (!teamName) continue;
-                    const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-');
-                    list.push({ name: teamName, lapCount: laps.length, lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--' });
-                }
-                // 手動同期した内容をReplicantにも保存
-                rankingDirectData.value = list;
-            } catch (e) {
-                console.error(e);
-            } finally {
-                btn.disabled = false;
             }
         });
     </script>
