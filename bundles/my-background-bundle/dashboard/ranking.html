@@ -42,9 +42,6 @@
     <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        const rankingTrigger = nodecg.Replicant('rankingTrigger');
-
-        // メモリ上に一時保存しておく最新の全チームデータ状態
         let localTeamStats = {}; 
 
         function parseCSV(text) {
@@ -59,7 +56,6 @@
             return rows;
         }
 
-        // 基本となるデータをCSV（Google）から取得する関数
         async function fetchBaseData(forceRender = true) {
             try {
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
@@ -70,7 +66,7 @@
                 if (rows.length === 0) return;
 
                 const headers = rows[0];
-                localTeamStats = {}; // リセットして再構築
+                localTeamStats = {}; 
 
                 for (let colIdx = 0; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
@@ -80,12 +76,11 @@
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
 
-                    // チーム名をキーにして状態を保存
                     localTeamStats[teamName] = {
                         name: teamName,
                         lapCount: lapCount,
                         lastTime: lastTime,
-                        history: laps // バックアップ用として全履歴を保持
+                        history: laps 
                     };
                 }
 
@@ -97,20 +92,16 @@
             }
         }
 
-        // メモリ内のデータを元にソートしてHTMLを描画する関数（タイムラグゼロ）
         function renderRanking() {
             const tbody = document.getElementById('rank-tbody');
             const status = document.getElementById('status');
             
             tbody.innerHTML = '';
-            
-            // オブジェクトを配列に変換
             const teamDataList = Object.values(localTeamStats);
             if (teamDataList.length === 0) return;
 
             status.style.display = 'none';
 
-            // ソート
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                 if (a.lapCount > 0) {
@@ -120,7 +111,6 @@
                 return 0;
             });
 
-            // 描画
             let currentRank = 1;
             for (let i = 0; i < teamDataList.length; i++) {
                 const currentTeam = teamDataList[i];
@@ -147,23 +137,19 @@
             }
         }
 
-        // 🔴 ボタンが押された通知をキャッチした時の超高速割り込み処理
-        rankingTrigger.on('change', (newVal, oldVal) => {
-            if (oldVal === undefined || !newVal || !newVal.action) return;
+        // 🔴 メッセージを受け取る仕組み（listenFor）に変更。これで取りこぼしが0になります。
+        nodecg.listenFor('lapButtonClicked', (data) => {
+            if (!data || !data.action) return;
 
-            const targetKey = `チーム ${newVal.teamNum}`;
-            
-            // ローカルデータにまだそのチームが存在しない場合はスキップ
+            const targetKey = `チーム ${data.teamNum}`;
             if (!localTeamStats[targetKey]) return;
 
-            if (newVal.action === 'forward') {
-                // 【進む】の時は、周回数を+1して、最新タイムをその場で書き換える
+            if (data.action === 'forward') {
                 localTeamStats[targetKey].lapCount++;
-                localTeamStats[targetKey].lastTime = newVal.timeStr;
-                localTeamStats[targetKey].history.push(newVal.timeStr);
+                localTeamStats[targetKey].lastTime = data.timeStr;
+                localTeamStats[targetKey].history.push(data.timeStr);
             } 
-            else if (newVal.action === 'backward') {
-                // 【戻る】の時は、手元の履歴から最後の1つを消す
+            else if (data.action === 'backward') {
                 if (localTeamStats[targetKey].lapCount > 0) {
                     localTeamStats[targetKey].history.pop();
                     const h = localTeamStats[targetKey].history;
@@ -172,21 +158,18 @@
                 }
             }
 
-            // 🔴 GoogleからのCSVを待たずに、手元のデータを即座にソートして再描画！
             renderRanking();
 
-            // 念のため、3秒後にGoogle側のCSVともう一度答え合わせ同期をする（バックグラウンド処理）
+            // 4秒後にバックグラウンドでGoogleの最新CSVと答え合わせ
             setTimeout(() => {
                 fetchBaseData(true);
-            }, 3000);
+            }, 4000);
         });
 
-        // 手動同期ボタン
         document.getElementById('refresh-btn').addEventListener('click', () => {
             fetchBaseData(true);
         });
         
-        // 起動時にGoogleからベースを引っ張る
         fetchBaseData(true);
     </script>
 </body>
