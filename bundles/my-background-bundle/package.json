@@ -1,6 +1,6 @@
 {
   "name": "my-background-bundle",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Background, Timer, and 5-Bomber System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
@@ -15,7 +15,8 @@
         "name": "5-bomber",
         "title": "5ボンバー",
         "file": "5bomber.html",
-        "headerColor": "#FF5722"
+        "headerColor": "#FF5722",
+        "width": 3
       }
     ],
     "graphics": [
