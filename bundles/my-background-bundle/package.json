@@ -1,7 +1,7 @@
 {
   "name": "my-background-bundle",
-  "version": "2.3.0",
-  "description": "Background, Timer, and Lap System",
+  "version": "2.4.0",
+  "description": "Background, Timer, Lap, and Preview System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "dashboardPanels": [
@@ -25,11 +25,26 @@
         "file": "lap.html",
         "headerColor": "#009688",
         "width": 4
+      },
+      {
+        "name": "sheet-preview",
+        "title": "シートプレビュー",
+        "file": "preview.html",
+        "headerColor": "#673AB7",
+        "width": 4
       }
     ],
     "graphics": [
-      { "file": "index.html", "width": 1920, "height": 1080 },
-      { "file": "doraleague.html", "width": 1920, "height": 1080 }
+      {
+        "file": "index.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "doraleague.html",
+        "width": 1920,
+        "height": 1080
+      }
     ]
   }
 }
