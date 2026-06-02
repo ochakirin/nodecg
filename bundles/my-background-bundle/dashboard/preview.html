@@ -3,74 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            padding: 15px; 
-            background: #f0f2f5; 
-            margin: 0; 
-        }
-        .header-area {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        #reload-btn {
-            background: #673AB7;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-            transition: background 0.1s;
-        }
+        #reload-btn { background: #673AB7; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; transition: background 0.1s; }
         #reload-btn:hover { background: #5e35b1; }
         #reload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        /* テーブル（表）の表示エリア設定 */
-        .table-container {
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e1e4e8;
-            max-height: 500px;
-            overflow: auto;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-            text-align: center; /* タイムが見やすいように中央寄せ */
-        }
-        th {
-            background: #f6f8fa;
-            color: #24292e;
-            font-weight: bold;
-            padding: 12px;
-            border-bottom: 2px solid #e1e4e8;
-            position: sticky;
-            top: 0; /* スクロール時に見出しを固定 */
-            z-index: 10;
-        }
-        td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #eaecef;
-            color: #444;
-            white-space: nowrap;
-            font-family: 'Courier New', Courier, monospace; /* タイムの数字を等幅に */
-        }
-        tr:hover td {
-            background: #f8f9fa;
-        }
-        .status-msg {
-            padding: 30px;
-            text-align: center;
-            color: #586069;
-            font-style: italic;
-        }
+        .table-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 500px; overflow: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+        th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eaecef; color: #444; white-space: nowrap; font-family: 'Courier New', Courier, monospace; }
+        tr:hover td { background: #f8f9fa; }
+        .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
     </style>
 </head>
 <body>
@@ -81,16 +25,15 @@
     </div>
 
     <div class="table-container">
-        <table id="data-table">
-            </table>
+        <table id="data-table"></table>
         <div id="status" class="status-msg">読み込み中...</div>
     </div>
 
     <script>
-        // 🔴 新しいラップ記録用シートのCSV書き出しURLを設定しました
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        // CSV文字列を正しく2次元配列にバラす関数
+        let localGridData = []; // 手元で保持する2次元表データ
+
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -103,71 +46,122 @@
             return rows;
         }
 
-        // データを読み込んでテーブル化するメイン関数
-        async function loadPreviewData() {
-            const table = document.getElementById('data-table');
-            const status = document.getElementById('status');
-            const btn = document.getElementById('reload-btn');
-            
-            table.innerHTML = '';
-            status.style.display = 'block';
-            status.innerText = 'シートデータを取得中...';
-            btn.disabled = true;
-
+        async function loadPreviewData(forceRender = true) {
             try {
-                // キャッシュを防いで常に最新状態をフェッチ
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
                 if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
                 
                 const text = await res.text();
                 const rows = parseCSV(text);
+                if (rows.length === 0) return;
 
-                if (rows.length === 0) {
-                    status.innerText = 'データが空、または取得できませんでした。';
-                    return;
+                // 🔴 メモリ上に元の形をキープ。ただし手元の方が進んでいる列はGoogleの古いデータで上書きしない
+                if (localGridData.length === 0) {
+                    localGridData = rows;
+                } else {
+                    // 列単位で長さをチェックしてマージ
+                    for (let col = 0; col < rows[0].length; col++) {
+                        const googleLaps = rows.slice(1).map(r => r[col]).filter(c => c && c !== '-');
+                        const localLaps = localGridData.slice(1).map(r => r[col]).filter(c => c && c !== '-');
+                        
+                        if (googleLaps.length >= localLaps.length) {
+                            // Googleの方が新しいか同じなら、その列を更新
+                            for (let row = 1; row < rows.length; row++) {
+                                if (!localGridData[row]) localGridData[row] = new Array(rows[0].length).fill('');
+                                localGridData[row][col] = rows[row][col] || '';
+                            }
+                        }
+                    }
                 }
 
-                status.style.display = 'none';
-
-                // 1行目（チーム番号など）の見出しを生成
-                const thead = document.createElement('thead');
-                const headerRow = document.createElement('tr');
-                rows[0].forEach(cellText => {
-                    const th = document.createElement('th');
-                    th.innerText = cellText;
-                    headerRow.appendChild(th);
-                });
-                thead.appendChild(headerRow);
-                table.appendChild(thead);
-
-                // 2行目以降（記録されたラップタイム）を生成
-                const tbody = document.createElement('tbody');
-                for (let i = 1; i < rows.length; i++) {
-                    const dataRow = document.createElement('tr');
-                    
-                    // 各列のデータを流し込む
-                    rows[i].forEach(cellText => {
-                        const td = document.createElement('td');
-                        td.innerText = cellText || '-'; // 空白セルは見やすいようにハイフンに
-                        dataRow.appendChild(td);
-                    });
-                    tbody.appendChild(dataRow);
-                }
-                table.appendChild(tbody);
+                if (forceRender) renderTable();
 
             } catch (e) {
                 console.error(e);
-                status.innerText = 'データの読み込みに失敗しました。シートの「ウェブに公開」設定や権限を確認してください。';
-            } finally {
-                btn.disabled = false;
+                document.getElementById('status').innerText = 'データの読み込みに失敗しました。';
             }
         }
 
-        // 手動更新イベント
-        document.getElementById('reload-btn').addEventListener('click', loadPreviewData);
+        function renderTable() {
+            const table = document.getElementById('data-table');
+            const status = document.getElementById('status');
+            
+            table.innerHTML = '';
+            if (localGridData.length === 0) return;
+            status.style.display = 'none';
 
-        // 起動時にロード
-        loadPreviewData();
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            localGridData[0].forEach(cellText => {
+                const th = document.createElement('th');
+                th.innerText = cellText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            for (let i = 1; i < localGridData.length; i++) {
+                const dataRow = document.createElement('tr');
+                let hasData = false;
+                
+                localGridData[i].forEach(cellText => {
+                    const td = document.createElement('td');
+                    td.innerText = cellText || '-';
+                    if (cellText && cellText !== '-') hasData = true;
+                    dataRow.appendChild(td);
+                });
+                // 完全に空の行でなければ追加
+                if (hasData || i === 1) tbody.appendChild(dataRow);
+            }
+            table.appendChild(tbody);
+            document.getElementById('reload-btn').disabled = false;
+        }
+
+        // 🔴 ラップボタンが押された瞬間、プレビュー表の対応するマスをタイムラグなしで直接書き換える
+        nodecg.listenFor('lapButtonClicked', (data) => {
+            if (!data || localGridData.length === 0) return;
+
+            const colIdx = data.teamNum - 1; // チーム1 = 0列目
+            
+            if (data.action === 'forward') {
+                // 該当列の空いている一番上の行を探す
+                let targetRow = 1;
+                while (localGridData[targetRow] && localGridData[targetRow][colIdx] && localGridData[targetRow][colIdx] !== '-') {
+                    targetRow++;
+                }
+                // 必要に応じて行を拡張
+                if (!localGridData[targetRow]) {
+                    localGridData[targetRow] = new Array(localGridData[0].length).fill('');
+                }
+                localGridData[targetRow][colIdx] = data.timeStr;
+            } 
+            else if (data.action === 'backward') {
+                // 該当列の一番下のデータ行を探して消す
+                let targetRow = localGridData.length - 1;
+                while (targetRow > 0 && (!localGridData[targetRow][colIdx] || localGridData[targetRow][colIdx] === '-')) {
+                    targetRow--;
+                }
+                if (targetRow > 0) {
+                    localGridData[targetRow][colIdx] = '';
+                }
+            }
+
+            renderTable();
+
+            // 4秒後にバックグラウンドでGoogleの最新CSVと整合性チェック
+            setTimeout(() => {
+                loadPreviewData(true);
+            }, 4000);
+        });
+
+        document.getElementById('reload-btn').addEventListener('click', () => {
+            document.getElementById('reload-btn').disabled = true;
+            localGridData = []; // 手動更新時はクリアして強制フェッチ
+            loadPreviewData(true);
+        });
+
+        loadPreviewData(true);
     </script>
 </body>
 </html>
