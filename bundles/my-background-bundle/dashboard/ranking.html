@@ -17,14 +17,12 @@
         }
         h3 { margin: 0; font-size: 16px; color: #333; }
         
-        /* コントロールエリア（スイッチとボタン） */
         .controls {
             display: flex;
             align-items: center;
             gap: 15px;
         }
         
-        /* スイッチ全体のラベル */
         .switch-label {
             display: flex;
             align-items: center;
@@ -62,7 +60,6 @@
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
         
-        /* 自動更新オンの時のインジケーター（微かに点滅） */
         .sync-indicator {
             font-size: 11px;
             color: #2ea44f;
@@ -104,6 +101,9 @@
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
         let autoSyncInterval = null;
+        
+        // 🔴 過去に読み込みに成功した「CSV全体の最大文字数」を記録する変数
+        let maxCSVLength = 0;
 
         function parseCSV(text) {
             const rows = [];
@@ -117,8 +117,7 @@
             return rows;
         }
 
-        // 🔴 純粋にGoogleのCSVからデータを読み込んでそのまま並び替える関数
-        async function fetchAndRenderRanking() {
+        async function fetchAndRenderRanking(isManual = false) {
             const tbody = document.getElementById('rank-tbody');
             const status = document.getElementById('status');
             const btn = document.getElementById('refresh-btn');
@@ -130,8 +129,20 @@
                 if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
                 
                 const text = await res.text();
-                const rows = parseCSV(text);
+                
+                // 🔴 【巻き戻りチェック機構】
+                // 新しく取得したデータの文字数が、これまでの最大文字数より短い場合は「巻き戻り」と判定
+                // ※ただし「手動同期」ボタンが押されたときは強制的に上書きを許可する（リセット対応用）
+                if (!isManual && text.length < maxCSVLength) {
+                    console.warn(`[警告] Googleが古いデータを返したため同期をスルーしました。 (現在: ${text.length}文字 / 過去最大: ${maxCSVLength}文字)`);
+                    btn.disabled = false;
+                    return; // 処理をここで終了して、現在の画面表示をキープ
+                }
 
+                // 正常な最新データ、または手動更新なら文字数の最大値を更新
+                maxCSVLength = text.length;
+
+                const rows = parseCSV(text);
                 if (rows.length === 0) {
                     status.style.display = 'block';
                     status.innerText = 'データが見つかりません。';
@@ -156,7 +167,7 @@
                     });
                 }
 
-                // ソートロジック
+                // ソート
                 teamDataList.sort((a, b) => {
                     if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                     if (a.lapCount > 0) {
@@ -203,18 +214,15 @@
             }
         }
 
-        // 🔴 タイマーの管理ロジック
         const checkbox = document.getElementById('auto-sync-checkbox');
         const indicator = document.getElementById('sync-status');
 
         checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-                // チェックON: 30秒(30000ミリ秒)ごとのタイマーを始動
                 indicator.style.display = 'inline';
-                fetchAndRenderRanking(); // 切り替えた瞬間に1回即時実行
-                autoSyncInterval = setInterval(fetchAndRenderRanking, 30000);
+                fetchAndRenderRanking(false); 
+                autoSyncInterval = setInterval(() => { fetchAndRenderRanking(false); }, 30000);
             } else {
-                // チェックOFF: タイマーを破棄
                 indicator.style.display = 'none';
                 if (autoSyncInterval) {
                     clearInterval(autoSyncInterval);
@@ -223,11 +231,13 @@
             }
         });
 
-        // 手動同期ボタンのクリックイベント
-        document.getElementById('refresh-btn').addEventListener('click', fetchAndRenderRanking);
+        // 🔴 手動同期ボタンが押されたときだけ「true」を渡して、文字数チェックをバイパスする
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            fetchAndRenderRanking(true);
+        });
         
         // 起動時に初回読み込み
-        fetchAndRenderRanking();
+        fetchAndRenderRanking(false);
     </script>
 </body>
 </html>
