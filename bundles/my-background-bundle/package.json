@@ -1,7 +1,7 @@
 {
   "name": "my-background-bundle",
-  "version": "2.2.0",
-  "description": "Background, Timer, and 5-Bomber System",
+  "version": "2.3.0",
+  "description": "Background, Timer, and Lap System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "dashboardPanels": [
@@ -18,19 +18,18 @@
         "file": "5bomber.html",
         "headerColor": "#FF5722",
         "width": 3
+      },
+      {
+        "name": "lap-counter",
+        "title": "ラップ記録（20チーム分）",
+        "file": "lap.html",
+        "headerColor": "#009688",
+        "width": 4
       }
     ],
     "graphics": [
-      {
-        "file": "index.html",
-        "width": 1920,
-        "height": 1080
-      },
-      {
-        "file": "doraleague.html",
-        "width": 1920,
-        "height": 1080
-      }
+      { "file": "index.html", "width": 1920, "height": 1080 },
+      { "file": "doraleague.html", "width": 1920, "height": 1080 }
     ]
   }
 }
