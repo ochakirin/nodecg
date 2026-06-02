@@ -3,12 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
-        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            padding: 15px; 
+            background: #f0f2f5; 
+            margin: 0; 
+        }
+        .header-area { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+        }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        #refresh-btn { background: #FF9800; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; transition: background 0.1s; }
+        
+        /* コントロールエリア（スイッチとボタン） */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* スイッチ全体のラベル */
+        .switch-label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+        .switch-label input {
+            margin-right: 6px;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        #refresh-btn { 
+            background: #FF9800; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 13px; 
+            transition: background 0.1s; 
+        }
         #refresh-btn:hover { background: #e65100; }
         #refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .rank-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 520px; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { background: #f6f8fa; color: #24292e; font-weight: bold; padding: 12px; border-bottom: 2px solid #e1e4e8; position: sticky; top: 0; z-index: 10; }
@@ -16,13 +61,29 @@
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
+        
+        /* 自動更新オンの時のインジケーター（微かに点滅） */
+        .sync-indicator {
+            font-size: 11px;
+            color: #2ea44f;
+            margin-left: 5px;
+            display: none;
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>🏆 リアルタイム チームランキング</h3>
-        <button id="refresh-btn">同期（再読込）</button>
+        <h3>🏆 チームランキング</h3>
+        <div class="controls">
+            <label class="switch-label">
+                <input type="checkbox" id="auto-sync-checkbox"> 自動更新（30秒周期）
+                <span id="sync-status" class="sync-indicator">● 稼働中</span>
+            </label>
+            <button id="refresh-btn">手動同期</button>
+        </div>
     </div>
 
     <div class="rank-container">
@@ -42,10 +103,7 @@
     <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        // 🔴 lap.html 側のボタン操作を検知する共通Replicant
-        const lapClickEvent = nodecg.Replicant('lapClickEvent');
-
-        let localTeamStats = {}; 
+        let autoSyncInterval = null;
 
         function parseCSV(text) {
             const rows = [];
@@ -59,17 +117,30 @@
             return rows;
         }
 
-        async function fetchBaseData(forceRender = true) {
+        // 🔴 純粋にGoogleのCSVからデータを読み込んでそのまま並び替える関数
+        async function fetchAndRenderRanking() {
+            const tbody = document.getElementById('rank-tbody');
+            const status = document.getElementById('status');
+            const btn = document.getElementById('refresh-btn');
+
+            btn.disabled = true;
+
             try {
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
                 if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
                 
                 const text = await res.text();
                 const rows = parseCSV(text);
-                if (rows.length === 0) return;
+
+                if (rows.length === 0) {
+                    status.style.display = 'block';
+                    status.innerText = 'データが見つかりません。';
+                    return;
+                }
 
                 const headers = rows[0];
-                
+                const teamDataList = [];
+
                 for (let colIdx = 0; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
@@ -78,109 +149,85 @@
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
 
-                    // ガードロジック: Googleから取ってきた周回数が、手元のメモリ内より古い場合は上書きしない
-                    if (localTeamStats[teamName] && localTeamStats[teamName].lapCount > lapCount) {
-                        continue; 
-                    }
-
-                    localTeamStats[teamName] = {
+                    teamDataList.push({
                         name: teamName,
                         lapCount: lapCount,
-                        lastTime: lastTime,
-                        history: laps 
-                    };
+                        lastTime: lastTime
+                    });
                 }
 
-                if (forceRender) renderRanking();
+                // ソートロジック
+                teamDataList.sort((a, b) => {
+                    if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
+                    if (a.lapCount > 0) {
+                        if (a.lastTime < b.lastTime) return -1;
+                        if (a.lastTime > b.lastTime) return 1;
+                    }
+                    return 0;
+                });
+
+                tbody.innerHTML = '';
+                status.style.display = 'none';
+
+                let currentRank = 1;
+                for (let i = 0; i < teamDataList.length; i++) {
+                    const currentTeam = teamDataList[i];
+
+                    if (i > 0) {
+                        const prevTeam = teamDataList[i - 1];
+                        const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
+                        const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
+
+                        if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
+                            currentRank = i + 1;
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    const rankClass = currentRank <= 3 ? 'rank-top' : '';
+
+                    tr.innerHTML = `
+                        <td class="${rankClass}">${currentRank}位</td>
+                        <td>${currentTeam.name}</td>
+                        <td class="time-cell">${currentTeam.lastTime}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
 
             } catch (e) {
-                console.error("CSVロード失敗:", e);
-                document.getElementById('status').innerText = 'ベースデータの取得に失敗しました。';
+                console.error("ランキングデータ更新失敗:", e);
+                status.style.display = 'block';
+                status.innerText = '同期に失敗しました。次回周期で再試行します。';
+            } finally {
+                btn.disabled = false;
             }
         }
 
-        function renderRanking() {
-            const tbody = document.getElementById('rank-tbody');
-            const status = document.getElementById('status');
-            
-            tbody.innerHTML = '';
-            const teamDataList = Object.values(localTeamStats);
-            if (teamDataList.length === 0) return;
+        // 🔴 タイマーの管理ロジック
+        const checkbox = document.getElementById('auto-sync-checkbox');
+        const indicator = document.getElementById('sync-status');
 
-            status.style.display = 'none';
-
-            teamDataList.sort((a, b) => {
-                if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
-                if (a.lapCount > 0) {
-                    if (a.lastTime < b.lastTime) return -1;
-                    if (a.lastTime > b.lastTime) return 1;
-                }
-                return 0;
-            });
-
-            let currentRank = 1;
-            for (let i = 0; i < teamDataList.length; i++) {
-                const currentTeam = teamDataList[i];
-
-                if (i > 0) {
-                    const prevTeam = teamDataList[i - 1];
-                    const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
-                    const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
-
-                    if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
-                        currentRank = i + 1;
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                const rankClass = currentRank <= 3 ? 'rank-top' : '';
-
-                tr.innerHTML = `
-                    <td class="${rankClass}">${currentRank}位</td>
-                    <td>${currentTeam.name}</td>
-                    <td class="time-cell">${currentTeam.lastTime}</td>
-                `;
-                tbody.appendChild(tr);
-            }
-        }
-
-        // 🔴 Replicantの変更監視によるイベント受信処理
-        lapClickEvent.on('change', (newVal, oldVal) => {
-            // 起動時、または中身が不完全な場合は処理をスキップ
-            if (!newVal || !newVal.action || !newVal.ts) return;
-            if (oldVal && newVal.ts === oldVal.ts) return; // 同じタイムスタンプの重複処理を防止
-
-            const targetKey = `チーム ${newVal.teamNum}`;
-            if (!localTeamStats[targetKey]) return;
-
-            if (newVal.action === 'forward') {
-                localTeamStats[targetKey].lapCount++;
-                localTeamStats[targetKey].lastTime = newVal.timeStr;
-                localTeamStats[targetKey].history.push(newVal.timeStr);
-            } 
-            else if (newVal.action === 'backward') {
-                if (localTeamStats[targetKey].lapCount > 0) {
-                    localTeamStats[targetKey].history.pop();
-                    const h = localTeamStats[targetKey].history;
-                    localTeamStats[targetKey].lapCount = h.length;
-                    localTeamStats[targetKey].lastTime = h.length > 0 ? h[h.length - 1] : '--:--:--';
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // チェックON: 30秒(30000ミリ秒)ごとのタイマーを始動
+                indicator.style.display = 'inline';
+                fetchAndRenderRanking(); // 切り替えた瞬間に1回即時実行
+                autoSyncInterval = setInterval(fetchAndRenderRanking, 30000);
+            } else {
+                // チェックOFF: タイマーを破棄
+                indicator.style.display = 'none';
+                if (autoSyncInterval) {
+                    clearInterval(autoSyncInterval);
+                    autoSyncInterval = null;
                 }
             }
-
-            renderRanking();
-
-            // 4秒後にバックグラウンドでGoogleの最新CSVと答え合わせ
-            setTimeout(() => {
-                fetchBaseData(true);
-            }, 4000);
         });
 
-        document.getElementById('refresh-btn').addEventListener('click', () => {
-            localTeamStats = {}; 
-            fetchBaseData(true);
-        });
+        // 手動同期ボタンのクリックイベント
+        document.getElementById('refresh-btn').addEventListener('click', fetchAndRenderRanking);
         
-        fetchBaseData(true);
+        // 起動時に初回読み込み
+        fetchAndRenderRanking();
     </script>
 </body>
 </html>
