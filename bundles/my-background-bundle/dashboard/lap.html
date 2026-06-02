@@ -23,7 +23,7 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
-        // 🔴 NodeCG内部でリアルタイム管理するランキング専用の共有メモリ
+        // NodeCG内部でリアルタイム管理するランキング専用の共有メモリ
         const localRankingRep = nodecg.Replicant('localRankingData', { defaultValue: {} });
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
@@ -40,15 +40,14 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        // 🔴 メモリ上のランキングデータを一瞬で更新する関数
+        // メモリ上のランキングデータを一瞬で更新する関数
         function updateLocalRanking(teamNum, action, timeStr) {
             if (!localRankingRep.value) localRankingRep.value = {};
             
-            // 該当チームの現在のデータを取得（なければ初期化）
             const teamKey = `team_${teamNum}`;
             if (!localRankingRep.value[teamKey]) {
                 localRankingRep.value[teamKey] = {
-                    name: `チーム ${teamNum}`, // 必要に応じてチーム名に書き換えてください
+                    name: `チーム ${teamNum}`,
                     lapCount: 0,
                     lastTime: '--:--:--'
                 };
@@ -62,7 +61,6 @@
             } else if (action === 'backward') {
                 if (data.lapCount > 0) {
                     data.lapCount -= 1;
-                    // 戻したときのタイムは一旦一世代前に戻せないので、周回が0なら初期化
                     if (data.lapCount === 0) data.lastTime = '--:--:--';
                 }
             }
@@ -72,50 +70,9 @@
         }
 
         async function handleLapAction(teamNum, action, buttons) {
+            // 1. ボタンの連打による多重送信を防ぐため一瞬だけ無効化
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
 
-            // 🔴 1. まずメモリ（NodeCG）を0.1秒で更新（超爆速反映）
-            updateLocalRanking(teamNum, action, timeStr);
-
-            // 2. その後、裏でそっとスプレッドシートへ送信（バックアップ）
-            try {
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action, teamNum, timeStr })
-                });
-                console.log(`チーム ${teamNum}: ${action} スプレッドシート保存完了 (${timeStr})`);
-            } catch (error) {
-                console.error('スプレッドシートへのバックアップに失敗しました:', error);
-            } finally {
-                buttons.forEach(b => b.disabled = false);
-            }
-        }
-
-        // 20チーム分のボタン生成
-        const grid = document.getElementById('teams-grid');
-        for (let i = 1; i <= 20; i++) {
-            const box = document.createElement('div');
-            box.className = 'team-box';
-            box.innerHTML = `
-                <div class="team-title">チーム ${i}</div>
-                <div class="btn-group">
-                    <button class="btn-forward">進む</button>
-                    <button class="btn-backward">戻る</button>
-                </div>
-            `;
-
-            const btnForward = box.querySelector('.btn-forward');
-            const btnBackward = box.querySelector('.btn-backward');
-            const targetButtons = [btnForward, btnBackward];
-
-            btnForward.addEventListener('click', () => handleLapAction(i, 'forward', targetButtons));
-            btnBackward.addEventListener('click', () => handleLapAction(i, 'backward', targetButtons));
-
-            grid.appendChild(box);
-        }
-    </script>
-</body>
-</html>
+            // 2. メモリ（NodeCG）を0.1秒で即座に更新（ランキング・プレビューへ一瞬で反映）
+            updateLocal
