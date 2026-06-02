@@ -9,15 +9,11 @@
             background: #f0f2f5; 
             margin: 0; 
         }
-        
-        /* 1行に5つのセルを均等に配置するグリッド設定 */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 12px;
         }
-        
-        /* 1チーム分の操作セルのデザイン */
         .team-box {
             background: white;
             border: 1px solid #e1e4e8;
@@ -28,8 +24,6 @@
             flex-direction: column;
             gap: 8px;
         }
-        
-        /* セル内の上部にあるチーム番号表示 */
         .team-title {
             font-size: 14px;
             font-weight: bold;
@@ -39,13 +33,10 @@
             padding-bottom: 4px;
             margin-bottom: 2px;
         }
-        
-        /* 進む・戻るボタンを横並びにするグループ */
         .btn-group {
             display: flex;
             gap: 8px;
         }
-        
         button {
             flex: 1;
             padding: 10px 0;
@@ -57,28 +48,13 @@
             color: white;
             transition: background 0.1s, transform 0.05s;
         }
-        
         button:active { 
             transform: scale(0.95); 
         }
-        
-        /* 進むボタン（緑） */
-        .btn-forward { 
-            background-color: #2ea44f; 
-        }
-        .btn-forward:hover { 
-            background-color: #22863a; 
-        }
-        
-        /* 戻るボタン（赤） */
-        .btn-backward { 
-            background-color: #cb2431; 
-        }
-        .btn-backward:hover { 
-            background-color: #b31d28; 
-        }
-        
-        /* 通信中の連打防止用（半透明化） */
+        .btn-forward { background-color: #2ea44f; }
+        .btn-forward:hover { background-color: #22863a; }
+        .btn-backward { background-color: #cb2431; }
+        .btn-backward:hover { background-color: #b31d28; }
         button:disabled { 
             opacity: 0.4; 
             cursor: not-allowed; 
@@ -91,10 +67,11 @@
     <div class="grid-container" id="teams-grid"></div>
 
     <script>
-        // タイマーのリプリカントに接続して秒数を同期
         const timerRep = nodecg.Replicant('streamTimer');
         
-        // 🔴 ご提示いただいたGASのデプロイURLを反映しました
+        // 🔴 ランキング更新を他パネルに通知するためのReplicantを追加
+        const rankingTrigger = nodecg.Replicant('rankingTrigger', { defaultValue: 0 });
+        
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
         let currentSeconds = 0;
@@ -103,7 +80,6 @@
             if (newVal) currentSeconds = newVal.seconds;
         });
 
-        // 現在のタイマーの秒数を hh:mm:ss 形式に変換する関数
         function getFormattedTime() {
             const hrs = Math.floor(currentSeconds / 3600).toString().padStart(2, '0');
             const mins = Math.floor((currentSeconds % 3600) / 60).toString().padStart(2, '0');
@@ -111,32 +87,31 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        // GASへ通信を行って書き込み・消去を依頼する関数
         async function sendToGas(teamNum, action, buttons) {
-            // 通信が終わるまでボタンを無効化（連打バグ防止）
             buttons.forEach(b => b.disabled = true);
 
             const timeStr = getFormattedTime();
             const payload = { action, teamNum, timeStr };
 
             try {
-                // GASへのPOST送信
                 await fetch(GAS_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // クロスドメイン(CORS)ブロックを回避
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 console.log(`チーム ${teamNum}: ${action} 送信完了 (${timeStr})`);
+                
+                // 🔴 送信完了時に通知用Replicantの数値を増やして、ランキング側に変更を伝える
+                rankingTrigger.value++;
+
             } catch (error) {
                 console.error('GASとの通信に失敗しました:', error);
             } finally {
-                // 通信完了後にボタンを再び有効化
                 buttons.forEach(b => b.disabled = false);
             }
         }
 
-        // JavaScriptで1行に5個×4行（計20チーム）のHTML要素を自動作成
         const grid = document.getElementById('teams-grid');
         for (let i = 1; i <= 20; i++) {
             const box = document.createElement('div');
@@ -154,7 +129,6 @@
             const btnBackward = box.querySelector('.btn-backward');
             const targetButtons = [btnForward, btnBackward];
 
-            // 各ボタンにクリックイベントを設定
             btnForward.addEventListener('click', () => sendToGas(i, 'forward', targetButtons));
             btnBackward.addEventListener('click', () => sendToGas(i, 'backward', targetButtons));
 
