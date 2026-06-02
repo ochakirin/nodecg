@@ -42,6 +42,9 @@
     <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
+        // 🔴 lap.html 側のボタン操作を検知する共通Replicant
+        const lapClickEvent = nodecg.Replicant('lapClickEvent');
+
         let localTeamStats = {}; 
 
         function parseCSV(text) {
@@ -75,7 +78,7 @@
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
 
-                    // 🔴 ガードロジック: Googleから取ってきた周回数が、手元のメモリ内より古い場合は上書きしない
+                    // ガードロジック: Googleから取ってきた周回数が、手元のメモリ内より古い場合は上書きしない
                     if (localTeamStats[teamName] && localTeamStats[teamName].lapCount > lapCount) {
                         continue; 
                     }
@@ -141,18 +144,21 @@
             }
         }
 
-        nodecg.listenFor('lapButtonClicked', (data) => {
-            if (!data || !data.action) return;
+        // 🔴 Replicantの変更監視によるイベント受信処理
+        lapClickEvent.on('change', (newVal, oldVal) => {
+            // 起動時、または中身が不完全な場合は処理をスキップ
+            if (!newVal || !newVal.action || !newVal.ts) return;
+            if (oldVal && newVal.ts === oldVal.ts) return; // 同じタイムスタンプの重複処理を防止
 
-            const targetKey = `チーム ${data.teamNum}`;
+            const targetKey = `チーム ${newVal.teamNum}`;
             if (!localTeamStats[targetKey]) return;
 
-            if (data.action === 'forward') {
+            if (newVal.action === 'forward') {
                 localTeamStats[targetKey].lapCount++;
-                localTeamStats[targetKey].lastTime = data.timeStr;
-                localTeamStats[targetKey].history.push(data.timeStr);
+                localTeamStats[targetKey].lastTime = newVal.timeStr;
+                localTeamStats[targetKey].history.push(newVal.timeStr);
             } 
-            else if (data.action === 'backward') {
+            else if (newVal.action === 'backward') {
                 if (localTeamStats[targetKey].lapCount > 0) {
                     localTeamStats[targetKey].history.pop();
                     const h = localTeamStats[targetKey].history;
@@ -170,7 +176,7 @@
         });
 
         document.getElementById('refresh-btn').addEventListener('click', () => {
-            localTeamStats = {}; // 手動同期の時は強制リセットして全読み込み
+            localTeamStats = {}; 
             fetchBaseData(true);
         });
         
