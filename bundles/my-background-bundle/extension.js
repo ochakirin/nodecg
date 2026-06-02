@@ -4,13 +4,12 @@
 const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
 module.exports = function (nodecg) {
-    // 🔴 タイマーが正常に動作するためのReplicantを定義
-    nodecg.Replicant('streamTimer', { defaultValue: { seconds: 0, formatted: '00:00:00' } });
     
-    // ランキングデータを保持するReplicant
+    // 🔴 既存のタイマー競合を避けるため、タイマーの定義を完全に削除しました。
+    // ランキングデータ専用のReplicantのみを安全に登録します。
     const rankingDataRep = nodecg.Replicant('rankingDirectData', { defaultValue: [] });
 
-    // 1899年の日時オブジェクトを経過時間(HH:MM:SS)の文字列に変換する関数
+    // 1899年の日時オブジェクトを経過時間(HH:MM:SS)の文字列に変換する安全な関数
     function formatGasTime(timeVal) {
         if (!timeVal || timeVal === '-') return '--:--:--';
         
@@ -27,12 +26,13 @@ module.exports = function (nodecg) {
 
     async function fetchFromGoogle() {
         try {
-            // 🔴 【超重要修正】NodeCGの内部処理と衝突しないよう「globalThis.fetch」に書き換えました
+            // NodeCGのコア処理と衝突しない標準のglobalThis通信を使用
             const response = await globalThis.fetch(`${GAS_WEB_APP_URL}?cache_bust=${Date.now()}`);
             if (!response.ok) return;
 
             const data = await response.json();
             if (data && Array.isArray(data)) {
+                // 取得した全チームのタイムをきれいな経過時間にクレンジング
                 const formattedData = data.map(team => {
                     return {
                         name: team.name,
@@ -51,6 +51,6 @@ module.exports = function (nodecg) {
     // 起動時に実行
     fetchFromGoogle();
 
-    // 5秒ごとに自動実行
+    // 5秒ごとにバックグラウンド自動実行
     setInterval(fetchFromGoogle, 5000);
 };
