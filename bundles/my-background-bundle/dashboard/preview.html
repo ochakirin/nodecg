@@ -14,14 +14,14 @@
         .lap-count-cell { font-weight: bold; color: #673AB7; width: 80px; }
         .time-cell { font-family: 'Courier New', Courier, monospace; text-align: left; padding-left: 15px; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
-        .live-tag { font-size: 11px; color: #fff; background: #673AB7; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+        .sync-tag { font-size: 11px; color: #fff; background: #673AB7; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>📊 シートプレビュー（内部データ直結）</h3>
-        <span class="live-tag">● 同期中</span>
+        <h3>📊 シートプレビュー (CSV直接取得)</h3>
+        <span class="sync-tag">● 3秒周期 同期中</span>
     </div>
 
     <div class="preview-container">
@@ -30,62 +30,91 @@
                 <tr>
                     <th>対象</th>
                     <th>周回数</th>
-                    <th>最新ラップ / 履歴（最新が右）</th>
+                    <th>最新ラップタイム</th>
                 </tr>
             </thead>
             <tbody id="preview-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">ラップの記録を待機中...</div>
+        <div id="status" class="status-msg">CSVデータを読み込み中...</div>
     </div>
 
     <script>
-        // lap.html や ranking.html と同じ、NodeCG内部の共有メモリを監視
-        const localRankingRep = nodecg.Replicant('localRankingData');
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        function renderPreview(rankingObj) {
-            const tbody = document.getElementById('preview-tbody');
-            const status = document.getElementById('status');
-            
-            tbody.innerHTML = '';
-            
-            // 登録されているチームデータを取得
-            const teamDataList = Object.values(rankingObj || {});
+        let currentMaxTotalLaps = 0;
 
-            if (teamDataList.length === 0) {
-                status.style.display = 'block';
-                return;
-            }
-
-            status.style.display = 'none';
-
-            // プレビューはランキング順ではなく「チーム番号順（チーム1〜20）」に並べ替えて表示します
-            teamDataList.sort((a, b) => {
-                const numA = parseInt(a.name.replace(/[^0-9]/g, '')) || 0;
-                const numB = parseInt(b.name.replace(/[^0-9]/g, '')) || 0;
-                return numA - numB;
+        function parseCSV(text) {
+            const rows = [];
+            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
+            text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const matches = line.matchAll(pattern);
+                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
+                rows.push(row);
             });
-
-            teamDataList.forEach(team => {
-                const tr = document.createElement('tr');
-
-                // 周回数が0回の場合はハイフン表示
-                const displayTime = team.lapCount > 0 ? team.lastTime : '--:--:--';
-
-                tr.innerHTML = `
-                    <td class="team-id-cell">${team.name}</td>
-                    <td class="lap-count-cell">${team.lapCount} 回</td>
-                    <td class="time-cell">${displayTime}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            return rows;
         }
 
-        // メモリの更新を検知して0.1秒でプレビューを書き換え
-        localRankingRep.on('change', (newVal) => {
-            if (newVal) {
-                renderPreview(newVal);
+        async function fetchPreview() {
+            try {
+                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
+                if (!res.ok) return;
+
+                const text = await res.text();
+                const rows = parseCSV(text);
+                if (rows.length === 0) return;
+
+                const headers = rows[0];
+                const teamDataList = [];
+                let incomingTotalLaps = 0;
+
+                for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+                    const teamName = headers[colIdx];
+                    if (!teamName) continue;
+
+                    const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-' && cell !== '');
+                    const lapCount = laps.length;
+                    incomingTotalLaps += lapCount;
+
+                    teamDataList.push({
+                        name: teamName,
+                        lapCount: lapCount,
+                        lastTime: lapCount > 0 ? laps[laps.length - 1] : '--:--:--'
+                    });
+                }
+
+                // 巻き戻りガード
+                if (incomingTotalLaps < currentMaxTotalLaps) return;
+                currentMaxTotalLaps = incomingTotalLaps;
+
+                const tbody = document.getElementById('preview-tbody');
+                document.getElementById('status').style.display = 'none';
+                tbody.innerHTML = '';
+
+                // チーム番号順に並べ替え
+                teamDataList.sort((a, b) => {
+                    const numA = parseInt(a.name.replace(/[^0-9]/g, '')) || 0;
+                    const numB = parseInt(b.name.replace(/[^0-9]/g, '')) || 0;
+                    return numA - numB;
+                });
+
+                teamDataList.forEach(team => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="team-id-cell">${team.name}</td>
+                        <td class="lap-count-cell">${team.lapCount} 回</td>
+                        <td class="time-cell">${team.lastTime}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (e) {
+                console.error("プレビューCSV取得エラー:", e);
             }
-        });
+        }
+
+        fetchPreview();
+        setInterval(fetchPreview, 3000);
     </script>
 </body>
 </html>
