@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <style>
         body { 
-            font-family: sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             padding: 15px; 
             background: #f0f2f5; 
             margin: 0; 
@@ -25,15 +25,16 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 13px;
+            transition: background 0.1s;
         }
         #reload-btn:hover { background: #5e35b1; }
-        #reload-btn:disabled { opacity: 0.5; }
+        #reload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* テーブル（表）のスタイリング */
+        /* テーブル（表）の表示エリア設定 */
         .table-container {
             background: white;
             border-radius: 8px;
-            border: 1px solid #ddd;
+            border: 1px solid #e1e4e8;
             max-height: 500px;
             overflow: auto;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -41,32 +42,33 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
-            text-align: left;
+            font-size: 13px;
+            text-align: center; /* タイムが見やすいように中央寄せ */
         }
         th {
-            background: #f5f5f5;
-            color: #333;
+            background: #f6f8fa;
+            color: #24292e;
             font-weight: bold;
             padding: 12px;
-            border-bottom: 2px solid #ddd;
+            border-bottom: 2px solid #e1e4e8;
             position: sticky;
-            top: 0; /* スクロールしてもヘッダーを固定 */
+            top: 0; /* スクロール時に見出しを固定 */
             z-index: 10;
         }
         td {
             padding: 10px 12px;
-            border-bottom: 1px solid #eee;
-            color: #555;
+            border-bottom: 1px solid #eaecef;
+            color: #444;
             white-space: nowrap;
+            font-family: 'Courier New', Courier, monospace; /* タイムの数字を等幅に */
         }
         tr:hover td {
-            background: #f9f9f9;
+            background: #f8f9fa;
         }
         .status-msg {
-            padding: 20px;
+            padding: 30px;
             text-align: center;
-            color: #666;
+            color: #586069;
             font-style: italic;
         }
     </style>
@@ -74,7 +76,7 @@
 <body>
 
     <div class="header-area">
-        <h3>📊 スプレッドシート 現在のデータ一覧</h3>
+        <h3>📊 ラップ記録シート 現在のデータプレビュー</h3>
         <button id="reload-btn">データを再読み込み</button>
     </div>
 
@@ -85,9 +87,10 @@
     </div>
 
     <script>
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
+        // 🔴 新しいラップ記録用シートのCSV書き出しURLを設定しました
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1FKY-9SnF17Nwp3D58E2OoyMhGuPfrYn0BVFFH3bClUQ/export?format=csv';
 
-        // CSVを配列に分解する関数
+        // CSV文字列を正しく2次元配列にバラす関数
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -100,7 +103,7 @@
             return rows;
         }
 
-        // スプレッドシートからデータを取得してテーブルを描画する関数
+        // データを読み込んでテーブル化するメイン関数
         async function loadPreviewData() {
             const table = document.getElementById('data-table');
             const status = document.getElementById('status');
@@ -108,12 +111,14 @@
             
             table.innerHTML = '';
             status.style.display = 'block';
-            status.innerText = 'データを取得中...';
+            status.innerText = 'シートデータを取得中...';
             btn.disabled = true;
 
             try {
-                // キャッシュを回避して最新のデータを取得
+                // キャッシュを防いで常に最新状態をフェッチ
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
+                if (!res.ok) throw new Error(`通信エラー: ${res.status}`);
+                
                 const text = await res.text();
                 const rows = parseCSV(text);
 
@@ -124,7 +129,7 @@
 
                 status.style.display = 'none';
 
-                // 1行目をヘッダー(th)として生成
+                // 1行目（チーム番号など）の見出しを生成
                 const thead = document.createElement('thead');
                 const headerRow = document.createElement('tr');
                 rows[0].forEach(cellText => {
@@ -135,15 +140,15 @@
                 thead.appendChild(headerRow);
                 table.appendChild(thead);
 
-                // 2行目以降をデータ行(td)として生成
+                // 2行目以降（記録されたラップタイム）を生成
                 const tbody = document.createElement('tbody');
-                
-                // 列ごとの最大行数を調べる（スカスカな部分を綺麗に出すため）
                 for (let i = 1; i < rows.length; i++) {
                     const dataRow = document.createElement('tr');
+                    
+                    // 各列のデータを流し込む
                     rows[i].forEach(cellText => {
                         const td = document.createElement('td');
-                        td.innerText = cellText || ''; // 空白セルもそのまま表示
+                        td.innerText = cellText || '-'; // 空白セルは見やすいようにハイフンに
                         dataRow.appendChild(td);
                     });
                     tbody.appendChild(dataRow);
@@ -152,16 +157,16 @@
 
             } catch (e) {
                 console.error(e);
-                status.innerText = 'エラーが発生しました: ' + e.message;
+                status.innerText = 'データの読み込みに失敗しました。シートの「ウェブに公開」設定や権限を確認してください。';
             } finally {
                 btn.disabled = false;
             }
         }
 
-        // ボタンクリックで再読み込み
+        // 手動更新イベント
         document.getElementById('reload-btn').addEventListener('click', loadPreviewData);
 
-        // 起動時に初回読み込み
+        // 起動時にロード
         loadPreviewData();
     </script>
 </body>
