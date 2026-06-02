@@ -4,6 +4,7 @@
   "description": "Background, Timer, Lap, Preview, and Ranking System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
+    "hasExtension": true,  /* 🔴 この1行を必ず追記してください！ */
     "dashboardPanels": [
       {
         "name": "timer-control",
