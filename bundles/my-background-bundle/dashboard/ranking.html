@@ -66,8 +66,7 @@
                 if (rows.length === 0) return;
 
                 const headers = rows[0];
-                localTeamStats = {}; 
-
+                
                 for (let colIdx = 0; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
@@ -75,6 +74,11 @@
                     const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-');
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
+
+                    // 🔴 ガードロジック: Googleから取ってきた周回数が、手元のメモリ内より古い場合は上書きしない
+                    if (localTeamStats[teamName] && localTeamStats[teamName].lapCount > lapCount) {
+                        continue; 
+                    }
 
                     localTeamStats[teamName] = {
                         name: teamName,
@@ -137,7 +141,6 @@
             }
         }
 
-        // 🔴 メッセージを受け取る仕組み（listenFor）に変更。これで取りこぼしが0になります。
         nodecg.listenFor('lapButtonClicked', (data) => {
             if (!data || !data.action) return;
 
@@ -167,6 +170,7 @@
         });
 
         document.getElementById('refresh-btn').addEventListener('click', () => {
+            localTeamStats = {}; // 手動同期の時は強制リセットして全読み込み
             fetchBaseData(true);
         });
         
