@@ -4,15 +4,63 @@
     <meta charset="UTF-8">
     <title>ドラリーグ</title>
     <style>
-        body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: "Meiryo", sans-serif; color: white; }
-        #header-title { position: absolute; top: 50px; width: 100%; text-align: center; font-size: 60px; font-weight: bold; text-shadow: 4px 4px 8px black; color: #38bdf8; }
-        #answer-display { position: absolute; bottom: 100px; width: 100%; text-align: center; font-size: 150px; font-weight: bold; color: #FFEB3B; text-shadow: 6px 6px 12px black; transition: transform 0.1s; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            width: 1920px; 
+            height: 1080px; 
+            overflow: hidden; 
+            font-family: "Meiryo", "MS PGothic", sans-serif; 
+            color: white; 
+            background: transparent;
+        }
+
+        /* 🔴 上部のタイトル：大きく・黄色・黒ふちに修正 */
+        #header-title { 
+            position: absolute; 
+            top: 40px; 
+            width: 100%; 
+            text-align: center; 
+            
+            /* 文字の見た目 */
+            font-size: 90px;           /* 60pxから90pxに拡大 */
+            font-weight: 900;          /* 極太 */
+            color: #FFEB3B;            /* 黄色 */
+            
+            /* 頑丈な黒ふち（text-shadowを重ねて太い縁を作成） */
+            text-shadow: 
+                4px 4px 0 #000, -4px -4px 0 #000,
+                4px -4px 0 #000, -4px 4px 0 #000,
+                4px 0px 0 #000, -4px 0px 0 #000,
+                0px 4px 0 #000, 0px -4px 0 #000,
+                0 0 20px rgba(0,0,0,0.8);
+            
+            letter-spacing: 4px;
+        }
+
+        /* 下部の回答表示（以前の設定を維持しつつ微調整） */
+        #answer-display { 
+            position: absolute; 
+            bottom: 100px; 
+            width: 100%; 
+            text-align: center; 
+            font-size: 150px; 
+            font-weight: bold; 
+            color: #FFEB3B; 
+            
+            /* 頑丈な黒ふち */
+            text-shadow: 
+                5px 5px 0 #000, -5px -5px 0 #000,
+                5px -5px 0 #000, -5px 5px 0 #000,
+                0 0 30px rgba(0,0,0,1);
+            
+            transition: transform 0.1s; 
+        }
+
         .pop { transform: scale(1.1); }
-        #audio-hint { position: absolute; top: 0; left: 0; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px; cursor: pointer; z-index: 100; }
     </style>
 </head>
 <body>
-    <div id="audio-hint" onclick="this.style.display='none'">音が鳴らない場合はここをクリックしてください</div>
     <div id="header-title"></div>
     <div id="answer-display"></div>
 
@@ -20,13 +68,15 @@
         const activeTitle = nodecg.Replicant('activeTitle');
         const activeAnswer = nodecg.Replicant('activeAnswer');
         
-        // 🔴 パスを「同じフォルダ内のsounds」に変更
+        // 正しいパス指定
         const correctSound = new Audio('./sounds/correct.mp3');
 
+        // タイトル（カテゴリ名）の監視
         activeTitle.on('change', (newVal) => {
             document.getElementById('header-title').innerText = newVal ? `【 ${newVal} 】` : '';
         });
 
+        // 回答の監視
         activeAnswer.on('change', (newVal) => {
             const ansEl = document.getElementById('answer-display');
             if (!newVal) {
@@ -36,14 +86,12 @@
 
             ansEl.innerText = newVal;
 
-            // 音声再生（エラーハンドリング付き）
+            // 音声再生
             correctSound.pause();
             correctSound.currentTime = 0;
-            correctSound.play().catch(err => {
-                console.error("音声再生エラー:", err);
-                // ここでエラーが出る場合は、まだブラウザのクリックが必要な状態です
-            });
+            correctSound.play().catch(err => console.error("音声再生エラー:", err));
 
+            // アニメーション
             ansEl.classList.add('pop');
             setTimeout(() => ansEl.classList.remove('pop'), 150);
         });
