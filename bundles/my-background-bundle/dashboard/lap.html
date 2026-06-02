@@ -3,63 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            padding: 15px; 
-            background: #f0f2f5; 
-            margin: 0; 
-        }
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-        }
-        .team-box {
-            background: white;
-            border: 1px solid #e1e4e8;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .team-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #2c3e50;
-            text-align: center;
-            border-bottom: 2px solid #009688;
-            padding-bottom: 4px;
-            margin-bottom: 2px;
-        }
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
-        button {
-            flex: 1;
-            padding: 10px 0;
-            font-size: 13px;
-            font-weight: bold;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            color: white;
-            transition: background 0.1s, transform 0.05s;
-        }
-        button:active { 
-            transform: scale(0.95); 
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
+        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .team-box { background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; }
+        .team-title { font-size: 14px; font-weight: bold; color: #2c3e50; text-align: center; border-bottom: 2px solid #009688; padding-bottom: 4px; margin-bottom: 2px; }
+        .btn-group { display: flex; gap: 8px; }
+        button { flex: 1; padding: 10px 0; font-size: 13px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: white; transition: background 0.1s, transform 0.05s; }
+        button:active { transform: scale(0.95); }
         .btn-forward { background-color: #2ea44f; }
         .btn-forward:hover { background-color: #22863a; }
         .btn-backward { background-color: #cb2431; }
         .btn-backward:hover { background-color: #b31d28; }
-        button:disabled { 
-            opacity: 0.4; 
-            cursor: not-allowed; 
-            transform: none;
-        }
+        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
     </style>
 </head>
 <body>
@@ -69,8 +24,8 @@
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
         
-        // 🔴 ランキング更新を他パネルに通知するためのReplicantを追加
-        const rankingTrigger = nodecg.Replicant('rankingTrigger', { defaultValue: 0 });
+        // 🔴 ランキング側に「どのチームが」「どういう操作をして」「何秒だったか」を直接伝える構造に変更
+        const rankingTrigger = nodecg.Replicant('rankingTrigger', { defaultValue: { ts: 0, teamNum: 0, action: '', timeStr: '' } });
         
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
@@ -94,6 +49,14 @@
             const payload = { action, teamNum, timeStr };
 
             try {
+                // 🔴 Google側に行く「直前」に、NodeCG内で先行してランキングへタイムを通知する（これで超爆速になります）
+                rankingTrigger.value = {
+                    ts: Date.now(),
+                    teamNum: teamNum,
+                    action: action,
+                    timeStr: timeStr
+                };
+
                 await fetch(GAS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -101,9 +64,6 @@
                     body: JSON.stringify(payload)
                 });
                 console.log(`チーム ${teamNum}: ${action} 送信完了 (${timeStr})`);
-                
-                // 🔴 送信完了時に通知用Replicantの数値を増やして、ランキング側に変更を伝える
-                rankingTrigger.value++;
 
             } catch (error) {
                 console.error('GASとの通信に失敗しました:', error);
