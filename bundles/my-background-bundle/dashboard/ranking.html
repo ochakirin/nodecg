@@ -13,14 +13,14 @@
         .rank-top { font-weight: bold; color: #d32f2f; }
         .time-cell { font-family: 'Courier New', Courier, monospace; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
-        .live-tag { font-size: 11px; color: #fff; background: #ff5722; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+        .sync-tag { font-size: 11px; color: #009688; background: #e0f2f1; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>🏆 リアルタイムランキング</h3>
-        <span class="live-tag">● LIVE (ラグなし)</span>
+        <h3>🏆 チームランキング (CSV自動同期)</h3>
+        <span class="sync-tag">● 3秒周期 同期中</span>
     </div>
 
     <div class="rank-container">
@@ -35,68 +35,113 @@
             </thead>
             <tbody id="rank-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">ラップの記録を待機中...</div>
+        <div id="status" class="status-msg">CSVデータを読み込み中...</div>
     </div>
 
     <script>
-        const localRankingRep = nodecg.Replicant('localRankingData');
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        function renderRanking(rankingObj) {
-            const tbody = document.getElementById('rank-tbody');
-            const status = document.getElementById('status');
-            
-            tbody.innerHTML = '';
-            
-            if (!rankingObj || Object.keys(rankingObj).length === 0) {
-                status.style.display = 'block';
-                return;
-            }
+        // 巻き戻り防止用の保持変数
+        let currentMaxTotalLaps = 0;
 
-            status.style.display = 'none';
-            const teamDataList = Object.values(rankingObj);
-
-            // ソート（周回数が多い順 ➔ タイムが早い順）
-            teamDataList.sort((a, b) => {
-                if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
-                if (a.lapCount > 0) {
-                    if (a.lastTime < b.lastTime) return -1;
-                    if (a.lastTime > b.lastTime) return 1;
-                }
-                return 0;
+        function parseCSV(text) {
+            const rows = [];
+            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
+            text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const matches = line.matchAll(pattern);
+                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
+                rows.push(row);
             });
+            return rows;
+        }
 
-            let currentRank = 1;
-            for (let i = 0; i < teamDataList.length; i++) {
-                const currentTeam = teamDataList[i];
+        async function fetchAndRender() {
+            try {
+                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
+                if (!res.ok) return;
+                
+                const text = await res.text();
+                const rows = parseCSV(text);
+                if (rows.length === 0) return;
 
-                if (i > 0) {
-                    const prevTeam = teamDataList[i - 1];
-                    const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
-                    const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
+                const headers = rows[0];
+                const teamDataList = [];
+                let incomingTotalLaps = 0;
 
-                    if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
-                        currentRank = i + 1;
-                    }
+                for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+                    const teamName = headers[colIdx];
+                    if (!teamName) continue;
+
+                    const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-' && cell !== '');
+                    const lapCount = laps.length;
+                    incomingTotalLaps += lapCount;
+
+                    teamDataList.push({
+                        name: teamName,
+                        lapCount: lapCount,
+                        lastTime: lapCount > 0 ? laps[laps.length - 1] : '--:--:--'
+                    });
                 }
 
-                const tr = document.createElement('tr');
-                const rankClass = currentRank <= 3 ? 'rank-top' : '';
+                // 🔴【巻き戻りガード】古いキャッシュデータが降ってきたら描画を完全スルー
+                if (incomingTotalLaps < currentMaxTotalLaps) {
+                    console.warn("Googleのキャッシュ遅延によるデータの巻き戻りを検知。描画を維持します。");
+                    return; 
+                }
 
-                tr.innerHTML = `
-                    <td class="${rankClass}">${currentRank}位</td>
-                    <td style="font-weight: bold;">${currentTeam.name}</td>
-                    <td><span style="background: #e0f2f1; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapCount} 周</span></td>
-                    <td class="time-cell">${currentTeam.lastTime}</td>
-                `;
-                tbody.appendChild(tr);
+                // 正常データなら最大値を更新
+                currentMaxTotalLaps = incomingTotalLaps;
+
+                // ソート（周回数 ➔ タイム）
+                teamDataList.sort((a, b) => {
+                    if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
+                    if (a.lapCount > 0) {
+                        if (a.lastTime < b.lastTime) return -1;
+                        if (a.lastTime > b.lastTime) return 1;
+                    }
+                    return 0;
+                });
+
+                // 描画処理
+                const tbody = document.getElementById('rank-tbody');
+                document.getElementById('status').style.display = 'none';
+                tbody.innerHTML = '';
+
+                let currentRank = 1;
+                for (let i = 0; i < teamDataList.length; i++) {
+                    const currentTeam = teamDataList[i];
+
+                    if (i > 0) {
+                        const prevTeam = teamDataList[i - 1];
+                        const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
+                        const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
+
+                        if (!isLapSame || (currentTeam.lapCount > 0 && !isTimeSame)) {
+                            currentRank = i + 1;
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    const rankClass = currentRank <= 3 ? 'rank-top' : '';
+
+                    tr.innerHTML = `
+                        <td class="${rankClass}">${currentRank}位</td>
+                        <td style="font-weight: bold;">${currentTeam.name}</td>
+                        <td><span style="background: #e0f2f1; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapCount} 周</span></td>
+                        <td class="time-cell">${currentTeam.lastTime}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+
+            } catch (e) {
+                console.error("CSV取得エラー:", e);
             }
         }
 
-        localRankingRep.on('change', (newVal) => {
-            if (newVal) {
-                renderRanking(newVal);
-            }
-        });
+        // 3秒周期で自動更新
+        fetchAndRender();
+        setInterval(fetchAndRender, 3000);
     </script>
 </body>
 </html>
