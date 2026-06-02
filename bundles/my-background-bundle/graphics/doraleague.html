@@ -5,33 +5,9 @@
     <title>ドラリーグ</title>
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: "Meiryo", sans-serif; color: white; position: relative; }
-        
-        /* 上部のタイトル表示 */
-        #header-title {
-            position: absolute;
-            top: 50px;
-            width: 100%;
-            text-align: center;
-            font-size: 60px;
-            font-weight: bold;
-            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
-        }
-
-        /* 下部の回答表示 */
-        #answer-display {
-            position: absolute;
-            bottom: 100px;
-            width: 100%;
-            text-align: center;
-            font-size: 120px;
-            font-weight: bold;
-            color: #FFEB3B; /* 視認性の高い黄色 */
-            text-shadow: 6px 6px 12px rgba(0,0,0,1);
-            transition: transform 0.1s ease-out;
-        }
-
-        /* アニメーション用クラス */
-        .pop { transform: scale(1.2); }
+        #header-title { position: absolute; top: 50px; width: 100%; text-align: center; font-size: 60px; font-weight: bold; text-shadow: 4px 4px 8px rgba(0,0,0,0.8); }
+        #answer-display { position: absolute; bottom: 100px; width: 100%; text-align: center; font-size: 140px; font-weight: bold; color: #FFEB3B; text-shadow: 6px 6px 12px rgba(0,0,0,1); transition: transform 0.1s ease-out; }
+        .pop { transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -40,26 +16,29 @@
 
     <script>
         const activeData = nodecg.Replicant('activeData');
-        const header = document.getElementById('header-title');
-        const answer = document.getElementById('answer-display');
+        
+        // 🔴 GitHubに上げた音声ファイルを直接読み込み
+        const correctSound = new Audio('../sounds/正解.mp3');
 
         activeData.on('change', (newVal) => {
             if (!newVal || !newVal.text) {
-                header.innerText = '';
-                answer.innerText = '';
+                document.getElementById('header-title').innerText = '';
+                document.getElementById('answer-display').innerText = '';
                 return;
             }
 
-            // テキストの更新
-            header.innerText = `【 ${newVal.title} 】`;
-            answer.innerText = newVal.text;
+            // 表示の更新
+            document.getElementById('header-title').innerText = `【 ${newVal.title} 】`;
+            document.getElementById('answer-display').innerText = newVal.text;
 
-            // 「正解.mp3」を再生
-            nodecg.playSound('correct-sound');
+            // 🔴 音声を再生
+            correctSound.currentTime = 0; // 連続で押しても最初から流れるように
+            correctSound.play().catch(e => console.error("音声再生エラー:", e));
 
-            // 簡易的なポップアニメーション
-            answer.classList.add('pop');
-            setTimeout(() => answer.classList.remove('pop'), 200);
+            // アニメーション
+            const ans = document.getElementById('answer-display');
+            ans.classList.add('pop');
+            setTimeout(() => ans.classList.remove('pop'), 150);
         });
     </script>
 </body>
