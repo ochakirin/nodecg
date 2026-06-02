@@ -1,7 +1,7 @@
 {
   "name": "my-background-bundle",
-  "version": "2.4.0",
-  "description": "Background, Timer, Lap, and Preview System",
+  "version": "2.5.0",
+  "description": "Background, Timer, Lap, Preview, and Ranking System",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "dashboardPanels": [
@@ -32,6 +32,13 @@
         "file": "preview.html",
         "headerColor": "#673AB7",
         "width": 4
+      },
+      {
+        "name": "ranking-display",
+        "title": "チームランキング",
+        "file": "ranking.html",
+        "headerColor": "#FF9800",
+        "width": 3
       }
     ],
     "graphics": [
