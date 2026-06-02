@@ -77,7 +77,6 @@
                 <tr>
                     <th>順位</th>
                     <th>チーム</th>
-                    <th>周回数 (Laps)</th>
                     <th>最新ラップタイム</th>
                 </tr>
             </thead>
@@ -88,9 +87,9 @@
     </div>
 
     <script>
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
+        // 🔴 指定いただいたラップ記録用シートの公開CSV URLに差し替えました
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
 
-        // 🔴 ラップ記録側からの自動更新通知を受け取るReplicant
         const rankingTrigger = nodecg.Replicant('rankingTrigger');
 
         function parseCSV(text) {
@@ -116,7 +115,7 @@
             btn.disabled = true;
 
             try {
-                // スプレッドシート側の反映速度を考慮し、フェッチ前にわずかにウェイトをかける（必要に応じて調整）
+                // スプレッドシート側の反映速度を考慮し、フェッチ前にわずかにウェイトをかける
                 await new Promise(resolve => setTimeout(resolve, 800));
 
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
@@ -137,6 +136,7 @@
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
 
+                    // 空セルやハイフンを除外して純粋なラップ数を取得
                     const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-');
                     const lapCount = laps.length;
                     const lastTime = lapCount > 0 ? laps[laps.length - 1] : '--:--:--';
@@ -148,6 +148,7 @@
                     });
                 }
 
+                // 内部の並び替えロジックは維持（周回数・タイムでソート）
                 teamDataList.sort((a, b) => {
                     if (b.lapCount !== a.lapCount) {
                         return b.lapCount - a.lapCount;
@@ -178,10 +179,10 @@
                     const tr = document.createElement('tr');
                     const rankClass = currentRank <= 3 ? 'rank-top' : '';
 
+                    // 🔴 周回数（Laps）のtdタグを出力から削除しました
                     tr.innerHTML = `
                         <td class="${rankClass}">${currentRank}位</td>
                         <td>${currentTeam.name}</td>
-                        <td>${currentTeam.lapCount}</td>
                         <td class="time-cell">${currentTeam.lastTime}</td>
                     `;
                     tbody.appendChild(tr);
@@ -195,9 +196,7 @@
             }
         }
 
-        // 🔴 他のパネルでボタンが押された（トリガーの値が増えた）ら自動で順位を更新
         rankingTrigger.on('change', (newVal, oldVal) => {
-            // 初回起動時（oldValがundefinedの時）の重複走査を防止
             if (oldVal !== undefined) {
                 updateRanking();
             }
@@ -205,7 +204,6 @@
 
         document.getElementById('refresh-btn').addEventListener('click', updateRanking);
         
-        // 起動時に初期読み込み
         updateRanking();
     </script>
 </body>
