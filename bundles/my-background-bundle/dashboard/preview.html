@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            font-family: sans-serif; 
+            padding: 15px; 
+            background: #f0f2f5; 
+            margin: 0; 
+        }
+        .header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        h3 { margin: 0; font-size: 16px; color: #333; }
+        #reload-btn {
+            background: #673AB7;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #reload-btn:hover { background: #5e35b1; }
+        #reload-btn:disabled { opacity: 0.5; }
+        
+        /* テーブル（表）のスタイリング */
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            max-height: 500px;
+            overflow: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            text-align: left;
+        }
+        th {
+            background: #f5f5f5;
+            color: #333;
+            font-weight: bold;
+            padding: 12px;
+            border-bottom: 2px solid #ddd;
+            position: sticky;
+            top: 0; /* スクロールしてもヘッダーを固定 */
+            z-index: 10;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            color: #555;
+            white-space: nowrap;
+        }
+        tr:hover td {
+            background: #f9f9f9;
+        }
+        .status-msg {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-area">
+        <h3>📊 スプレッドシート 現在のデータ一覧</h3>
+        <button id="reload-btn">データを再読み込み</button>
+    </div>
+
+    <div class="table-container">
+        <table id="data-table">
+            </table>
+        <div id="status" class="status-msg">読み込み中...</div>
+    </div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
+
+        // CSVを配列に分解する関数
+        function parseCSV(text) {
+            const rows = [];
+            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
+            text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const matches = line.matchAll(pattern);
+                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
+                rows.push(row);
+            });
+            return rows;
+        }
+
+        // スプレッドシートからデータを取得してテーブルを描画する関数
+        async function loadPreviewData() {
+            const table = document.getElementById('data-table');
+            const status = document.getElementById('status');
+            const btn = document.getElementById('reload-btn');
+            
+            table.innerHTML = '';
+            status.style.display = 'block';
+            status.innerText = 'データを取得中...';
+            btn.disabled = true;
+
+            try {
+                // キャッシュを回避して最新のデータを取得
+                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
+                const text = await res.text();
+                const rows = parseCSV(text);
+
+                if (rows.length === 0) {
+                    status.innerText = 'データが空、または取得できませんでした。';
+                    return;
+                }
+
+                status.style.display = 'none';
+
+                // 1行目をヘッダー(th)として生成
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                rows[0].forEach(cellText => {
+                    const th = document.createElement('th');
+                    th.innerText = cellText;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // 2行目以降をデータ行(td)として生成
+                const tbody = document.createElement('tbody');
+                
+                // 列ごとの最大行数を調べる（スカスカな部分を綺麗に出すため）
+                for (let i = 1; i < rows.length; i++) {
+                    const dataRow = document.createElement('tr');
+                    rows[i].forEach(cellText => {
+                        const td = document.createElement('td');
+                        td.innerText = cellText || ''; // 空白セルもそのまま表示
+                        dataRow.appendChild(td);
+                    });
+                    tbody.appendChild(dataRow);
+                }
+                table.appendChild(tbody);
+
+            } catch (e) {
+                console.error(e);
+                status.innerText = 'エラーが発生しました: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ボタンクリックで再読み込み
+        document.getElementById('reload-btn').addEventListener('click', loadPreviewData);
+
+        // 起動時に初回読み込み
+        loadPreviewData();
+    </script>
+</body>
+</html>
