@@ -23,7 +23,6 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
-        // NodeCG内部でリアルタイム管理するランキング専用の共有メモリ
         const localRankingRep = nodecg.Replicant('localRankingData', { defaultValue: {} });
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
@@ -40,11 +39,16 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        // メモリ上のランキングデータを一瞬で更新する関数
+        // メモリ上のデータを安全に更新する関数（完全防御版）
         function updateLocalRanking(teamNum, action, timeStr) {
-            if (!localRankingRep.value) localRankingRep.value = {};
+            // 全体が未定義なら初期化
+            if (!localRankingRep.value || typeof localRankingRep.value !== 'object') {
+                localRankingRep.value = {};
+            }
             
             const teamKey = `team_${teamNum}`;
+            
+            // 🔴 2チーム目以降でも、該当チームの枠が無ければ安全に1枠ずつ初期化する修正
             if (!localRankingRep.value[teamKey]) {
                 localRankingRep.value[teamKey] = {
                     name: `チーム ${teamNum}`,
@@ -65,20 +69,18 @@
                 }
             }
 
-            // Replicantに明示的に変更を通知して保存
+            // NodeCGに「データが変わったよ」と確実に通知
             localRankingRep.value = { ...localRankingRep.value };
         }
 
-        // 🔴 エラーの原因だった async を削除し、通常の関数に修正しました
         function handleLapAction(teamNum, action, buttons) {
-            // 1. ボタンの連打による多重送信を防ぐため一瞬だけ無効化
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
 
-            // 2. メモリ（NodeCG）を0.1秒で即座に更新（ランキング・プレビューへ一瞬で反映）
+            // 1. メモリ（NodeCG内部）を0.1秒で即座に更新
             updateLocalRanking(teamNum, action, timeStr);
 
-            // 3. Googleへの送信を「投げっぱなし」にして応答を待たない
+            // 2. Googleへの送信を「投げっぱなし」にして一切応答を待たない
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -88,10 +90,10 @@
                 console.error('バックアップ送信エラー:', error);
             });
 
-            // 4. コマンドを発射した瞬間に、ボタンを即座に復帰させる（待ち時間ゼロ）
+            // 3. 送信ボタンを即座に復帰
             setTimeout(() => {
                 buttons.forEach(b => b.disabled = false);
-            }, 100); // 0.1秒のウェイトで連続タップの操作感を最適化
+            }, 100);
         }
 
         // 20チーム分のボタン生成
