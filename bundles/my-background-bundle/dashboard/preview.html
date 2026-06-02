@@ -6,13 +6,12 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
         .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        .preview-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 520px; overflow-y: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { background: #673AB7; color: white; font-weight: bold; padding: 10px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; }
-        td { padding: 8px 10px; border: 1px solid #eaecef; color: #333; text-align: center; }
-        .team-id-cell { font-weight: bold; background: #f6f8fa; color: #555; width: 80px; }
-        .lap-count-cell { font-weight: bold; color: #673AB7; width: 80px; }
-        .time-cell { font-family: 'Courier New', Courier, monospace; text-align: left; padding-left: 15px; }
+        .preview-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 540px; overflow: both; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+        th { background: #673AB7; color: white; font-weight: bold; padding: 10px 15px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; text-align: center; min-width: 90px; }
+        td { padding: 8px 12px; border: 1px solid #eaecef; color: #333; text-align: center; font-family: 'Courier New', Courier, monospace; }
+        tr:nth-child(even) { background-color: #fcfaff; }
+        .row-num-cell { font-weight: bold; background: #f6f8fa; color: #777; position: sticky; left: 0; z-index: 5; border-right: 2px solid #d1d5da; min-width: 40px; }
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
         .sync-tag { font-size: 11px; color: #fff; background: #673AB7; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
@@ -20,19 +19,13 @@
 <body>
 
     <div class="header-area">
-        <h3>📊 シートプレビュー (CSV直接取得)</h3>
+        <h3>📊 シートプレビュー（元データ形状再現）</h3>
         <span class="sync-tag">● 3秒周期 同期中</span>
     </div>
 
     <div class="preview-container">
         <table id="preview-table">
-            <thead>
-                <tr>
-                    <th>対象</th>
-                    <th>周回数</th>
-                    <th>最新ラップタイム</th>
-                </tr>
-            </thead>
+            <thead id="preview-thead"></tbody>
             <tbody id="preview-tbody"></tbody>
         </table>
         <div id="status" class="status-msg">CSVデータを読み込み中...</div>
@@ -64,49 +57,66 @@
                 const rows = parseCSV(text);
                 if (rows.length === 0) return;
 
-                const headers = rows[0];
-                const teamDataList = [];
+                // 🔴 巻き戻りガード用の総周回数カウント
                 let incomingTotalLaps = 0;
-
-                for (let colIdx = 0; colIdx < headers.length; colIdx++) {
-                    const teamName = headers[colIdx];
-                    if (!teamName) continue;
-
-                    const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-' && cell !== '');
-                    const lapCount = laps.length;
-                    incomingTotalLaps += lapCount;
-
-                    teamDataList.push({
-                        name: teamName,
-                        lapCount: lapCount,
-                        lastTime: lapCount > 0 ? laps[laps.length - 1] : '--:--:--'
-                    });
+                for (let c = 0; c < rows[0].length; c++) {
+                    for (let r = 1; r < rows.length; r++) {
+                        const cell = rows[r][c];
+                        if (cell && cell !== '-') incomingTotalLaps++;
+                    }
                 }
 
-                // 巻き戻りガード
                 if (incomingTotalLaps < currentMaxTotalLaps) return;
                 currentMaxTotalLaps = incomingTotalLaps;
 
-                const tbody = document.getElementById('preview-tbody');
                 document.getElementById('status').style.display = 'none';
+
+                // 1. ヘッダー（1行目：チーム名一覧）の描画
+                const thead = document.getElementById('preview-thead');
+                thead.innerHTML = '';
+                const headerTr = document.createElement('tr');
+                
+                // 左端に「行番号」用の空ヘッダーを作る
+                const emptyTh = document.createElement('th');
+                emptyTh.innerText = 'Laps';
+                emptyTh.style.left = '0';
+                emptyTh.style.zIndex = '15';
+                headerTr.appendChild(emptyTh);
+
+                rows[0].forEach(teamName => {
+                    const th = document.createElement('th');
+                    th.innerText = teamName || '-';
+                    headerTr.appendChild(th);
+                });
+                thead.appendChild(headerTr);
+
+                // 2. ボディ（2行目以降：タイムデータ）を行列そのまま描画
+                const tbody = document.getElementById('preview-tbody');
                 tbody.innerHTML = '';
 
-                // チーム番号順に並べ替え
-                teamDataList.sort((a, b) => {
-                    const numA = parseInt(a.name.replace(/[^0-9]/g, '')) || 0;
-                    const numB = parseInt(b.name.replace(/[^0-9]/g, '')) || 0;
-                    return numA - numB;
-                });
-
-                teamDataList.forEach(team => {
+                for (let r = 1; r < rows.length; r++) {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="team-id-cell">${team.name}</td>
-                        <td class="lap-count-cell">${team.lapCount} 回</td>
-                        <td class="time-cell">${team.lastTime}</td>
-                    `;
+                    
+                    // 行の先頭に「ラップ数（行番号）」セルを追加
+                    const numTd = document.createElement('td');
+                    numTd.className = 'row-num-cell';
+                    numTd.innerText = `${r}`;
+                    tr.appendChild(numTd);
+
+                    // 各チームのタイムをそのまま横に並べる
+                    for (let c = 0; c < rows[r].length; c++) {
+                        const td = document.createElement('td');
+                        const val = rows[r][c];
+                        td.innerText = (val === '' || val === '-') ? '-' : val;
+                        // データが入っているセルは少し目立たせる
+                        if (val && val !== '-') {
+                            td.style.fontWeight = 'bold';
+                            td.style.color = '#673AB7';
+                        }
+                        tr.appendChild(td);
+                    }
                     tbody.appendChild(tr);
-                });
+                }
 
             } catch (e) {
                 console.error("プレビューCSV取得エラー:", e);
