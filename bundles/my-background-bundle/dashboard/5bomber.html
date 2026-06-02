@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 10px; }
+        select, button { width: 100%; padding: 10px; margin-bottom: 10px; cursor: pointer; }
+        .list-item { display: block; background: #f0f0f0; margin: 5px 0; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        .list-item:hover { background: #e0e0e0; }
+        #reset-btn { background-color: #ff4444; color: white; border: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h3>カテゴリ選択</h3>
+    <select id="category-select"><option>読み込み中...</option></select>
+
+    <h3>項目リスト</h3>
+    <div id="item-list"></div>
+
+    <button id="reset-btn">表示をリセット</button>
+
+    <script>
+        const activeData = nodecg.Replicant('activeData', { defaultValue: { title: '', text: '', ts: 0 } });
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1ko3uxcR9xA4yrUwYt_PK-gWqDyhurccSocVQXUP890g/export?format=csv';
+
+        let sheetData = {};
+
+        // スプレッドシート（CSV形式）の取得と解析
+        async function fetchSheet() {
+            const res = await fetch(SHEET_URL);
+            const text = await res.text();
+            const rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
+
+            const titles = rows[0]; // 1行目をタイトルとして取得
+            titles.forEach((title, colIdx) => {
+                sheetData[title] = rows.slice(1).map(r => r[colIdx]).filter(cell => cell);
+            });
+
+            renderSelect();
+        }
+
+        function renderSelect() {
+            const select = document.getElementById('category-select');
+            select.innerHTML = '<option value="">カテゴリを選んでください</option>';
+            Object.keys(sheetData).forEach(title => {
+                const opt = document.createElement('option');
+                opt.value = title;
+                opt.innerText = title;
+                select.appendChild(opt);
+            });
+        }
+
+        document.getElementById('category-select').addEventListener('change', (e) => {
+            const title = e.target.value;
+            const list = document.getElementById('item-list');
+            list.innerHTML = '';
+            
+            if (sheetData[title]) {
+                sheetData[title].forEach(item => {
+                    const label = document.createElement('label');
+                    label.className = 'list-item';
+                    label.innerHTML = `<input type="radio" name="item" value="${item}"> ${item}`;
+                    label.querySelector('input').addEventListener('change', () => {
+                        activeData.value = { title: title, text: item, ts: Date.now() };
+                    });
+                    list.appendChild(label);
+                });
+            }
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            activeData.value = { title: '', text: '', ts: Date.now() };
+            const checked = document.querySelector('input[name="item"]:checked');
+            if (checked) checked.checked = false;
+        });
+
+        fetchSheet();
+    </script>
+</body>
+</html>
