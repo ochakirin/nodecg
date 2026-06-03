@@ -2,29 +2,44 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Position Map Overlay</title>
+    <title>Stream Overlay (Index)</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             width: 1920px;
             height: 1080px;
-            background: transparent; /* OBSで背景透過するための設定 */
+            background: transparent;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             position: relative;
         }
 
-        /* 画面真ん中に横一文字に配置するベースライン */
+        /* 🔴 背景画像：画面ぴったりにリサイズして敷き詰める設定 */
+        .background-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            /* 背景画像のURL（使用している画像のパスやURLに必要に応じて書き換えてください） */
+            background-image: url('bg.png'); 
+            background-size: cover; /* 画面全体を隙間なく覆う */
+            background-position: center;
+            z-index: 1; /* 一番後ろ */
+        }
+
+        /* 🔴 画面真ん中に配置するポジションマップのベースライン */
         .position-map-container {
             position: absolute;
             top: 50%; /* 画面の一番真ん中 */
-            left: 150px; /* 画面端の余白 */
+            left: 150px; 
             right: 150px;
             height: 6px;
             background: rgba(255, 255, 255, 0.2); 
             border-radius: 3px;
             transform: translateY(-50%);
+            z-index: 10; /* 背景より前 */
         }
 
         /* チームの数字を囲う○の図形 */
@@ -44,7 +59,7 @@
             font-weight: 900; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             
-            /* 順位変動時に滑らかに動かすアニメーション */
+            /* 順位変動時の滑らかアニメーション */
             transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
@@ -52,7 +67,7 @@
             transform: translate(-50%, -50%); 
         }
 
-        /* 上位3チームを直感的に分かりやすくする専用カラー */
+        /* 上位3チームのカラー */
         .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } 
         .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  
         .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  
@@ -65,17 +80,49 @@
             opacity: 0.95;
             border: 3px solid #fff;
         }
+
+        /* 🔴 タイマー：画面の「右下」に配置するスタイル */
+        .timer-container {
+            position: absolute;
+            bottom: 40px; /* 右下からの浮かせ具合 */
+            right: 50px;
+            background: rgba(0, 0, 0, 0.75); /* タイマー文字が見えやすいように半透明の黒背景 */
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 25px;
+            border-radius: 8px;
+            color: #00ff66; /* 視認性の高いサイバーグリーン */
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 48px; /* パッと見で見える大画面サイズ */
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 20; /* 最前面 */
+        }
     </style>
 </head>
 <body>
 
+    <div class="background-layer"></div>
+
     <div class="position-map-container" id="map-container"></div>
 
-    <script>
-        // 🔴 【修正ポイント】Graphics側でも安全に初期化できるように、第二引数にデフォルト値を追加しました
-        const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
-        const container = document.getElementById('map-container');
+    <div class="timer-container" id="timer-display">00:00:00</div>
 
+    <script>
+        // NodeCGの共有メモリ（タイマー情報 ＆ プレビューデータ）をダブル監視
+        const timerRep = nodecg.Replicant('streamTimer');
+        const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
+        
+        const container = document.getElementById('map-container');
+        const timerDisplay = document.getElementById('timer-display');
+
+        // 🔴 1. タイマーの常時同期ロジック（右下の文字を書き換える）
+        timerRep.on('change', (newVal) => {
+            if (newVal && newVal.formatted) {
+                timerDisplay.innerText = newVal.formatted;
+            }
+        });
+
+        // 2. ポジションマップ関連のロジック
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -106,7 +153,7 @@
             const headers = rows[0];
             const teamDataList = [];
 
-            // 1. CSVから全20チームのデータを配列化
+            // CSVから全20チームのデータを配列化
             for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                 const teamName = headers[colIdx];
                 if (!teamName) continue;
@@ -127,7 +174,7 @@
                 });
             }
 
-            // 2. ランキングソート
+            // ランキングソート
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
                 if (a.lapCount > 0) {
@@ -136,7 +183,7 @@
                 return 0;
             });
 
-            // 3. 同順位（タイ記録）を検出してグループ化
+            // 同順位グループ化
             let currentRank = 1;
             let tieGroups = {};
 
@@ -154,7 +201,7 @@
                 tieGroups[currentRank].push(currentTeam);
             }
 
-            // 4. 等間隔の配置計算とレンダリング
+            // 等間隔の配置計算とレンダリング
             const totalTeams = teamDataList.length;
             
             teamDataList.forEach((team) => {
@@ -196,7 +243,7 @@
             });
         }
 
-        // 🔴 メモリアップデートを検知（値が空っぽの時の安全ガードを追加）
+        // メモリアップデートを検知
         sharedCsvRep.on('change', (newVal) => {
             if (newVal) {
                 updatePositionMap(newVal);
