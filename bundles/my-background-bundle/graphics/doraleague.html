@@ -36,7 +36,6 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-end; 
-            /* 🔴 【変更】ステータスラインのパディングを減らし、爆弾の新しい着地目標に合わせます */
             padding-bottom: 240px; 
             transition: all 0.3s ease;
         }
@@ -65,7 +64,7 @@
             transform: scale(1.05);
         }
 
-        /* 🔴 【変更】レーン最下部のゴール境界線を上に引き上げ（1080px - 140px = 940px地点へ） */
+        /* レーン最下部のゴール境界線 */
         .lane-goal {
             position: absolute;
             bottom: 140px; 
@@ -98,13 +97,10 @@
             filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
         }
 
-        /* =================================================================
-           テロップ表示エリア（中央スペースを広く使うための新レイアウト）
-           ================================================================= */
-        /* 🔴 【変更】直近の正解キーワード：中央より少し下、爆弾の真下の空きスペースへジャスト配置 */
+        /* 直近の正解キーワード */
         .info-top-container {
             position: absolute;
-            bottom: 20px; /* カテゴリ選択の上 */
+            bottom: 20px; 
             left: 50%;
             transform: translateX(-50%);
             background: rgba(26, 35, 126, 0.95); 
@@ -112,7 +108,7 @@
             padding: 14px 50px;
             border-radius: 8px;
             color: #ffffff;
-            font-size: 40px; /* 文字を少し大きく */
+            font-size: 40px; 
             font-weight: bold;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             z-index: 20;
@@ -121,10 +117,10 @@
             display: none; 
         }
 
-        /* 🔴 【変更】カテゴリ選択：画面の最下部（bottom: 40px）に固定してベースを安定化 */
+        /* カテゴリ選択 */
         .info-bottom-container {
             position: absolute;
-            bottom: 140px; /* 1人目〜5人目のすぐ下にピタッと配置 */
+            bottom: 140px; 
             left: 50%;
             transform: translateX(-50%);
             background: rgba(198, 40, 40, 0.95); 
@@ -171,15 +167,19 @@
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
         
-        const soundBgm = new Audio('sounds/bgm.mp3');
-        const soundClear = new Audio('sounds/clear.mp3');
-        const soundCorrect = new Audio('sounds/correct.mp3'); 
-        soundBgm.loop = true;
+        // 音声エラーで全体が止まらないように安全に読み込み
+        let soundBgm, soundClear, soundCorrect;
+        try {
+            soundBgm = new Audio('sounds/bgm.mp3');
+            soundClear = new Audio('sounds/clear.mp3');
+            soundCorrect = new Audio('sounds/correct.mp3'); 
+            soundBgm.loop = true;
+        } catch(e) {
+            console.error("Audio initialization failed:", e);
+        }
 
         const LANE_WIDTH = 384;       
         const START_TOP = -160;       
-        
-        // 🔴 【変更】動ききる底面の高さを「930px」から「780px」へ引き上げ（150px分、完全に上空へシフト）
         const GOAL_TOP = 780;         
         const TOTAL_DURATION = 30000;  
 
@@ -187,7 +187,6 @@
         let bomberStartTime = null;
         let bomberCurrentStatus = 'idle';
 
-        // 30秒の滑らかな落下制御
         function tickBomberDrop(timestamp) {
             if (bomberCurrentStatus !== 'playing') return;
 
@@ -202,3 +201,90 @@
                 bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
             } else {
                 bomberCurrentStatus = 'timeup';
+                if (soundBgm) soundBgm.pause();
+            }
+        }
+
+        activeTitle.on('change', (newVal) => {
+            if (newVal && newVal.trim() !== '') {
+                textBottomCategory.innerText = newVal;
+                textBottomCategory.style.display = 'block';
+            } else {
+                textBottomCategory.style.display = 'none';
+            }
+        });
+
+        activeAnswer.on('change', (newVal) => {
+            if (newVal && newVal.trim() !== '') {
+                textTopItem.innerText = `🟢 正解: ${newVal}`;
+                textTopItem.style.display = 'block';
+
+                if (bomberCurrentStatus === 'playing' && soundCorrect) {
+                    soundCorrect.currentTime = 0;
+                    soundCorrect.play().catch(e => console.log("Audio play blocked:", e));
+                }
+            } else {
+                textTopItem.style.display = 'none';
+            }
+        });
+
+        bomberRep.on('change', (newVal) => {
+            if (!newVal) return;
+
+            for (let i = 0; i < 5; i++) {
+                const laneEl = document.getElementById(`lane-${i}`);
+                if (laneEl) {
+                    if (i < newVal.count) {
+                        laneEl.classList.add('is-active');
+                    } else {
+                        laneEl.classList.remove('is-active');
+                    }
+                }
+            }
+
+            const targetLaneIdx = Math.min(newVal.count, 4);
+            bombActor.style.left = `${targetLaneIdx * LANE_WIDTH}px`;
+
+            // 【スタートの同期処理】
+            if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
+                bomberCurrentStatus = 'playing';
+                bomberStartTime = null; 
+                
+                if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
+                if (soundBgm) {
+                    soundBgm.currentTime = 0;
+                    soundBgm.play().catch(e => console.log("BGM Play Blocked:", e));
+                }
+
+                if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
+                bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
+            }
+
+            // 【5問クリアの同期処理】
+            if (newVal.status === 'cleared' && bomberCurrentStatus === 'playing') {
+                bomberCurrentStatus = 'cleared';
+                if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken); 
+
+                if (soundBgm) soundBgm.pause();
+                if (soundClear) {
+                    soundClear.currentTime = 0;
+                    soundClear.play().catch(e => console.log("Clear Sound Blocked:", e));
+                }
+            }
+
+            // 【リセットの同期処理】
+            if (newVal.status === 'idle') {
+                bomberCurrentStatus = 'idle';
+                if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
+                bomberStartTime = null;
+
+                if (soundBgm) { soundBgm.pause(); soundBgm.currentTime = 0; }
+                if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
+
+                bombActor.style.top = `${START_TOP}px`;
+                bombActor.style.left = `0px`;
+            }
+        });
+    </script>
+</body>
+</html>
