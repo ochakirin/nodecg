@@ -1,7 +1,11 @@
 {
   "name": "my-background-bundle",
   "version": "2.5.0",
-  "description": "Background, Timer, Lap, Preview, and Ranking System",
+  "description": "Background, Timer, Lap, Preview, Ranking and 5-Bomber System",
+  "homepage": "",
+  "author": "",
+  "contributors": [],
+  "license": "MIT",
   "nodecg": {
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "hasExtension": true,
@@ -11,35 +15,48 @@
         "title": "タイマーコントローラー",
         "file": "timer.html",
         "headerColor": "#52575c",
-        "width": 3
-      },
-      {
-        "name": "5-bomber",
-        "title": "5ボンバー",
-        "file": "5bomber.html",
-        "headerColor": "#FF5722",
-        "width": 3
+        "width": 3,
+        "workspace": "メイン管理"
       },
       {
         "name": "lap-counter",
         "title": "ラップ記録（20チーム分）",
         "file": "lap.html",
         "headerColor": "#009688",
-        "width": 4
+        "width": 4,
+        "workspace": "メイン管理"
       },
       {
         "name": "sheet-preview",
         "title": "シートプレビュー",
         "file": "preview.html",
         "headerColor": "#673AB7",
-        "width": 5
+        "width": 5,
+        "workspace": "メイン管理"
       },
       {
         "name": "ranking-display",
         "title": "チームランキング",
         "file": "ranking.html",
         "headerColor": "#FF9800",
-        "width": 4
+        "width": 4,
+        "workspace": "メイン管理"
+      },
+      {
+        "name": "5-bomber",
+        "title": "5ボンバー回答入力",
+        "file": "5bomber.html",
+        "headerColor": "#FF5722",
+        "width": 3,
+        "workspace": "ファイブボンバー"
+      },
+      {
+        "name": "5-bomber-control",
+        "title": "5ボンバー運行管理",
+        "file": "5bomber_ctrl.html",
+        "headerColor": "#E91E63",
+        "width": 3,
+        "workspace": "ファイブボンバー"
       }
     ],
     "graphics": [
@@ -54,5 +71,6 @@
         "height": 1080
       }
     ]
-  }
+  },
+  "dependencies": {}
 }
