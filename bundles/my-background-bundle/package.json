@@ -32,14 +32,14 @@
         "title": "シートプレビュー",
         "file": "preview.html",
         "headerColor": "#673AB7",
-        "width": 4
+        "width": 5
       },
       {
         "name": "ranking-display",
         "title": "チームランキング",
         "file": "ranking.html",
         "headerColor": "#FF9800",
-        "width": 3
+        "width": 4
       }
     ],
     "graphics": [
