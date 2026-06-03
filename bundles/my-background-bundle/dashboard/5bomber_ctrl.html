@@ -29,23 +29,20 @@
     </div>
 
     <script>
-        // 5ボンバーの運行状態を管理するReplicant
+        // 5ボンバーの運行状態（playing / cleared / idle）を管理するReplicant
         const bomberRep = nodecg.Replicant('fiveBomberState', {
             defaultValue: { status: 'idle', count: 0 }
         });
 
-        // 🔴 過去に作成された「5ボンバー回答入力(5bomber.html)」側が使っているReplicantの値を監視・操作します
-        // ※もし実際のReplicant名やデータ構造が異なる場合は、NodeCGが自動生成した名前(例: '5-bomber' など)に合わせてください。
-        // ここでは一般的な構造として読み込みます。
-        const inputRep = nodecg.Replicant('fiveBomberInput', {
-            defaultValue: { category: '', lastCheckedItem: '', checks: [false, false, false, false, false] }
-        });
+        // 🔴 5bomber.html が使用している実際のReplicantたちとダイレクト接続
+        const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
+        const checkedItems = nodecg.Replicant('checkedItems', { defaultValue: [] });
 
         const btnStart = document.getElementById('btn-start');
         const btnReset = document.getElementById('btn-reset');
         const syncCount = document.getElementById('sync-count');
 
-        // 状態を常時監視してボタンを制御
+        // 自身の運行ステータスを監視してスタートボタンの表示を制御
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
             if (newVal.status === 'playing') {
@@ -59,18 +56,16 @@
             }
         });
 
-        // 回答入力側のチェック数を監視し、ゲーム運行ステータスを自動更新
-        inputRep.on('change', (newVal) => {
-            if (!newVal || !newVal.checks) return;
-            
-            const activeCount = newVal.checks.filter(c => c).length;
+        // 🔴 5bomber.html側の「蓄積されたチェック配列」を常時監視して同期
+        checkedItems.on('change', (newVal) => {
+            const activeCount = newVal ? newVal.length : 0;
             syncCount.innerText = `${activeCount} / 5`;
 
-            // プレイ中に累計5個に達したら自動でクリア状態へ移行
+            // 進行中に累計5個に達したら自動でクリアステータスへ移行
             if (activeCount >= 5 && bomberRep.value.status === 'playing') {
                 bomberRep.value.status = 'cleared';
             }
-            // カウント数だけは常にゲーム全体に共有
+            // 最新の数を共有
             bomberRep.value.count = activeCount;
         });
 
@@ -81,16 +76,13 @@
             }
         });
 
-        // 🔴 リセットボタン：自身のタイマーだけでなく、回答入力側のデータも全消去
+        // 🔴 リセット：自身のタイマーを止め、5bomber.html側のデータも根こそぎ初期化
         btnReset.addEventListener('click', () => {
             bomberRep.value = { status: 'idle', count: 0 };
             
-            // 回答入力側のReplicantも初期状態に上書きしてチェックを全部外す
-            inputRep.value = {
-                category: '',          // カテゴリクリア
-                lastCheckedItem: '',   // 直近のキーワードクリア
-                checks: [false, false, false, false, false] // チェック全解除
-            };
+            // 5bomber.html側のメモリをクリア（これで回答入力パネル側のチェックが全て自動で外れます）
+            activeAnswer.value = '';
+            checkedItems.value = [];
         });
     </script>
 </body>
