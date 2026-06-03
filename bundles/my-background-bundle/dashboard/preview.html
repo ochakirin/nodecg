@@ -16,13 +16,12 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.1s, transform 0.05s;
+            transition: background 0.1s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .sync-btn:hover { background-color: #512DA8; }
-        .sync-btn:active { transform: scale(0.95); }
-        .sync-btn:disabled { background-color: #a892d1; cursor: not-allowed; transform: none; }
+        .sync-btn:disabled { background-color: #a892d1; cursor: not-allowed; }
 
+        /* 🔴 横幅を約5チーム分が見えるゆったりサイズに変更 */
         .preview-container { 
             background: white; 
             border-radius: 8px; 
@@ -41,21 +40,25 @@
             white-space: nowrap; 
         }
         
-        th { background: #673AB7; color: white; font-weight: bold; padding: 10px 15px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; text-align: center; min-width: 90px; }
+        th { background: #673AB7; color: white; font-weight: bold; padding: 10px 15px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; text-align: center; min-width: 110px; } /* 少し幅を広げました */
         td { padding: 8px 12px; border: 1px solid #eaecef; color: #333; text-align: center; font-family: 'Courier New', Courier, monospace; }
         tr:nth-child(even) { background-color: #fcfaff; }
         
-        .row-num-cell { font-weight: bold; background: #f6f8fa; color: #555; position: sticky; left: 0; z-index: 5; border-right: 2px solid #d1d5da; min-width: 100px; text-align: left; font-family: inherit; }
-        th:first-child { position: sticky; left: 0; z-index: 15; background: #512DA8; min-width: 100px; text-align: left; }
+        .row-num-cell { font-weight: bold; background: #f6f8fa; color: #555; position: sticky; left: 0; z-index: 5; border-right: 2px solid #d1d5da; min-width: 110px; text-align: left; font-family: inherit; }
+        th:first-child { position: sticky; left: 0; z-index: 15; background: #512DA8; min-width: 110px; text-align: left; }
         
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
+        .auto-badge { font-size: 11px; color: #fff; background: #2ea44f; padding: 3px 8px; border-radius: 12px; font-weight: bold; margin-left: 10px; display: none; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>📊 シートプレビュー（元データ形状再現）</h3>
-        <button id="btn-sync" class="sync-btn">🔄 データを手動同期（ラグ0秒）</button>
+        <div style="display: flex; align-items: center;">
+            <h3>📊 シートプレビュー</h3>
+            <span id="sync-badge" class="auto-badge">● 自動連動中</span>
+        </div>
+        <button id="btn-sync" class="sync-btn">🔄 手動再同期</button>
     </div>
 
     <div class="preview-container">
@@ -63,15 +66,18 @@
             <thead id="preview-thead"></tbody>
             <tbody id="preview-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">上の「手動同期」ボタンを押すと、正規のリクエストを判定してGASからリアルタイムデータを取得します。</div>
+        <div id="status" class="status-msg">データを読み込み中...</div>
     </div>
 
     <script>
-        // ⚠️ あなたのGASの「ウェブアプリのURL」に差し替えてください
         const SHEET_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
+        
+        // 🔴 ランキング画面へ最新CSVデータを転送するための中継Replicant
+        const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
 
         let currentMaxTotalLaps = 0;
         const btnSync = document.getElementById('btn-sync');
+        const syncBadge = document.getElementById('sync-badge');
 
         function parseCSV(text) {
             const rows = [];
@@ -90,20 +96,14 @@
             btnSync.innerText = '⌛ 同期中...';
 
             try {
-                // 🔴 URLの末尾に「action=fetch_preview」を結合し、手動ボタンが押されたリクエストであることを明確にGASへ伝えます
                 const requestUrl = `${SHEET_URL}?action=fetch_preview&cache_bust=${Date.now()}`;
-
-                const res = await fetch(requestUrl, {
-                    method: 'GET',
-                    redirect: 'follow'
-                });
-                
+                const res = await fetch(requestUrl, { method: 'GET', redirect: 'follow' });
                 const text = await res.text();
 
-                // GAS側から拒否メッセージが返ってきた場合のハンドリング
-                if (text.startsWith("Error:")) {
-                    throw new Error(text);
-                }
+                if (text.startsWith("Error:")) throw new Error(text);
+
+                // 🔴 取得した最新の生データを、ランキング画面へリアルタイムにお裾分けして保存
+                sharedCsvRep.value = text;
 
                 const rows = parseCSV(text);
                 if (rows.length === 0) throw new Error('データが空です');
@@ -124,11 +124,10 @@
 
                 document.getElementById('status').style.display = 'none';
 
-                // 1. ヘッダーの描画
+                // ヘッダー描画
                 const thead = document.getElementById('preview-thead');
                 thead.innerHTML = '';
                 const headerTr = document.createElement('tr');
-                
                 const emptyTh = document.createElement('th');
                 emptyTh.innerText = '位置 / タイトル';
                 headerTr.appendChild(emptyTh);
@@ -140,13 +139,12 @@
                 }
                 thead.appendChild(headerTr);
 
-                // 2. ボディの描画
+                // ボディ描画
                 const tbody = document.getElementById('preview-tbody');
                 tbody.innerHTML = '';
 
                 for (let r = 1; r < rows.length; r++) {
                     const tr = document.createElement('tr');
-                    
                     const numTd = document.createElement('td');
                     numTd.className = 'row-num-cell';
                     numTd.innerText = rows[r][0] || `Lap ${r}`;
@@ -166,8 +164,7 @@
                 }
 
             } catch (e) {
-                console.error("プレビューGAS取得エラー:", e);
-                alert(`データの同期に失敗しました。\n${e.message}`);
+                console.error("プレビュー取得エラー:", e);
             } finally {
                 finalizeSync();
             }
@@ -175,13 +172,22 @@
 
         function finalizeSync() {
             btnSync.disabled = false;
-            btnSync.innerText = '🔄 データを手動同期（ラグ0秒）';
+            btnSync.innerText = '🔄 手動再同期';
+            syncBadge.style.display = 'none';
         }
 
-        btnSync.addEventListener('click', fetchPreview);
+        // 🔴 ボタンが押されたら、Googleの書き込み処理の完了ラグ（約1500ms）を待ってから自動読み込み
+        nodecg.listenFor('trigger_auto_sync', () => {
+            syncBadge.style.display = 'inline-block';
+            syncBadge.innerText = '⌛ 書き込み完了を待機中...';
+            setTimeout(() => {
+                syncBadge.innerText = '● 自動同期中...';
+                fetchPreview();
+            }, 1500); 
+        });
 
-        // 最初の1回だけ自動実行
-        fetchPreview();
+        btnSync.addEventListener('click', fetchPreview);
+        fetchPreview(); // 起動時に1回実行
     </script>
 </body>
 </html>
