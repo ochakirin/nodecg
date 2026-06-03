@@ -15,19 +15,17 @@
             position: relative;
         }
 
-        /* 🔴 【新設】背景画像レイヤー */
+        /* 背景画像レイヤー */
         .background-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 1920px;
             height: 1080px;
-            background-image: url('bg2.jpg'); /* 指定の画像パス */
+            background-image: url('bg2.jpg'); 
             background-size: cover;
             background-position: center;
-            z-index: 1; /* 一番後ろに配置 */
-            
-            /* 🔴 透明度と色彩の調整（不透明度を60%に落とし、彩度を40%削って見やすく調整） */
+            z-index: 1; 
             opacity: 0.6;
             filter: saturate(0.6) brightness(0.8); 
         }
@@ -47,7 +45,6 @@
         .bomber-lane {
             flex: 1;
             height: 100%;
-            /* 背景が見えやすいよう、点線の白の濃さを少し控えめに調整 */
             border-right: 4px dashed rgba(255, 255, 255, 0.1);
             box-sizing: border-box;
             position: relative;
@@ -64,7 +61,7 @@
             font-size: 38px;
             font-weight: 900;
             color: #757575; 
-            background: rgba(20, 20, 20, 0.9); /* 背景画像の上でも文字が絶対に見えるよう少し濃く */
+            background: rgba(20, 20, 20, 0.9); 
             padding: 12px 40px;
             border-radius: 6px;
             border: 3px solid #616161;
@@ -115,24 +112,44 @@
             filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
         }
 
-        /* 直近の正解キーワード */
+        /* =================================================================
+           テロップ表示エリア（1行絶対キープ・自動フィッティング調整）
+           ================================================================= */
+        /* 🔴 直近の正解キーワード：横幅を1200pxに広げ、長い文字が来ても絶対に1行に自動縮小する設定 */
         .info-top-container {
             position: absolute;
             bottom: 20px; 
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(13, 23, 85, 0.96); /* 少し明度を落とした深い紺 */
+            background: rgba(13, 23, 85, 0.96); 
             border: 3px solid #2979ff;
-            padding: 14px 50px;
+            padding: 14px 40px;
             border-radius: 8px;
             color: #ffffff;
             font-size: 40px; 
             font-weight: bold;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6);
             z-index: 20;
-            min-width: 500px;
+            
+            /* 🔴 1行固定＆横幅の上限設定 */
+            width: 1200px; /* 十分な横幅を確保 */
+            max-width: 90vw;
+            box-sizing: border-box;
+            
+            /* 🔴 中の文字を自動でスケールダウンさせるためのフレックス子要素設定 */
+            display: none; /* JSで'flex'に切り替えます */
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 🔴 テロップ内のテキスト部分にかける1行絶対キープ魔法 */
+        .info-top-text {
+            white-space: nowrap;  /* 絶対に改行させない */
+            overflow: hidden;     /* はみ出しをカット */
+            text-overflow: ellipsis; /* 万が一限界を超えたら「...」にする保険 */
+            width: 100%;
             text-align: center;
-            display: none; 
+            display: inline-block;
         }
 
         /* カテゴリ選択 */
@@ -141,7 +158,7 @@
             bottom: 140px; 
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(166, 25, 25, 0.96); /* 背景と溶けないようクッキリした赤 */
+            background: rgba(166, 25, 25, 0.96); 
             border: 3px solid #ff1744;
             padding: 12px 60px;
             border-radius: 50px; 
@@ -154,13 +171,18 @@
             text-align: center;
             letter-spacing: 2px;
             display: none;
+            
+            /* カテゴリ側も念のため1行制限 */
+            white-space: nowrap;
         }
     </style>
 </head>
 <body>
 
+    <!-- 1. 背景画像レイヤー -->
     <div class="background-layer"></div>
 
+    <!-- 5等分のステージレーン背景と回答状況表示 -->
     <div class="bomber-stage">
         <div class="bomber-lane" id="lane-0"><div class="lane-status-text">1人目</div><div class="lane-goal"></div></div>
         <div class="bomber-lane" id="lane-1"><div class="lane-status-text">2人目</div><div class="lane-goal"></div></div>
@@ -169,11 +191,15 @@
         <div class="bomber-lane" id="lane-4"><div class="lane-status-text">5人目</div><div class="lane-goal"></div></div>
     </div>
 
+    <!-- 5ボンバー専用 落下するロックボム -->
     <div class="bomb-container" id="bomb-actor">
         <img src="rockbomb.webp" class="bomb-img" alt="bomb">
     </div>
 
-    <div class="info-top-container" id="text-top-item">---</div>
+    <!-- 各種テロップ表示コンテナ（中にインナースパンを設置） -->
+    <div class="info-top-container" id="text-top-container">
+        <span class="info-top-text" id="text-top-item">---</span>
+    </div>
     <div class="info-bottom-container" id="text-bottom-category">---</div>
 
     <script>
@@ -184,6 +210,7 @@
         const checkedItems = nodecg.Replicant('checkedItems', { defaultValue: [] });
         
         const bombActor = document.getElementById('bomb-actor');
+        const textTopContainer = document.getElementById('text-top-container');
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
         
@@ -226,6 +253,7 @@
         
         function tickDropHelper(ts) { tickBomberDrop(ts); }
 
+        // カテゴリ名同期
         activeTitle.on('change', (newVal) => {
             if (newVal && newVal.trim() !== '') {
                 textBottomCategory.innerText = newVal;
@@ -235,17 +263,28 @@
             }
         });
 
+        // 🔴 正解キーワード同期（1行縮小フィッティングロジック内蔵）
         activeAnswer.on('change', (newVal) => {
             if (newVal && newVal.trim() !== '') {
                 textTopItem.innerText = `🟢 正解: ${newVal}`;
-                textTopItem.style.display = 'block';
+                textTopContainer.style.display = 'flex'; // フレックス構造で表示
+
+                // 🔴 文字数に応じてフォントサイズを動的に細かくスケールダウンさせるJavaScript仕掛け
+                // 通常は40px、文字が18文字を超え始めたら枠に収まるようにジワジワ小さくする
+                const charCount = textTopItem.innerText.length;
+                if (charCount > 18) {
+                    const calculatedSize = Math.max(20, 40 - (charCount - 18) * 1.2);
+                    textTopItem.style.fontSize = `${calculatedSize}px`;
+                } else {
+                    textTopItem.style.fontSize = '40px'; // 通常サイズ
+                }
 
                 if (bomberCurrentStatus === 'playing' && soundCorrect) {
                     soundCorrect.currentTime = 0;
                     soundCorrect.play().catch(e => console.log("Audio play blocked:", e));
                 }
             } else {
-                textTopItem.style.display = 'none';
+                textTopContainer.style.display = 'none';
             }
         });
 
@@ -274,7 +313,6 @@
             const targetLaneIdx = Math.min(newVal.count, 4);
             bombActor.style.left = `${targetLaneIdx * LANE_WIDTH}px`;
 
-            // 【スタート】
             if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
                 bomberCurrentStatus = 'playing';
                 bomberStartTime = null; 
@@ -290,7 +328,6 @@
                 bomberAnimationFrameToken = requestAnimationFrame(tickDropHelper);
             }
 
-            // 【5問クリア】
             if (newVal.status === 'cleared' && bomberCurrentStatus === 'playing') {
                 bomberCurrentStatus = 'cleared';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken); 
@@ -302,7 +339,6 @@
                 }
             }
 
-            // 【リセット】
             if (newVal.status === 'idle') {
                 bomberCurrentStatus = 'idle';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
