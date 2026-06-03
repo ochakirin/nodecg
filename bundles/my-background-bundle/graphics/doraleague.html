@@ -2,17 +2,27 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DoraLeague - 5 Bomber Final Edition with BG</title>
+    <title>DoraLeague - 5 Bomber Auto-Resize Edition</title>
     <style>
-        body {
+        /* 🔴 画面全体のベース：スクロールバーを完全に消去 */
+        html, body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        /* 🔴 【新設】1920x1080の仮想ステージ：この枠の中身が丸ごとリサイズされます */
+        #main-stage {
             width: 1920px;
             height: 1080px;
-            background: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top left; /* 左上を起点にしてきれいに拡大縮小する */
             overflow: hidden;
-            position: relative;
         }
 
         /* 背景画像レイヤー */
@@ -112,10 +122,7 @@
             filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
         }
 
-        /* =================================================================
-           テロップ表示エリア（1行絶対キープ・自動フィッティング調整）
-           ================================================================= */
-        /* 🔴 直近の正解キーワード：横幅を1200pxに広げ、長い文字が来ても絶対に1行に自動縮小する設定 */
+        /* 直近の正解キーワード */
         .info-top-container {
             position: absolute;
             bottom: 20px; 
@@ -130,23 +137,18 @@
             font-weight: bold;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6);
             z-index: 20;
-            
-            /* 🔴 1行固定＆横幅の上限設定 */
-            width: 1200px; /* 十分な横幅を確保 */
+            width: 1200px; 
             max-width: 90vw;
             box-sizing: border-box;
-            
-            /* 🔴 中の文字を自動でスケールダウンさせるためのフレックス子要素設定 */
-            display: none; /* JSで'flex'に切り替えます */
+            display: none; 
             justify-content: center;
             align-items: center;
         }
 
-        /* 🔴 テロップ内のテキスト部分にかける1行絶対キープ魔法 */
         .info-top-text {
-            white-space: nowrap;  /* 絶対に改行させない */
-            overflow: hidden;     /* はみ出しをカット */
-            text-overflow: ellipsis; /* 万が一限界を超えたら「...」にする保険 */
+            white-space: nowrap;  
+            overflow: hidden;     
+            text-overflow: ellipsis; 
             width: 100%;
             text-align: center;
             display: inline-block;
@@ -171,38 +173,65 @@
             text-align: center;
             letter-spacing: 2px;
             display: none;
-            
-            /* カテゴリ側も念のため1行制限 */
             white-space: nowrap;
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. 背景画像レイヤー -->
-    <div class="background-layer"></div>
+    <div id="main-stage">
+        <div class="background-layer"></div>
 
-    <!-- 5等分のステージレーン背景と回答状況表示 -->
-    <div class="bomber-stage">
-        <div class="bomber-lane" id="lane-0"><div class="lane-status-text">1人目</div><div class="lane-goal"></div></div>
-        <div class="bomber-lane" id="lane-1"><div class="lane-status-text">2人目</div><div class="lane-goal"></div></div>
-        <div class="bomber-lane" id="lane-2"><div class="lane-status-text">3人目</div><div class="lane-goal"></div></div>
-        <div class="bomber-lane" id="lane-3"><div class="lane-status-text">4人目</div><div class="lane-goal"></div></div>
-        <div class="bomber-lane" id="lane-4"><div class="lane-status-text">5人目</div><div class="lane-goal"></div></div>
-    </div>
+        <div class="bomber-stage">
+            <div class="bomber-lane" id="lane-0"><div class="lane-status-text">1人目</div><div class="lane-goal"></div></div>
+            <div class="bomber-lane" id="lane-1"><div class="lane-status-text">2人目</div><div class="lane-goal"></div></div>
+            <div class="bomber-lane" id="lane-2"><div class="lane-status-text">3人目</div><div class="lane-goal"></div></div>
+            <div class="bomber-lane" id="lane-3"><div class="lane-status-text">4人目</div><div class="lane-goal"></div></div>
+            <div class="bomber-lane" id="lane-4"><div class="lane-status-text">5人目</div><div class="lane-goal"></div></div>
+        </div>
 
-    <!-- 5ボンバー専用 落下するロックボム -->
-    <div class="bomb-container" id="bomb-actor">
-        <img src="rockbomb.webp" class="bomb-img" alt="bomb">
-    </div>
+        <div class="bomb-container" id="bomb-actor">
+            <img src="rockbomb.webp" class="bomb-img" alt="bomb">
+        </div>
 
-    <!-- 各種テロップ表示コンテナ（中にインナースパンを設置） -->
-    <div class="info-top-container" id="text-top-container">
-        <span class="info-top-text" id="text-top-item">---</span>
+        <div class="info-top-container" id="text-top-container">
+            <span class="info-top-text" id="text-top-item">---</span>
+        </div>
+        <div class="info-bottom-container" id="text-bottom-category">---</div>
     </div>
-    <div class="info-bottom-container" id="text-bottom-category">---</div>
 
     <script>
+        /* =================================================================
+           🔴 【新機能】オートリサイズ（ウィンドウサイズ追従）システム
+           ================================================================= */
+        const mainStage = document.getElementById('main-stage');
+
+        function resizeWindow() {
+            const baseWidth = 1920;
+            const baseHeight = 1080;
+            
+            // 現在開いているブラウザウィンドウのリアルタイムの幅と高さ
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // 縦横どちらに合わせるべきか、縮小・拡大の比率を計算
+            const scaleX = windowWidth / baseWidth;
+            const scaleY = windowHeight / baseHeight;
+            const scale = Math.min(scaleX, scaleY); // 画面からはみ出さない比率を選択
+
+            // ステージ全体をそのままの比率で綺麗に変形させ、画面の真ん中に寄せる
+            mainStage.style.transform = `scale(${scale})`;
+            mainStage.style.left = `${(windowWidth - baseWidth * scale) / 2}px`;
+            mainStage.style.top = `${(windowHeight - baseHeight * scale) / 2}px`;
+        }
+
+        // 画面が開いた瞬間、およびウィンドウサイズがグニグニ変更された時に即追従
+        window.addEventListener('resize', resizeWindow);
+        window.addEventListener('DOMContentLoaded', resizeWindow);
+
+        /* =================================================================
+           NodeCG 5ボンバーコアシステム
+           ================================================================= */
         const bomberRep = nodecg.Replicant('fiveBomberState', { defaultValue: { status: 'idle', count: 0, buzzerTrigger: 0 } });
         
         const activeTitle = nodecg.Replicant('activeTitle', { defaultValue: '' });
@@ -253,7 +282,6 @@
         
         function tickDropHelper(ts) { tickBomberDrop(ts); }
 
-        // カテゴリ名同期
         activeTitle.on('change', (newVal) => {
             if (newVal && newVal.trim() !== '') {
                 textBottomCategory.innerText = newVal;
@@ -263,20 +291,17 @@
             }
         });
 
-        // 🔴 正解キーワード同期（1行縮小フィッティングロジック内蔵）
         activeAnswer.on('change', (newVal) => {
             if (newVal && newVal.trim() !== '') {
                 textTopItem.innerText = `🟢 正解: ${newVal}`;
-                textTopContainer.style.display = 'flex'; // フレックス構造で表示
+                textTopContainer.style.display = 'flex'; 
 
-                // 🔴 文字数に応じてフォントサイズを動的に細かくスケールダウンさせるJavaScript仕掛け
-                // 通常は40px、文字が18文字を超え始めたら枠に収まるようにジワジワ小さくする
                 const charCount = textTopItem.innerText.length;
                 if (charCount > 18) {
                     const calculatedSize = Math.max(20, 40 - (charCount - 18) * 1.2);
                     textTopItem.style.fontSize = `${calculatedSize}px`;
                 } else {
-                    textTopItem.style.fontSize = '40px'; // 通常サイズ
+                    textTopItem.style.fontSize = '40px'; 
                 }
 
                 if (bomberCurrentStatus === 'playing' && soundCorrect) {
