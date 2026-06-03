@@ -19,7 +19,7 @@
 <body>
 
     <div class="header-area">
-        <h3>🏆 チームランキング (CSV自動同期)</h3>
+        <h3>🏆 チームランキング </h3>
         <span class="sync-tag">● 3秒周期 同期中</span>
     </div>
 
@@ -29,7 +29,7 @@
                 <tr>
                     <th>順位</th>
                     <th>チーム</th>
-                    <th>通過ラップ数</th> <th>最新ラップタイム</th>
+                    <th>現在のラップ位置</th> <th>最新ラップタイム</th>
                 </tr>
             </thead>
             <tbody id="rank-tbody"></tbody>
@@ -63,21 +63,40 @@
                 const rows = parseCSV(text);
                 if (rows.length === 0) return;
 
+                // 🔴 A列からタイトル(ラップ位置名)のリストを取得
+                const rowTitles = rows.map(r => r[0]); 
+
                 const headers = rows[0];
                 const teamDataList = [];
                 let incomingTotalLaps = 0;
 
-                for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+                // 🔴 チームデータはB列(インデックス1)から開始
+                for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
 
-                    const laps = rows.slice(1).map(r => r[colIdx]).filter(cell => cell && cell !== '-' && cell !== '');
+                    // 実際のタイムが入っている行を抽出
+                    const laps = [];
+                    const lapIndices = []; // 何行目のデータかを記録
+                    
+                    for (let rowIdx = 1; rowIdx < rows.length; rowIdx++) {
+                        const cell = rows[rowIdx][colIdx];
+                        if (cell && cell !== '-' && cell !== '') {
+                            laps.push(cell);
+                            lapIndices.push(rowIdx);
+                        }
+                    }
+
                     const lapCount = laps.length;
                     incomingTotalLaps += lapCount;
+
+                    // 🔴 現在のラップに対応するA列のタイトルを取得（未通過なら「未スタート」）
+                    const currentTitle = lapCount > 0 ? rowTitles[lapIndices[lapIndices.length - 1]] : '未スタート';
 
                     teamDataList.push({
                         name: teamName,
                         lapCount: lapCount,
+                        lapTitle: currentTitle, // A列の値
                         lastTime: lapCount > 0 ? laps[laps.length - 1] : '--:--:--'
                     });
                 }
@@ -85,6 +104,7 @@
                 if (incomingTotalLaps < currentMaxTotalLaps) return;
                 currentMaxTotalLaps = incomingTotalLaps;
 
+                // ソート（周回数が多い順 ➔ タイムが早い順）
                 teamDataList.sort((a, b) => {
                     if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
                     if (a.lapCount > 0) {
@@ -118,7 +138,7 @@
                     tr.innerHTML = `
                         <td class="${rankClass}">${currentRank}位</td>
                         <td style="font-weight: bold;">${currentTeam.name}</td>
-                        <td><span style="background: #e0f2f1; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapCount} 回</span></td>
+                        <td><span style="background: #e0f2f1; padding: 4px 10px; border-radius: 4px; font-weight: bold; color: #009688;">${currentTeam.lapTitle}</span></td>
                         <td class="time-cell">${currentTeam.lastTime}</td>
                     `;
                     tbody.appendChild(tr);
