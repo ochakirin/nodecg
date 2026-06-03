@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DoraLeague - 5 Bomber Layout Adjusted</title>
+    <title>DoraLeague - 5 Bomber Perfect Audio</title>
     <style>
         body {
             margin: 0;
@@ -167,7 +167,6 @@
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
         
-        // 音声エラーで全体が止まらないように安全に読み込み
         let soundBgm, soundClear, soundCorrect;
         try {
             soundBgm = new Audio('sounds/bgm.mp3');
@@ -201,7 +200,8 @@
                 bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
             } else {
                 bomberCurrentStatus = 'timeup';
-                if (soundBgm) soundBgm.pause();
+                // 🔴 【変更】30秒経過しても soundBgm.pause(); は実行せず、そのまま後ろの音源を流し続けます！
+                console.log("30秒経過（タイムアップ）。BGMは継続再生します。");
             }
         }
 
@@ -245,7 +245,7 @@
             const targetLaneIdx = Math.min(newVal.count, 4);
             bombActor.style.left = `${targetLaneIdx * LANE_WIDTH}px`;
 
-            // 【スタートの同期処理】
+            // 【スタート】
             if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
                 bomberCurrentStatus = 'playing';
                 bomberStartTime = null; 
@@ -260,19 +260,19 @@
                 bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
             }
 
-            // 【5問クリアの同期処理】
+            // 【5問クリア】
             if (newVal.status === 'cleared' && bomberCurrentStatus === 'playing') {
                 bomberCurrentStatus = 'cleared';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken); 
 
-                if (soundBgm) soundBgm.pause();
+                if (soundBgm) soundBgm.pause(); // クリア達成時は、ファンファーレ(clear.mp3)を際立たせるためBGMを止めます
                 if (soundClear) {
                     soundClear.currentTime = 0;
                     soundClear.play().catch(e => console.log("Clear Sound Blocked:", e));
                 }
             }
 
-            // 【リセットの同期処理】
+            // 【リセット】
             if (newVal.status === 'idle') {
                 bomberCurrentStatus = 'idle';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
