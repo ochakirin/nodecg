@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DoraLeague - 5 Bomber Perfect Edition</title>
+    <title>DoraLeague - 5 Bomber Perfect Sync</title>
     <style>
         body {
             margin: 0;
@@ -30,35 +30,35 @@
         .bomber-lane {
             flex: 1;
             height: 100%;
-            border-right: 4px dashed rgba(255, 255, 255, 0.12);
+            border-right: 4px dashed rgba(255, 255, 255, 0.15);
             box-sizing: border-box;
             position: relative;
             display: flex;
             flex-direction: column;
             justify-content: flex-end; 
             align-items: center;
-            padding-bottom: 120px; /* 爆弾と被らないように少し上に調整 */
+            padding-bottom: 120px; 
         }
         .bomber-lane:last-child { border-right: none; }
 
-        /* 🔴 表示を「1人目〜5人目」に変更し、初期は灰色、クリアで緑色に発光 */
+        /* 🔴 表示は「1人目〜5人目」。初期は灰色、正解数に応じて緑色に変化 */
         .lane-status-text {
             font-size: 38px;
             font-weight: 900;
             color: #757575; /* 初期：灰色 */
-            background: rgba(30, 30, 30, 0.6);
-            padding: 12px 35px;
-            border-radius: 4px; /* ネプリーグ風の角丸四角形 */
+            background: rgba(30, 30, 30, 0.75);
+            padding: 12px 40px;
+            border-radius: 6px;
             border: 3px solid #616161;
             text-shadow: 0 4px 6px rgba(0,0,0,0.6);
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
             z-index: 6;
         }
 
-        /* 🔴 累計数に応じてアクティブ（緑色）になった時のスタイル */
+        /* 🔴 累計正解数に到達したレーンは鮮やかな緑色に発光 */
         .bomber-lane.is-active .lane-status-text {
-            color: #00ff66; /* 鮮やかなグリーン */
-            background: rgba(0, 77, 26, 0.7);
+            color: #00ff66; 
+            background: rgba(0, 60, 20, 0.85);
             border-color: #00ff66;
             box-shadow: 0 0 25px rgba(0, 255, 102, 0.6);
             transform: scale(1.05);
@@ -99,36 +99,36 @@
         /* =================================================================
            テロップ表示エリア（画面中央の上・下）
            ================================================================= */
-        /* 🔴 画面中央の上：直近チェックした内容（キーワードなど） */
+        /* 🔴 画面中央の上：直近でチェックを入れた内容 */
         .info-top-container {
             position: absolute;
             top: 120px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(26, 35, 126, 0.9); /* 高級感のあるブルー */
+            background: rgba(26, 35, 126, 0.92); /* 高級感のあるネイビーブルー */
             border: 3px solid #2979ff;
-            padding: 10px 40px;
+            padding: 10px 45px;
             border-radius: 8px;
             color: #ffffff;
-            font-size: 36px;
+            font-size: 38px;
             font-weight: bold;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             z-index: 20;
-            min-width: 400px;
+            min-width: 450px;
             text-align: center;
-            display: none; /* 初期状態は非表示 */
+            display: none; 
         }
 
-        /* 🔴 画面中央の下：カテゴリ選択の内容 */
+        /* 🔴 画面中央の下：選択されたカテゴリ名 */
         .info-bottom-container {
             position: absolute;
             bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(230, 74, 25, 0.95); /* 情熱的なオレンジ・レッド */
-            border: 3px solid #ff3d00;
-            padding: 15px 60px;
-            border-radius: 50px; /* 綺麗な楕円型 */
+            background: rgba(211, 47, 47, 0.95); /* 力強い赤オレンジ */
+            border: 3px solid #ff1744;
+            padding: 14px 60px;
+            border-radius: 50px; 
             color: #ffffff;
             font-size: 46px;
             font-weight: 900;
@@ -159,18 +159,22 @@
     <div class="info-bottom-container" id="text-bottom-category">---</div>
 
     <script>
-        // 両方のReplicantを結合・監視
+        // 5ボンバーシステム連携用のReplicant群
         const bomberRep = nodecg.Replicant('fiveBomberState', { defaultValue: { status: 'idle', count: 0 } });
-        const inputRep = nodecg.Replicant('fiveBomberInput', { defaultValue: { category: '', lastCheckedItem: '', checks: [false, false, false, false, false] } });
+        
+        // 🔴 5bomber.htmlが使っている実物のメモリをダイレクト監視
+        const activeTitle = nodecg.Replicant('activeTitle', { defaultValue: '' });
+        const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
+        const checkedItems = nodecg.Replicant('checkedItems', { defaultValue: [] });
         
         const bombActor = document.getElementById('bomb-actor');
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
         
-        // 音声定義
+        // 音声アセット定義
         const soundBgm = new Audio('sounds/bgm.mp3');
         const soundClear = new Audio('sounds/clear.mp3');
-        const soundCorrect = new Audio('sounds/correct.mp3'); // 🔴 正解音の追加
+        const soundCorrect = new Audio('sounds/correct.mp3'); // 🔴 追加：単発の正解音
         soundBgm.loop = true;
 
         const LANE_WIDTH = 384;       
@@ -181,9 +185,9 @@
         let bomberAnimationFrameToken = null;
         let bomberStartTime = null;
         let bomberCurrentStatus = 'idle';
-        let previousTotalCount = 0; // 正解音トリガー用の過去カウント記録
+        let previousTotalCount = 0; // 正解音用の前回復習カウンター
 
-        // 落下アニメーションタイマー
+        // 30秒の滑らかな落下制御を行うループ
         function tickBomberDrop(timestamp) {
             if (bomberCurrentStatus !== 'playing') return;
 
@@ -202,41 +206,37 @@
             }
         }
 
-        // 🔴 回答入力側のReplicant（カテゴリ・項目テキスト・正解音）を検知して描画
-        inputRep.on('change', (newVal) => {
-            if (!newVal) return;
-
-            // ① 画面中央の下：カテゴリ選択の表示
-            if (newVal.category && newVal.category.trim() !== '') {
-                textBottomCategory.innerText = newVal.category;
+        // 🔴 1. カテゴリ選択（activeTitle）を監視して画面下に常時表示
+        activeTitle.on('change', (newVal) => {
+            if (newVal && newVal.trim() !== '') {
+                textBottomCategory.innerText = newVal;
                 textBottomCategory.style.display = 'block';
             } else {
                 textBottomCategory.style.display = 'none';
             }
+        });
 
-            // ② 画面中央の上：直近チェックされた項目（上書き表示）
-            if (newVal.lastCheckedItem && newVal.lastCheckedItem.trim() !== '') {
-                textTopItem.innerText = `🟢 正解: ${newVal.lastCheckedItem}`;
+        // 🔴 2. 直近の正解（activeAnswer）を監視して画面上に常時表示＆正解音トリガー
+        activeAnswer.on('change', (newVal) => {
+            if (newVal && newVal.trim() !== '') {
+                textTopItem.innerText = `🟢 正解: ${newVal}`;
                 textTopItem.style.display = 'block';
+
+                // BGMが流れている（タイマー進行中）のときだけ、チェック時に「correct.mp3」を鳴らす
+                if (bomberCurrentStatus === 'playing') {
+                    soundCorrect.currentTime = 0;
+                    soundCorrect.play().catch(e => console.log("Audio block:", e));
+                }
             } else {
                 textTopItem.style.display = 'none';
             }
-
-            // ③ 項目に新しくチェックが入ったら「correct.mp3」を鳴らすトリガー
-            const currentTotalCount = newVal.checks ? newVal.checks.filter(c => c).length : 0;
-            if (currentTotalCount > previousTotalCount && bomberCurrentStatus === 'playing') {
-                soundCorrect.currentTime = 0;
-                soundCorrect.play().catch(e => console.log("Correct sound block:", e));
-            }
-            previousTotalCount = currentTotalCount;
         });
 
-        // 運行管理側のReplicant（タイマー、爆弾移動、BGM制御）を検知して描画
+        // 3. 運行管理パネルからのゲームステータス同期
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
 
-            // 🔴 累計正解数(0〜5)に応じて、左から順にレーンを「灰色 ➔ 緑色」にアクティブ化
-            // 例：countが 3 なら、インデックス 0, 1, 2 (1人目〜3人目)が緑色に点灯
+            // 🔴 累計正解数(0〜5)を基に、左から順にレーンを「灰色 ➔ 緑色」にアクティブ化
             for (let i = 0; i < 5; i++) {
                 const laneEl = document.getElementById(`lane-${i}`);
                 if (i < newVal.count) {
@@ -246,7 +246,7 @@
                 }
             }
 
-            // 爆弾の横スライド位置の決定（最大インデックス4）
+            // 爆弾の横スライド位置の決定（最大5番目のレーン）
             const targetLaneIdx = Math.min(newVal.count, 4);
             bombActor.style.left = `${targetLaneIdx * LANE_WIDTH}px`;
 
