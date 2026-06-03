@@ -19,7 +19,7 @@
 <body>
 
     <div class="header-area">
-        <h3>🏆 チームランキング </h3>
+        <h3>🏆 チームランキング (CSV自動同期)</h3>
         <span class="sync-tag">● 3秒周期 同期中</span>
     </div>
 
@@ -29,7 +29,8 @@
                 <tr>
                     <th>順位</th>
                     <th>チーム</th>
-                    <th>現在のラップ位置</th> <th>最新ラップタイム</th>
+                    <th>現在のラップ位置</th>
+                    <th>最新ラップタイム</th>
                 </tr>
             </thead>
             <tbody id="rank-tbody"></tbody>
@@ -54,6 +55,24 @@
             return rows;
         }
 
+        // 🔴 タイム文字列("HH:MM:SS")を純粋な数値の「秒数」に変換する関数
+        function timeToSeconds(timeStr) {
+            if (!timeStr || timeStr.includes('-')) return Infinity; // 未スタートは最下位へ沈める
+            
+            const parts = timeStr.split(':');
+            if (parts.length === 3) {
+                const hrs = parseInt(parts[0], 10) || 0;
+                const mins = parseInt(parts[1], 10) || 0;
+                const secs = parseInt(parts[2], 10) || 0;
+                return (hrs * 3600) + (mins * 60) + secs;
+            } else if (parts.length === 2) {
+                const mins = parseInt(parts[0], 10) || 0;
+                const secs = parseInt(parts[1], 10) || 0;
+                return (mins * 60) + secs;
+            }
+            return Infinity;
+        }
+
         async function fetchAndRender() {
             try {
                 const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
@@ -63,21 +82,20 @@
                 const rows = parseCSV(text);
                 if (rows.length === 0) return;
 
-                // 🔴 A列からタイトル(ラップ位置名)のリストを取得
+                // A列からタイトル(ラップ位置名)のリストを取得
                 const rowTitles = rows.map(r => r[0]); 
 
                 const headers = rows[0];
                 const teamDataList = [];
                 let incomingTotalLaps = 0;
 
-                // 🔴 チームデータはB列(インデックス1)から開始
+                // チームデータはB列(インデックス1)から開始
                 for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                     const teamName = headers[colIdx];
                     if (!teamName) continue;
 
-                    // 実際のタイムが入っている行を抽出
                     const laps = [];
-                    const lapIndices = []; // 何行目のデータかを記録
+                    const lapIndices = []; 
                     
                     for (let rowIdx = 1; rowIdx < rows.length; rowIdx++) {
                         const cell = rows[rowIdx][colIdx];
@@ -90,13 +108,13 @@
                     const lapCount = laps.length;
                     incomingTotalLaps += lapCount;
 
-                    // 🔴 現在のラップに対応するA列のタイトルを取得（未通過なら「未スタート」）
+                    // 現在のラップに対応するA列のタイトルを取得（未通過なら「未スタート」）
                     const currentTitle = lapCount > 0 ? rowTitles[lapIndices[lapIndices.length - 1]] : '未スタート';
 
                     teamDataList.push({
                         name: teamName,
                         lapCount: lapCount,
-                        lapTitle: currentTitle, // A列の値
+                        lapTitle: currentTitle,
                         lastTime: lapCount > 0 ? laps[laps.length - 1] : '--:--:--'
                     });
                 }
@@ -104,13 +122,20 @@
                 if (incomingTotalLaps < currentMaxTotalLaps) return;
                 currentMaxTotalLaps = incomingTotalLaps;
 
-                // ソート（周回数が多い順 ➔ タイムが早い順）
+                // 🔴 秒数計算を用いた正確なランキング並び替えロジック
                 teamDataList.sort((a, b) => {
-                    if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount;
-                    if (a.lapCount > 0) {
-                        if (a.lastTime < b.lastTime) return -1;
-                        if (a.lastTime > b.lastTime) return 1;
+                    // 1. まず通過ラップ数が多いチームが上
+                    if (b.lapCount !== a.lapCount) {
+                        return b.lapCount - a.lapCount; 
                     }
+                    
+                    // 2. ラップ数が同じなら、タイムが早い(秒数が小さい)チームが上
+                    if (a.lapCount > 0) {
+                        const secA = timeToSeconds(a.lastTime);
+                        const secB = timeToSeconds(b.lastTime);
+                        return secA - secB;
+                    }
+                    
                     return 0;
                 });
 
@@ -124,6 +149,8 @@
 
                     if (i > 0) {
                         const prevTeam = teamDataList[i - 1];
+                        
+                        // 同順位（タイ記録）の判定ロジック
                         const isLapSame = currentTeam.lapCount === prevTeam.lapCount;
                         const isTimeSame = currentTeam.lastTime === prevTeam.lastTime;
 
