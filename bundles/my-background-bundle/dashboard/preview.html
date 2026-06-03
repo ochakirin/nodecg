@@ -6,25 +6,56 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
         .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         h3 { margin: 0; font-size: 16px; color: #333; }
-        .preview-container { background: white; border-radius: 8px; border: 1px solid #e1e4e8; max-height: 540px; overflow: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+        
+        .sync-btn {
+            background-color: #673AB7;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s, transform 0.05s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sync-btn:hover { background-color: #512DA8; }
+        .sync-btn:active { transform: scale(0.95); }
+        .sync-btn:disabled { background-color: #a892d1; cursor: not-allowed; transform: none; }
+
+        .preview-container { 
+            background: white; 
+            border-radius: 8px; 
+            border: 1px solid #e1e4e8; 
+            max-height: 540px; 
+            overflow: auto; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+            margin-top: 5px;
+        }
+        
+        table { 
+            width: max-content; 
+            min-width: 100%;
+            border-collapse: collapse; 
+            font-size: 12px; 
+            white-space: nowrap; 
+        }
+        
         th { background: #673AB7; color: white; font-weight: bold; padding: 10px 15px; border: 1px solid #512DA8; position: sticky; top: 0; z-index: 10; text-align: center; min-width: 90px; }
         td { padding: 8px 12px; border: 1px solid #eaecef; color: #333; text-align: center; font-family: 'Courier New', Courier, monospace; }
         tr:nth-child(even) { background-color: #fcfaff; }
         
-        /* 🔴 A列のタイトル（位置名称）を左側にガチッと固定する設定 */
         .row-num-cell { font-weight: bold; background: #f6f8fa; color: #555; position: sticky; left: 0; z-index: 5; border-right: 2px solid #d1d5da; min-width: 100px; text-align: left; font-family: inherit; }
         th:first-child { position: sticky; left: 0; z-index: 15; background: #512DA8; min-width: 100px; text-align: left; }
         
         .status-msg { padding: 30px; text-align: center; color: #586069; font-style: italic; }
-        .sync-tag { font-size: 11px; color: #fff; background: #673AB7; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="header-area">
-        <h3>📊 シートプレビュー</h3>
-        <span class="sync-tag">● 3秒周期 同期中</span>
+        <h3>📊 シートプレビュー（元データ形状再現）</h3>
+        <button id="btn-sync" class="sync-btn">🔄 データを手動同期（ラグ0秒）</button>
     </div>
 
     <div class="preview-container">
@@ -32,13 +63,15 @@
             <thead id="preview-thead"></tbody>
             <tbody id="preview-tbody"></tbody>
         </table>
-        <div id="status" class="status-msg">CSVデータを読み込み中...</div>
+        <div id="status" class="status-msg">上の「手動同期」ボタンを押すと、正規のリクエストを判定してGASからリアルタイムデータを取得します。</div>
     </div>
 
     <script>
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTjp2K1Oyni7zvUGaKazgbRqg3Cp41SYa3bFJ_jQgOt5lKboTD8x5KruTkjKNZPWhw9e_DD2gpwBoav/pub?output=csv';
+        // ⚠️ あなたのGASの「ウェブアプリのURL」に差し替えてください
+        const SHEET_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
 
         let currentMaxTotalLaps = 0;
+        const btnSync = document.getElementById('btn-sync');
 
         function parseCSV(text) {
             const rows = [];
@@ -53,15 +86,28 @@
         }
 
         async function fetchPreview() {
+            btnSync.disabled = true;
+            btnSync.innerText = '⌛ 同期中...';
+
             try {
-                const res = await fetch(SHEET_URL + '&cache_bust=' + Date.now());
-                if (!res.ok) return;
+                // 🔴 URLの末尾に「action=fetch_preview」を結合し、手動ボタンが押されたリクエストであることを明確にGASへ伝えます
+                const requestUrl = `${SHEET_URL}?action=fetch_preview&cache_bust=${Date.now()}`;
 
+                const res = await fetch(requestUrl, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+                
                 const text = await res.text();
-                const rows = parseCSV(text);
-                if (rows.length === 0) return;
 
-                // 巻き戻りガード用の総周回数カウント (B列[1]以降をカウント)
+                // GAS側から拒否メッセージが返ってきた場合のハンドリング
+                if (text.startsWith("Error:")) {
+                    throw new Error(text);
+                }
+
+                const rows = parseCSV(text);
+                if (rows.length === 0) throw new Error('データが空です');
+
                 let incomingTotalLaps = 0;
                 for (let c = 1; c < rows[0].length; c++) {
                     for (let r = 1; r < rows.length; r++) {
@@ -70,22 +116,23 @@
                     }
                 }
 
-                if (incomingTotalLaps < currentMaxTotalLaps) return;
+                if (incomingTotalLaps < currentMaxTotalLaps) {
+                    finalizeSync();
+                    return;
+                }
                 currentMaxTotalLaps = incomingTotalLaps;
 
                 document.getElementById('status').style.display = 'none';
 
-                // 1. ヘッダー（1行目：チーム名一覧）の描画
+                // 1. ヘッダーの描画
                 const thead = document.getElementById('preview-thead');
                 thead.innerHTML = '';
                 const headerTr = document.createElement('tr');
                 
-                // 🔴 左上の見出し。A列が「位置タイトル」になったため名称をフィット
                 const emptyTh = document.createElement('th');
                 emptyTh.innerText = '位置 / タイトル';
                 headerTr.appendChild(emptyTh);
 
-                // 🔴 B列(インデックス1)から右側のチーム名ヘッダーを描画
                 for (let c = 1; c < rows[0].length; c++) {
                     const th = document.createElement('th');
                     th.innerText = rows[0][c] || '-';
@@ -93,20 +140,18 @@
                 }
                 thead.appendChild(headerTr);
 
-                // 2. ボディ（2行目以降）を行列そのまま描画
+                // 2. ボディの描画
                 const tbody = document.getElementById('preview-tbody');
                 tbody.innerHTML = '';
 
                 for (let r = 1; r < rows.length; r++) {
                     const tr = document.createElement('tr');
                     
-                    // 🔴 行の先頭（LAPS列）に、数字ではなく【A列の値】をそのまま代入して固定
                     const numTd = document.createElement('td');
                     numTd.className = 'row-num-cell';
-                    numTd.innerText = rows[r][0] || `Lap ${r}`; // 万が一空欄なら代替表記
+                    numTd.innerText = rows[r][0] || `Lap ${r}`;
                     tr.appendChild(numTd);
 
-                    // 🔴 B列(インデックス1)から右側のタイムデータを横に並べる
                     for (let c = 1; c < rows[r].length; c++) {
                         const td = document.createElement('td');
                         const val = rows[r][c];
@@ -121,12 +166,22 @@
                 }
 
             } catch (e) {
-                console.error("プレビューCSV取得エラー:", e);
+                console.error("プレビューGAS取得エラー:", e);
+                alert(`データの同期に失敗しました。\n${e.message}`);
+            } finally {
+                finalizeSync();
             }
         }
 
+        function finalizeSync() {
+            btnSync.disabled = false;
+            btnSync.innerText = '🔄 データを手動同期（ラグ0秒）';
+        }
+
+        btnSync.addEventListener('click', fetchPreview);
+
+        // 最初の1回だけ自動実行
         fetchPreview();
-        setInterval(fetchPreview, 3000);
     </script>
 </body>
 </html>
