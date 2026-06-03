@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DoraLeague - 5 Bomber Perfect Audio</title>
+    <title>DoraLeague - 5 Bomber Final Edition</title>
     <style>
         body {
             margin: 0;
@@ -157,7 +157,7 @@
     <div class="info-bottom-container" id="text-bottom-category">---</div>
 
     <script>
-        const bomberRep = nodecg.Replicant('fiveBomberState', { defaultValue: { status: 'idle', count: 0 } });
+        const bomberRep = nodecg.Replicant('fiveBomberState', { defaultValue: { status: 'idle', count: 0, buzzerTrigger: 0 } });
         
         const activeTitle = nodecg.Replicant('activeTitle', { defaultValue: '' });
         const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
@@ -167,12 +167,13 @@
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
         
-        let soundBgm, soundClear, soundCorrect;
+        let soundBgm, soundClear, soundCorrect, soundBuzzer;
         try {
             soundBgm = new Audio('sounds/bgm.mp3');
             soundClear = new Audio('sounds/clear.mp3');
             soundCorrect = new Audio('sounds/correct.mp3'); 
-            soundBgm.loop = true;
+            soundBuzzer = new Audio('sounds/buzzer.mp3'); // 🔴 追加：ブザー音
+            // soundBgm.loop = true; 🔴 削除：ループを無効化して1回のみ再生にします
         } catch(e) {
             console.error("Audio initialization failed:", e);
         }
@@ -185,6 +186,7 @@
         let bomberAnimationFrameToken = null;
         let bomberStartTime = null;
         let bomberCurrentStatus = 'idle';
+        let localBuzzerCount = 0; // ブザー連打判定用のローカルカウンタ
 
         function tickBomberDrop(timestamp) {
             if (bomberCurrentStatus !== 'playing') return;
@@ -197,13 +199,14 @@
             bombActor.style.top = `${currentTop}px`;
 
             if (progress < 1) {
-                bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
+                bomberAnimationFrameToken = requestAnimationFrame(tickDropHelper);
             } else {
                 bomberCurrentStatus = 'timeup';
-                // 🔴 【変更】30秒経過しても soundBgm.pause(); は実行せず、そのまま後ろの音源を流し続けます！
-                console.log("30秒経過（タイムアップ）。BGMは継続再生します。");
             }
         }
+        
+        // requestAnimationFrame用ヘルパー
+        function tickDropHelper(ts) { tickBomberDrop(ts); }
 
         activeTitle.on('change', (newVal) => {
             if (newVal && newVal.trim() !== '') {
@@ -231,6 +234,15 @@
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
 
+            // 🔴 不正解（ブザー）ボタンの連動トリガー
+            if (newVal.buzzerTrigger !== undefined && newVal.buzzerTrigger > localBuzzerCount) {
+                localBuzzerCount = newVal.buzzerTrigger;
+                if (soundBuzzer) {
+                    soundBuzzer.currentTime = 0;
+                    soundBuzzer.play().catch(e => console.log("Buzzer play blocked:", e));
+                }
+            }
+
             for (let i = 0; i < 5; i++) {
                 const laneEl = document.getElementById(`lane-${i}`);
                 if (laneEl) {
@@ -249,6 +261,7 @@
             if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
                 bomberCurrentStatus = 'playing';
                 bomberStartTime = null; 
+                localBuzzerCount = newVal.buzzerTrigger || 0; // カウンタの同期
                 
                 if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
                 if (soundBgm) {
@@ -257,7 +270,7 @@
                 }
 
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
-                bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
+                bomberAnimationFrameToken = requestAnimationFrame(tickDropHelper);
             }
 
             // 【5問クリア】
@@ -265,7 +278,7 @@
                 bomberCurrentStatus = 'cleared';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken); 
 
-                if (soundBgm) soundBgm.pause(); // クリア達成時は、ファンファーレ(clear.mp3)を際立たせるためBGMを止めます
+                if (soundBgm) soundBgm.pause(); 
                 if (soundClear) {
                     soundClear.currentTime = 0;
                     soundClear.play().catch(e => console.log("Clear Sound Blocked:", e));
@@ -277,9 +290,11 @@
                 bomberCurrentStatus = 'idle';
                 if (bomberAnimationFrameToken) cancelAnimationFrame(bomberAnimationFrameToken);
                 bomberStartTime = null;
+                localBuzzerCount = 0;
 
                 if (soundBgm) { soundBgm.pause(); soundBgm.currentTime = 0; }
                 if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
+                if (soundBuzzer) { soundBuzzer.pause(); soundBuzzer.currentTime = 0; }
 
                 bombActor.style.top = `${START_TOP}px`;
                 bombActor.style.left = `0px`;
