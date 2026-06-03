@@ -40,22 +40,24 @@
         function handleLapAction(teamNum, action, buttons) {
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
-
             const targetColumn = teamNum + 1;
 
-            // 🔴 GAS側の認証をパスするためのペイロード（シークレットトークン付き）
             const payload = { 
                 action: action, 
                 teamNum: targetColumn, 
                 timeStr: timeStr,
-                secret_token: "lap_secure_pass_2026" // 👈 GAS側に埋め込んだキーと完全一致させます
+                secret_token: "lap_secure_pass_2026" 
             };
 
+            // 1. GASへデータを送信
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
+            }).then(() => {
+                // 🔴 2. 書き込みリクエストが完了したタイミングで、プレビュー画面へ「データ読みにいって」と通知
+                nodecg.sendMessage('trigger_auto_sync');
             }).catch(error => {
                 console.error('GAS送信エラー:', error);
             });
