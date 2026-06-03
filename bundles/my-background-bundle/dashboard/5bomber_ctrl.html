@@ -4,109 +4,93 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
-        .ctrl-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .ctrl-group { display: flex; gap: 10px; margin-bottom: 15px; }
         button { flex: 1; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; transition: background 0.1s, transform 0.05s; }
         button:active { transform: scale(0.95); }
         .btn-start { background-color: #ff5722; }
         .btn-start:hover { background-color: #e64a19; }
         .btn-reset { background-color: #607d8b; }
         .btn-reset:hover { background-color: #455a64; }
-        
-        .check-container { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .check-title { font-size: 13px; font-weight: bold; color: #555; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-        .check-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; font-weight: bold; }
-        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .status-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status-title { font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .status-val { font-size: 24px; font-weight: 900; color: #e91e63; }
     </style>
 </head>
 <body>
 
     <div class="ctrl-group">
         <button class="btn-start" id="btn-start">🚀 START (BGMオン)</button>
-        <button class="btn-reset" id="btn-reset">🔄 RESET</button>
+        <button class="btn-reset" id="btn-reset">🔄 RESET (全初期化)</button>
     </div>
 
-    <div class="check-container">
-        <div class="check-title">💣 正解チェック（累計5個でクリア）</div>
-        <div id="checkbox-list"></div>
+    <div class="status-box">
+        <div class="status-title">現在の回答入力側の累計正解数</div>
+        <div class="status-val" id="sync-count">0 / 5</div>
     </div>
 
     <script>
-        // 5ボンバーの全状態（進行ステータス、合計正解数、各チェック状況）を管理するReplicant
+        // 5ボンバーの運行状態を管理するReplicant
         const bomberRep = nodecg.Replicant('fiveBomberState', {
-            defaultValue: { status: 'idle', count: 0, checks: [false, false, false, false, false] }
+            defaultValue: { status: 'idle', count: 0 }
+        });
+
+        // 🔴 過去に作成された「5ボンバー回答入力(5bomber.html)」側が使っているReplicantの値を監視・操作します
+        // ※もし実際のReplicant名やデータ構造が異なる場合は、NodeCGが自動生成した名前(例: '5-bomber' など)に合わせてください。
+        // ここでは一般的な構造として読み込みます。
+        const inputRep = nodecg.Replicant('fiveBomberInput', {
+            defaultValue: { category: '', lastCheckedItem: '', checks: [false, false, false, false, false] }
         });
 
         const btnStart = document.getElementById('btn-start');
         const btnReset = document.getElementById('btn-reset');
-        const checkList = document.getElementById('checkbox-list');
+        const syncCount = document.getElementById('sync-count');
 
-        // チェックボックス5本を動的に生成
-        for (let i = 0; i < 5; i++) {
-            const div = document.createElement('div');
-            div.className = 'check-row';
-            div.innerHTML = `
-                <span>問 ${i + 1} クリア</span>
-                <input type="checkbox" data-index="${i}">
-            `;
-            checkList.appendChild(div);
-        }
-
-        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-
-        // 他のパネルや画面での変更を、この管理画面のボタンやチェックにリアルタイム同期
+        // 状態を常時監視してボタンを制御
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
-            
-            // プレイ中（playing）のときはスタートボタンを無効化して進行中表示にする
             if (newVal.status === 'playing') {
                 btnStart.disabled = true;
-                btnStart.innerText = '⏱️ 進行中...';
+                btnStart.innerText = '⏱️ タイマー進行中...';
                 btnStart.style.opacity = 0.5;
             } else {
                 btnStart.disabled = false;
                 btnStart.innerText = '🚀 START (BGMオン)';
                 btnStart.style.opacity = 1;
             }
-
-            // チェックボックスの同期
-            checkboxes.forEach((cb, idx) => {
-                cb.checked = newVal.checks[idx];
-            });
         });
 
-        // スタートボタンが押されたとき
+        // 回答入力側のチェック数を監視し、ゲーム運行ステータスを自動更新
+        inputRep.on('change', (newVal) => {
+            if (!newVal || !newVal.checks) return;
+            
+            const activeCount = newVal.checks.filter(c => c).length;
+            syncCount.innerText = `${activeCount} / 5`;
+
+            // プレイ中に累計5個に達したら自動でクリア状態へ移行
+            if (activeCount >= 5 && bomberRep.value.status === 'playing') {
+                bomberRep.value.status = 'cleared';
+            }
+            // カウント数だけは常にゲーム全体に共有
+            bomberRep.value.count = activeCount;
+        });
+
+        // スタート
         btnStart.addEventListener('click', () => {
             if (bomberRep.value.status !== 'playing') {
                 bomberRep.value.status = 'playing';
             }
         });
 
-        // リセットボタンが押されたとき
+        // 🔴 リセットボタン：自身のタイマーだけでなく、回答入力側のデータも全消去
         btnReset.addEventListener('click', () => {
-            bomberRep.value = {
-                status: 'idle',
-                count: 0,
-                checks: [false, false, false, false, false]
+            bomberRep.value = { status: 'idle', count: 0 };
+            
+            // 回答入力側のReplicantも初期状態に上書きしてチェックを全部外す
+            inputRep.value = {
+                category: '',          // カテゴリクリア
+                lastCheckedItem: '',   // 直近のキーワードクリア
+                checks: [false, false, false, false, false] // チェック全解除
             };
-        });
-
-        // チェックボックスがクリックされたときの処理
-        checkboxes.forEach((cb) => {
-            cb.addEventListener('change', (e) => {
-                const idx = parseInt(e.target.dataset.index);
-                const currentChecks = [...bomberRep.value.checks];
-                currentChecks[idx] = e.target.checked;
-
-                // チェックが入っている（true）個数をカウント
-                const activeCount = currentChecks.filter(c => c).length;
-
-                // 累計5個チェックがついたらステータスを自動で 'cleared' に変更する
-                bomberRep.value = {
-                    status: activeCount >= 5 ? 'cleared' : bomberRep.value.status,
-                    count: activeCount,
-                    checks: currentChecks
-                };
-            });
         });
     </script>
 </body>
