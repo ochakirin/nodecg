@@ -1,99 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ドラリーグ</title>
+    <title>DoraLeague - 5 Bomber Edition</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            width: 1920px; 
-            height: 1080px; 
-            overflow: hidden; 
-            font-family: "Meiryo", "MS PGothic", sans-serif; 
-            color: white; 
-            background: transparent;
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 1080px;
+            background: transparent; /* OBS透過用 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            position: relative;
         }
 
-        /* 🔴 上部のタイトル：大きく・黄色・黒ふちに修正 */
-        #header-title { 
-            position: absolute; 
-            top: 40px; 
-            width: 100%; 
-            text-align: center; 
-            
-            /* 文字の見た目 */
-            font-size: 90px;           /* 60pxから90pxに拡大 */
-            font-weight: 900;          /* 極太 */
-            color: #FFEB3B;            /* 黄色 */
-            
-            /* 頑丈な黒ふち（text-shadowを重ねて太い縁を作成） */
-            text-shadow: 
-                4px 4px 0 #000, -4px -4px 0 #000,
-                4px -4px 0 #000, -4px 4px 0 #000,
-                4px 0px 0 #000, -4px 0px 0 #000,
-                0px 4px 0 #000, 0px -4px 0 #000,
-                0 0 20px rgba(0,0,0,0.8);
-            
-            letter-spacing: 4px;
+        /* 🔴 画面を均等に5分割するレーンシステム */
+        .bomber-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            z-index: 5;
+            pointer-events: none;
         }
 
-        /* 下部の回答表示（以前の設定を維持しつつ微調整） */
-        #answer-display { 
-            position: absolute; 
-            bottom: 100px; 
-            width: 100%; 
-            text-align: center; 
-            font-size: 150px; 
-            font-weight: bold; 
-            color: #FFEB3B; 
-            
-            /* 頑丈な黒ふち */
-            text-shadow: 
-                5px 5px 0 #000, -5px -5px 0 #000,
-                5px -5px 0 #000, -5px 5px 0 #000,
-                0 0 30px rgba(0,0,0,1);
-            
-            transition: transform 0.1s; 
+        .bomber-lane {
+            flex: 1;
+            height: 100%;
+            border-right: 4px dashed rgba(255, 255, 255, 0.15); /* レーン境界線を見やすく */
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* 下詰めで配置 */
+            align-items: center;
+            padding-bottom: 80px; /* 下部からの浮かせ具合 */
+        }
+        .bomber-lane:last-child { border-right: none; }
+
+        /* 🔴 【新設】各レーンの回答状態を表示するテキスト枠 */
+        .lane-status-text {
+            font-size: 42px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.3); /* 初期状態（未クリア）は薄い白 */
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 30px;
+            border-radius: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+            z-index: 6;
         }
 
-        .pop { transform: scale(1.1); }
+        /* 🔴 正解チェックが入った時のリッチな装飾変化 */
+        .bomber-lane.is-cleared .lane-status-text {
+            color: #00ff66; /* 鮮やかなクリアグリーン */
+            background: rgba(0, 230, 118, 0.25);
+            border-color: #00ff66;
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+            transform: scale(1.1); /* 少し大きくして目立たせる */
+        }
+
+        /* レーン最下部のゴール境界線 */
+        .lane-goal {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 23, 72, 0.2);
+        }
+
+        /* 💣 ロックボムの制御コンテナ */
+        .bomb-container {
+            position: absolute;
+            top: -150px; /* 初期位置：画面外の上空 */
+            left: 0px; 
+            width: 384px; /* 1920px / 5レーン = 384px */
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 15;
+            pointer-events: none;
+            transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1), top 0.1s linear;
+        }
+
+        .bomb-img {
+            width: 150px; /* 爆弾を少し大きくアピール */
+            height: 150px;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
+        }
     </style>
 </head>
 <body>
-    <div id="header-title"></div>
-    <div id="answer-display"></div>
+
+    <div class="bomber-stage">
+        <div class="bomber-lane" id="lane-0"><div class="lane-status-text">問 1</div><div class="lane-goal"></div></div>
+        <div class="bomber-lane" id="lane-1"><div class="lane-status-text">問 2</div><div class="lane-goal"></div></div>
+        <div class="bomber-lane" id="lane-2"><div class="lane-status-text">問 3</div><div class="lane-goal"></div></div>
+        <div class="bomber-lane" id="lane-3"><div class="lane-status-text">問 4</div><div class="lane-goal"></div></div>
+        <div class="bomber-lane" id="lane-4"><div class="lane-status-text">問 5</div><div class="lane-goal"></div></div>
+    </div>
+
+    <div class="bomb-container" id="bomb-actor">
+        <img src="rockbomb.webp" class="bomb-img" alt="bomb">
+    </div>
 
     <script>
-        const activeTitle = nodecg.Replicant('activeTitle');
-        const activeAnswer = nodecg.Replicant('activeAnswer');
-        
-        // 正しいパス指定
-        const correctSound = new Audio('./sounds/correct.mp3');
-
-        // タイトル（カテゴリ名）の監視
-        activeTitle.on('change', (newVal) => {
-            document.getElementById('header-title').innerText = newVal ? `【 ${newVal} 】` : '';
+        // 5ボンバー専用のReplicantのみを監視
+        const bomberRep = nodecg.Replicant('fiveBomberState', { 
+            defaultValue: { status: 'idle', count: 0, checks: [false, false, false, false, false] } 
         });
+        
+        const bombActor = document.getElementById('bomb-actor');
+        
+        // 音声アセット定義
+        const soundBgm = new Audio('sounds/bgm.mp3');
+        const soundClear = new Audio('sounds/clear.mp3');
+        soundBgm.loop = true;
 
-        // 回答の監視
-        activeAnswer.on('change', (newVal) => {
-            const ansEl = document.getElementById('answer-display');
-            if (!newVal) {
-                ansEl.innerText = '';
-                return;
+        // 5ボンバー位置計算用
+        const LANE_WIDTH = 384;       // 1920 / 5
+        const START_TOP = -150;       // 上空初期位置
+        const GOAL_TOP = 930;         // 最下部着地位置 (1080 - 150)
+        const TOTAL_DURATION = 30000;  // 30秒制限時間
+
+        let bomberAnimationFrameToken = null;
+        let bomberStartTime = null;
+        let bomberCurrentStatus = 'idle';
+
+        // 30秒の滑らかな落下制御を行う関数
+        function tickBomberDrop(timestamp) {
+            if (bomberCurrentStatus !== 'playing') return;
+
+            if (!bomberStartTime) bomberStartTime = timestamp;
+            const elapsed = timestamp - bomberStartTime;
+            const progress = Math.min(elapsed / TOTAL_DURATION, 1);
+            
+            const currentTop = START_TOP + (GOAL_TOP - START_TOP) * progress;
+            bombActor.style.top = `${currentTop}px`;
+
+            if (progress < 1) {
+                bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
+            } else {
+                // 30秒経過（タイムアップ）
+                bomberCurrentStatus = 'timeup';
+                soundBgm.pause();
+            }
+        }
+
+        // コントローラー・回答入力側からの状態変化をリアルタイム検知
+        bomberRep.on('change', (newVal) => {
+            if (!newVal) return;
+
+            // 🔴 1. 過去のチェック内容（5つの問題のクリア状況）を画面の各レーンへ表示連動
+            for (let i = 0; i < 5; i++) {
+                const laneEl = document.getElementById(`lane-${i}`);
+                const textEl = laneEl.querySelector('.lane-status-text');
+                
+                if (newVal.checks[i]) {
+                    // チェックが入っている（正解・クリア時）
+                    laneEl.classList.add('is-cleared');
+                    textEl.innerText = `問 ${i + 1} CLEAR!`;
+                } else {
+                    // チェックが入っていない（未回答時）
+                    laneEl.classList.remove('is-cleared');
+                    textEl.innerText = `問 ${i + 1}`;
+                }
             }
 
-            ansEl.innerText = newVal;
+            // 🔴 2. 正解チェック数（0〜5）に基づくレーン位置（X軸）の動的スライド
+            // 5問正解しても画像は5つ目のレーン（インデックス4）の位置に留める
+            const targetLaneIdx = Math.min(newVal.count, 4);
+            bombActor.style.left = `${targetLaneIdx * LANE_WIDTH}px`;
 
-            // 音声再生
-            correctSound.pause();
-            correctSound.currentTime = 0;
-            correctSound.play().catch(err => console.error("音声再生エラー:", err));
+            // 🔴 3. ゲーム運行ステータスによる音響・アニメーション制御
+            
+            // 【スタートボタンが押されたとき】
+            if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
+                bomberCurrentStatus = 'playing';
+                bomberStartTime = null; 
+                
+                soundClear.pause();
+                soundClear.currentTime = 0;
+                soundBgm.currentTime = 0;
+                soundBgm.play().catch(e => console.log("BGM Play Blocked:", e));
 
-            // アニメーション
-            ansEl.classList.add('pop');
-            setTimeout(() => ansEl.classList.remove('pop'), 150);
+                bomberAnimationFrameToken = requestAnimationFrame(tickBomberDrop);
+            }
+
+            // 【累計5チェック（クリア）を達成したとき】
+            if (newVal.status === 'cleared' && bomberCurrentStatus === 'playing') {
+                bomberCurrentStatus = 'cleared';
+                cancelAnimationFrame(bomberAnimationFrameToken); // 爆弾をその場にピタッと静止
+
+                soundBgm.pause();
+                soundClear.currentTime = 0;
+                soundClear.play().catch(e => console.log("Clear Sound Play Blocked:", e));
+            }
+
+            // 【リセットボタンが押されたとき】
+            if (newVal.status === 'idle') {
+                bomberCurrentStatus = 'idle';
+                cancelAnimationFrame(bomberAnimationFrameToken);
+                bomberStartTime = null;
+
+                soundBgm.pause();
+                soundBgm.currentTime = 0;
+                soundClear.pause();
+                soundClear.currentTime = 0;
+
+                bombActor.style.top = `${START_TOP}px`;
+                bombActor.style.left = `0px`;
+            }
         });
     </script>
 </body>
