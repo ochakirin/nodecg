@@ -2,25 +2,176 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Background & Timer</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Position Map Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 1080px;
+            background: transparent; /* OBSで背景透過するための設定 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 🔴 画面真ん中に横一文字に配置するベースライン（ガイド線） */
+        .position-map-container {
+            position: absolute;
+            top: 50%; /* 画面の一番真ん中 */
+            left: 150px; /* 画面端の余白 */
+            right: 150px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2); /* 線を薄く表示 */
+            border-radius: 3px;
+            transform: translateY(-50%);
+        }
+
+        /* 🔴 チームの数字を囲う○の図形 */
+        .team-circle {
+            position: absolute;
+            top: 50%;
+            width: 65px;
+            height: 65px;
+            background: #009688; /* 標準のチームカラー（エメラルド） */
+            color: white;
+            border: 4px solid white;
+            border-radius: 50%; /* 完全な正円 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px; /* 数字が見えやすい大きさ */
+            font-weight: 900; /* 数字を極太に */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            
+            /* 🔴 順位変動時に滑らかに動かすアニメーション（加減速が心地よいイージング） */
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
+                        transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
+                        width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
+            
+            /* ○の中心を基準点にして動かす */
+            transform: translate(-50%, -50%); 
+        }
+
+        /* 👑 上位3チームを直感的に分かりやすくする専用カラー */
+        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } /* 1位: 赤+金枠 */
+        .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  /* 2位: オレンジ */
+        .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  /* 3位: 水色 */
+
+        /* 👥 同順位（並走状態）のときの縮小スタイル */
+        .team-circle.is-tie {
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            opacity: 0.95;
+            border: 3px solid #fff;
+        }
+    </style>
 </head>
 <body>
-    <div id="background-container"></div>
-    <div id="timer-display">00:00:00</div>
+
+    <div class="position-map-container" id="map-container"></div>
 
     <script>
-        const timerRep = nodecg.Replicant('streamTimer');
-        
-        timerRep.on('change', (newVal) => {
-            if (newVal) {
-                // グラフィックス側でも hh:mm:ss にフォーマット
-                const hrs = Math.floor(newVal.seconds / 3600).toString().padStart(2, '0');
-                const mins = Math.floor((newVal.seconds % 3600) / 60).toString().padStart(2, '0');
-                const secs = (newVal.seconds % 60).toString().padStart(2, '0');
-                document.getElementById('timer-display').innerText = `${hrs}:${mins}:${secs}`;
+        // プレビュー画面が更新してくれた最新データをリレーして受信
+        const sharedCsvRep = nodecg.Replicant('sharedCsvData');
+        const container = document.getElementById('map-container');
+
+        function parseCSV(text) {
+            const rows = [];
+            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
+            text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const matches = line.matchAll(pattern);
+                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
+                rows.push(row);
+            });
+            return rows;
+        }
+
+        function timeToSeconds(timeStr) {
+            if (!timeStr || timeStr.includes('-')) return Infinity; 
+            const parts = timeStr.split(':');
+            if (parts.length === 3) {
+                return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60 + (parseInt(parts[2], 10) || 0);
             }
-        });
-    </script>
-</body>
-</html>
+            return Infinity;
+        }
+
+        function updatePositionMap(csvText) {
+            if (!csvText) return;
+            const rows = parseCSV(csvText);
+            if (rows.length === 0) return;
+
+            const headers = rows[0];
+            const teamDataList = [];
+
+            // 1. CSVから全20チームのデータを配列化
+            for (let colIdx = 1; colIdx < headers.length; colIdx++) {
+                const teamName = headers[colIdx];
+                if (!teamName) continue;
+
+                const laps = [];
+                for (let rowIdx = 1; rowIdx < rows.length; rowIdx++) {
+                    const cell = rows[rowIdx][colIdx];
+                    if (cell && cell !== '-' && cell !== '') laps.push(cell);
+                }
+
+                // 🔴 チーム名が何であれ、左からの列番号を基準に「1〜20」の純粋な数字に変換
+                const teamNumberString = String(colIdx); 
+
+                teamDataList.push({
+                    id: `team-circle-node-${colIdx}`, // HTML要素識別タグ
+                    displayNum: teamNumberString,     // ○の中に描画する数字 (1〜20)
+                    lapCount: laps.length,
+                    lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--'
+                });
+            }
+
+            // 2. 正確なルールでランキングソート（周回数が多い順 ➔ タイムが早い順）
+            teamDataList.sort((a, b) => {
+                if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
+                if (a.lapCount > 0) {
+                    return timeToSeconds(a.lastTime) - timeToSeconds(b.lastTime);
+                }
+                return 0;
+            });
+
+            // 3. 同順位（タイ記録）を検出してグループ化
+            let currentRank = 1;
+            let tieGroups = {};
+
+            for (let i = 0; i < teamDataList.length; i++) {
+                const currentTeam = teamDataList[i];
+                if (i > 0) {
+                    const prevTeam = teamDataList[i - 1];
+                    if (currentTeam.lapCount !== prevTeam.lapCount || (currentTeam.lapCount > 0 && currentTeam.lastTime !== prevTeam.lastTime)) {
+                        currentRank = i + 1;
+                    }
+                }
+                currentTeam.rank = currentRank;
+
+                if (!tieGroups[currentRank]) tieGroups[currentRank] = [];
+                tieGroups[currentRank].push(currentTeam);
+            }
+
+            // 4. 等間隔の配置計算とレンダリング
+            const totalTeams = teamDataList.length;
+            
+            teamDataList.forEach((team) => {
+                // 画面に○が存在しなければ新規生成、あれば再利用
+                let circle = document.getElementById(team.id);
+                if (!circle) {
+                    circle = document.createElement('div');
+                    circle.id = team.id;
+                    circle.className = 'team-circle';
+                    container.appendChild(circle);
+                }
+
+                // ○の中に「1〜20」の数字を流し込む
+                circle.innerText = team.displayNum;
+
+                // 🔴 【右から左への等間隔配置ロジック】
+                // 1位(インデックス0)を一番右端(100%)、最下位(最後尾)を一番左端(0%)にする
+                const sortedIndex = teamDataList.indexOf(team); 
+                let leftPositionPercent = ((totalTeams - 1 - sortedIndex
