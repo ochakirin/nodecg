@@ -15,50 +15,49 @@
             position: relative;
         }
 
-        /* 🔴 画面真ん中に横一文字に配置するベースライン（ガイド線） */
+        /* 画面真ん中に横一文字に配置するベースライン */
         .position-map-container {
             position: absolute;
             top: 50%; /* 画面の一番真ん中 */
             left: 150px; /* 画面端の余白 */
             right: 150px;
             height: 6px;
-            background: rgba(255, 255, 255, 0.2); /* 線を薄く表示 */
+            background: rgba(255, 255, 255, 0.2); 
             border-radius: 3px;
             transform: translateY(-50%);
         }
 
-        /* 🔴 チームの数字を囲う○の図形 */
+        /* チームの数字を囲う○の図形 */
         .team-circle {
             position: absolute;
             top: 50%;
             width: 65px;
             height: 65px;
-            background: #009688; /* 標準のチームカラー（エメラルド） */
+            background: #009688; 
             color: white;
             border: 4px solid white;
-            border-radius: 50%; /* 完全な正円 */
+            border-radius: 50%; 
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px; /* 数字が見えやすい大きさ */
-            font-weight: 900; /* 数字を極太に */
+            font-size: 24px; 
+            font-weight: 900; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             
-            /* 🔴 順位変動時に滑らかに動かすアニメーション（加減速が心地よいイージング） */
+            /* 順位変動時に滑らかに動かすアニメーション */
             transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
             
-            /* ○の中心を基準点にして動かす */
             transform: translate(-50%, -50%); 
         }
 
-        /* 👑 上位3チームを直感的に分かりやすくする専用カラー */
-        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } /* 1位: 赤+金枠 */
-        .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  /* 2位: オレンジ */
-        .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  /* 3位: 水色 */
+        /* 上位3チームを直感的に分かりやすくする専用カラー */
+        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } 
+        .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  
+        .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  
 
-        /* 👥 同順位（並走状態）のときの縮小スタイル */
+        /* 同順位（並走状態）のときの縮小スタイル */
         .team-circle.is-tie {
             width: 50px;
             height: 50px;
@@ -73,8 +72,8 @@
     <div class="position-map-container" id="map-container"></div>
 
     <script>
-        // プレビュー画面が更新してくれた最新データをリレーして受信
-        const sharedCsvRep = nodecg.Replicant('sharedCsvData');
+        // 🔴 【修正ポイント】Graphics側でも安全に初期化できるように、第二引数にデフォルト値を追加しました
+        const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
         const container = document.getElementById('map-container');
 
         function parseCSV(text) {
@@ -99,7 +98,8 @@
         }
 
         function updatePositionMap(csvText) {
-            if (!csvText) return;
+            if (!csvText || typeof csvText !== 'string' || !csvText.trim()) return;
+            
             const rows = parseCSV(csvText);
             if (rows.length === 0) return;
 
@@ -117,18 +117,17 @@
                     if (cell && cell !== '-' && cell !== '') laps.push(cell);
                 }
 
-                // 🔴 チーム名が何であれ、左からの列番号を基準に「1〜20」の純粋な数字に変換
                 const teamNumberString = String(colIdx); 
 
                 teamDataList.push({
-                    id: `team-circle-node-${colIdx}`, // HTML要素識別タグ
-                    displayNum: teamNumberString,     // ○の中に描画する数字 (1〜20)
+                    id: `team-circle-node-${colIdx}`, 
+                    displayNum: teamNumberString,     
                     lapCount: laps.length,
                     lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--'
                 });
             }
 
-            // 2. 正確なルールでランキングソート（周回数が多い順 ➔ タイムが早い順）
+            // 2. ランキングソート
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
                 if (a.lapCount > 0) {
@@ -159,7 +158,6 @@
             const totalTeams = teamDataList.length;
             
             teamDataList.forEach((team) => {
-                // 画面に○が存在しなければ新規生成、あれば再利用
                 let circle = document.getElementById(team.id);
                 if (!circle) {
                     circle = document.createElement('div');
@@ -168,10 +166,42 @@
                     container.appendChild(circle);
                 }
 
-                // ○の中に「1〜20」の数字を流し込む
                 circle.innerText = team.displayNum;
 
-                // 🔴 【右から左への等間隔配置ロジック】
-                // 1位(インデックス0)を一番右端(100%)、最下位(最後尾)を一番左端(0%)にする
                 const sortedIndex = teamDataList.indexOf(team); 
-                let leftPositionPercent = ((totalTeams - 1 - sortedIndex
+                let leftPositionPercent = ((totalTeams - 1 - sortedIndex) / (totalTeams - 1)) * 100;
+
+                circle.className = 'team-circle';
+                if (team.rank <= 3) {
+                    circle.classList.add(`rank-${team.rank}`);
+                }
+
+                const isTie = tieGroups[team.rank].length > 1;
+                if (isTie) {
+                    circle.classList.add('is-tie');
+                    
+                    const groupIndex = tieGroups[team.rank].indexOf(team);
+                    const groupCount = tieGroups[team.rank].length;
+                    
+                    const xOffset = (groupIndex - (groupCount - 1) / 2) * 1.2;
+                    leftPositionPercent += xOffset;
+
+                    const yOffset = (groupIndex % 2 === 0) ? '-22px' : '22px';
+                    circle.style.transform = `translate(-50%, calc(-50% + ${yOffset}))`;
+                } else {
+                    circle.style.transform = `translate(-50%, -50%)`;
+                }
+
+                circle.style.left = `${leftPositionPercent}%`;
+            });
+        }
+
+        // 🔴 メモリアップデートを検知（値が空っぽの時の安全ガードを追加）
+        sharedCsvRep.on('change', (newVal) => {
+            if (newVal) {
+                updatePositionMap(newVal);
+            }
+        });
+    </script>
+</body>
+</html>
