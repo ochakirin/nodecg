@@ -41,14 +41,21 @@
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
 
-            // 🔴 チーム1=B列(2), チーム2=C列(3) に対応するため、GASに送る列番号を +1 する
             const targetColumn = teamNum + 1;
+
+            // 🔴 GAS側の認証をパスするためのペイロード（シークレットトークン付き）
+            const payload = { 
+                action: action, 
+                teamNum: targetColumn, 
+                timeStr: timeStr,
+                secret_token: "lap_secure_pass_2026" // 👈 GAS側に埋め込んだキーと完全一致させます
+            };
 
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, teamNum: targetColumn, timeStr })
+                body: JSON.stringify(payload)
             }).catch(error => {
                 console.error('GAS送信エラー:', error);
             });
