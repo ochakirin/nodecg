@@ -38,21 +38,21 @@
         }
 
         function handleLapAction(teamNum, action, buttons) {
-            // 連打防止のため0.1秒だけ無効化
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
 
-            // Googleへの送信（読み込み待ちをしない「投げっぱなし」方式）
+            // 🔴 チーム1=B列(2), チーム2=C列(3) に対応するため、GASに送る列番号を +1 する
+            const targetColumn = teamNum + 1;
+
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, teamNum, timeStr })
+                body: JSON.stringify({ action, teamNum: targetColumn, timeStr })
             }).catch(error => {
                 console.error('GAS送信エラー:', error);
             });
 
-            // 0.1秒後に即座にボタンを復帰させて、次の入力を可能にする
             setTimeout(() => {
                 buttons.forEach(b => b.disabled = false);
             }, 100);
