@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Stream Overlay (Index)</title>
+    <title>Stream Overlay (Index with Popup)</title>
     <style>
         body {
             margin: 0;
@@ -15,31 +15,30 @@
             position: relative;
         }
 
-        /* 🔴 背景画像：画面ぴったりにリサイズして敷き詰める設定 */
+        /* 🔴 背景画像設定 */
         .background-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 1920px;
             height: 1080px;
-            /* 背景画像のURL（使用している画像のパスやURLに必要に応じて書き換えてください） */
             background-image: url('bg.png'); 
-            background-size: cover; /* 画面全体を隙間なく覆う */
+            background-size: cover;
             background-position: center;
-            z-index: 1; /* 一番後ろ */
+            z-index: 1;
         }
 
-        /* 🔴 画面真ん中に配置するポジションマップのベースライン */
+        /* 🔴 画面真ん中のポジションマップ（ベースライン） */
         .position-map-container {
             position: absolute;
-            top: 50%; /* 画面の一番真ん中 */
+            top: 50%;
             left: 150px; 
             right: 150px;
             height: 6px;
             background: rgba(255, 255, 255, 0.2); 
             border-radius: 3px;
             transform: translateY(-50%);
-            z-index: 10; /* 背景より前 */
+            z-index: 10;
         }
 
         /* チームの数字を囲う○の図形 */
@@ -58,45 +57,70 @@
             font-size: 24px; 
             font-weight: 900; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            
-            /* 順位変動時の滑らかアニメーション */
             transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
                         width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
-            
             transform: translate(-50%, -50%); 
         }
 
-        /* 上位3チームのカラー */
         .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } 
         .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  
         .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  
 
-        /* 同順位（並走状態）のときの縮小スタイル */
-        .team-circle.is-tie {
-            width: 50px;
-            height: 50px;
-            font-size: 18px;
-            opacity: 0.95;
-            border: 3px solid #fff;
-        }
+        .team-circle.is-tie { width: 50px; height: 50px; font-size: 18px; opacity: 0.95; border: 3px solid #fff; }
 
-        /* 🔴 タイマー：画面の「右下」に配置するスタイル */
+        /* 🔴 タイマー設定（右下） */
         .timer-container {
             position: absolute;
-            bottom: 40px; /* 右下からの浮かせ具合 */
+            bottom: 40px;
             right: 50px;
-            background: rgba(0, 0, 0, 0.75); /* タイマー文字が見えやすいように半透明の黒背景 */
+            background: rgba(0, 0, 0, 0.75);
             border: 2px solid rgba(255, 255, 255, 0.2);
             padding: 10px 25px;
             border-radius: 8px;
-            color: #00ff66; /* 視認性の高いサイバーグリーン */
+            color: #00ff66;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 48px; /* パッと見で見える大画面サイズ */
+            font-size: 48px;
             font-weight: bold;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            z-index: 20; /* 最前面 */
+            z-index: 20;
         }
+
+        /* 🔴 【新機能】右から入って左へ抜けるポップアップ通知のコンテナ */
+        .popup-notification {
+            position: absolute;
+            top: 80px; /* 画面上の配置位置 */
+            right: -500px; /* 初期状態は画面の右外側に隠す */
+            width: 420px;
+            background: rgba(20, 25, 35, 0.92); /* 高級感のあるダークネイビー */
+            border-left: 6px solid #ff9800; /* アクセントのオレンジライン */
+            border-radius: 4px 8px 8px 4px;
+            padding: 15px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            z-index: 30;
+            
+            /* アニメーション用の変化設定 */
+            transition: right 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                        left 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                        opacity 0.4s;
+        }
+
+        /* アニメーション状態のクラス定義 */
+        .popup-notification.slide-in { right: 50px; } /* 右からスッと入ってきた状態 */
+        .popup-notification.slide-out { right: auto; left: -500px; opacity: 0; } /* 左へスーッと消えていく状態 */
+
+        .popup-title { font-size: 14px; font-weight: bold; color: #ff9800; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
+        
+        /* ポップアップ内の表スタイル */
+        .popup-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .popup-table th { padding: 6px 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .popup-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        
+        .pop-rank-1 { color: #ff1744; font-weight: bold; }
+        .pop-team-num { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .pop-time-diff { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #00ff66; }
+        .pop-time-leader { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #fff; }
     </style>
 </head>
 <body>
@@ -107,22 +131,42 @@
 
     <div class="timer-container" id="timer-display">00:00:00</div>
 
+    <div class="popup-notification" id="popup-board">
+        <div class="popup-title" id="popup-title-text">⏱️ LAP UPDATE</div>
+        <table class="popup-table">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">順位</th>
+                    <th style="width: 35%;">チーム</th>
+                    <th style="width: 50%;">トップ差 / タイム</th>
+                </tr>
+            </thead>
+            <tbody id="popup-tbody"></tbody>
+        </table>
+    </div>
+
     <script>
-        // NodeCGの共有メモリ（タイマー情報 ＆ プレビューデータ）をダブル監視
         const timerRep = nodecg.Replicant('streamTimer');
         const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
         
         const container = document.getElementById('map-container');
         const timerDisplay = document.getElementById('timer-display');
+        
+        // ポップアップ用の要素
+        const popupBoard = document.getElementById('popup-board');
+        const popupTbody = document.getElementById('popup-tbody');
+        const popupTitleText = document.getElementById('popup-title-text');
 
-        // 🔴 1. タイマーの常時同期ロジック（右下の文字を書き換える）
+        let lastTotalLapsCount = -1; // 前回の合計周回数を記録して更新を検知する
+        let popupTimeoutToken = null; // アニメーション制御用のタイマー
+
+        // タイマー常時同期
         timerRep.on('change', (newVal) => {
             if (newVal && newVal.formatted) {
                 timerDisplay.innerText = newVal.formatted;
             }
         });
 
-        // 2. ポジションマップ関連のロジック
         function parseCSV(text) {
             const rows = [];
             const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
@@ -135,6 +179,7 @@
             return rows;
         }
 
+        // タイム文字列を秒（数値）に変換
         function timeToSeconds(timeStr) {
             if (!timeStr || timeStr.includes('-')) return Infinity; 
             const parts = timeStr.split(':');
@@ -144,16 +189,26 @@
             return Infinity;
         }
 
+        // 秒数を「+mm:ss」の文字列に変換する関数
+        function formatTimeDiff(diffSeconds) {
+            if (diffSeconds <= 0) return "0.0";
+            const mins = Math.floor(diffSeconds / 60);
+            const secs = Math.floor(diffSeconds % 60);
+            return `+${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
         function updatePositionMap(csvText) {
             if (!csvText || typeof csvText !== 'string' || !csvText.trim()) return;
             
             const rows = parseCSV(csvText);
             if (rows.length === 0) return;
 
+            const rowTitles = rows.map(r => r[0]); // A列（チェックポイントのタイトル）
             const headers = rows[0];
             const teamDataList = [];
+            let currentTotalLapsCount = 0;
 
-            // CSVから全20チームのデータを配列化
+            // 1. CSVから全20チームのデータを配列化
             for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                 const teamName = headers[colIdx];
                 if (!teamName) continue;
@@ -164,17 +219,18 @@
                     if (cell && cell !== '-' && cell !== '') laps.push(cell);
                 }
 
-                const teamNumberString = String(colIdx); 
+                currentTotalLapsCount += laps.length;
 
                 teamDataList.push({
                     id: `team-circle-node-${colIdx}`, 
-                    displayNum: teamNumberString,     
+                    displayNum: String(colIdx), // チーム名は「1〜20」の数字に固定
                     lapCount: laps.length,
-                    lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--'
+                    lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--',
+                    allLaps: laps // 計算用に全周回のタイム配列を持たせる
                 });
             }
 
-            // ランキングソート
+            // 2. 総合ランキングソート（マップ移動用）
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
                 if (a.lapCount > 0) {
@@ -183,7 +239,7 @@
                 return 0;
             });
 
-            // 同順位グループ化
+            // 3. 同順位グループ化とマップレンダリング
             let currentRank = 1;
             let tieGroups = {};
 
@@ -201,9 +257,8 @@
                 tieGroups[currentRank].push(currentTeam);
             }
 
-            // 等間隔の配置計算とレンダリング
+            // マップの○の位置更新
             const totalTeams = teamDataList.length;
-            
             teamDataList.forEach((team) => {
                 let circle = document.getElementById(team.id);
                 if (!circle) {
@@ -212,38 +267,108 @@
                     circle.className = 'team-circle';
                     container.appendChild(circle);
                 }
-
                 circle.innerText = team.displayNum;
 
                 const sortedIndex = teamDataList.indexOf(team); 
                 let leftPositionPercent = ((totalTeams - 1 - sortedIndex) / (totalTeams - 1)) * 100;
 
                 circle.className = 'team-circle';
-                if (team.rank <= 3) {
-                    circle.classList.add(`rank-${team.rank}`);
-                }
+                if (team.rank <= 3) circle.classList.add(`rank-${team.rank}`);
 
                 const isTie = tieGroups[team.rank].length > 1;
                 if (isTie) {
                     circle.classList.add('is-tie');
-                    
                     const groupIndex = tieGroups[team.rank].indexOf(team);
                     const groupCount = tieGroups[team.rank].length;
-                    
                     const xOffset = (groupIndex - (groupCount - 1) / 2) * 1.2;
                     leftPositionPercent += xOffset;
-
                     const yOffset = (groupIndex % 2 === 0) ? '-22px' : '22px';
                     circle.style.transform = `translate(-50%, calc(-50% + ${yOffset}))`;
                 } else {
                     circle.style.transform = `translate(-50%, -50%)`;
                 }
-
                 circle.style.left = `${leftPositionPercent}%`;
             });
+
+            // 🔴 4. 【ここからポップアップ通知システム】 
+            // 起動直後(lastTotalLapsCountが初期値-1の時)は通知を出さず、2回目以降の「増減（更新）」のみ反応させるガード
+            if (lastTotalLapsCount !== -1 && currentTotalLapsCount !== lastTotalLapsCount) {
+                
+                // 現在フィールド上で最も走っている最大ラップ数を特定
+                let maxLap = 0;
+                teamDataList.forEach(t => { if(t.lapCount > maxLap) maxLap = t.lapCount; });
+
+                if (maxLap > 0) {
+                    // 最新チェックポイントの名前（例：「1周目終了」や「Lap 3」などA列の値）
+                    const targetLapTitle = rowTitles[maxLap]; 
+                    
+                    // 今回の基準チェックポイント(maxLap)に「到達しているチーム」だけをフィルタ抽出
+                    const activePopupTeams = teamDataList.filter(t => t.lapCount >= maxLap).map(t => {
+                        return {
+                            displayNum: t.displayNum,
+                            lapTimeStr: t.allLaps[maxLap - 1], // 対象ラップの通過タイム
+                            lapSeconds: timeToSeconds(t.allLaps[maxLap - 1])
+                        };
+                    });
+
+                    // 通過タイム順（早い順）にソート
+                    activePopupTeams.sort((a, b) => a.lapSeconds - b.lapSeconds);
+
+                    if (activePopupTeams.length > 0) {
+                        // 1位（トップ）のタイムを基準点にする
+                        const leaderSeconds = activePopupTeams[0].lapSeconds;
+
+                        // ポップアップのタイトルを設定
+                        popupTitleText.innerText = `⏱️ 通過ラップ情報: ${targetLapTitle}`;
+
+                        // テーブルの中身を一度クリアして再構築
+                        popupTbody.innerHTML = '';
+                        activePopupTeams.forEach((team, idx) => {
+                            const rank = idx + 1;
+                            const tr = document.createElement('tr');
+                            
+                            // タイム差、またはリーダー通過タイムのフォーマット
+                            let timeCellHtml = '';
+                            if (rank === 1) {
+                                timeCellHtml = `<span class="pop-time-leader">${team.lapTimeStr}</span>`;
+                            } else {
+                                const diff = team.lapSeconds - leaderSeconds;
+                                timeCellHtml = `<span class="pop-time-diff">${formatTimeDiff(diff)}</span>`;
+                            }
+
+                            tr.innerHTML = `
+                                <td class="${rank === 1 ? 'pop-rank-1' : ''}">${rank}位</td>
+                                <td><span class="pop-num-wrap pop-team-num">チーム ${team.displayNum}</span></td>
+                                <td>${timeCellHtml}</td>
+                            `;
+                            popupTbody.appendChild(tr);
+                        });
+
+                        // 🔴 スライドイン・アウトのアニメーション制御
+                        if (popupTimeoutToken) clearTimeout(popupTimeoutToken); // 動いている既存タイマーをクリア
+
+                        // 状態スタイルを一度完全に真っ白に戻してからスライド開始
+                        popupBoard.classList.remove('slide-in', 'slide-out');
+                        
+                        // 1. まず右側からスッと登場
+                        setTimeout(() => {
+                            popupBoard.classList.add('slide-in');
+                        }, 50);
+
+                        // 2. 7秒間キープしたあと、左へ消えていくタイマーを設定
+                        popupTimeoutToken = setTimeout(() => {
+                            popupBoard.classList.remove('slide-in');
+                            popupBoard.classList.add('slide-out');
+                        }, 7000); // 7000ms = 7秒（ここを自由に変えて表示時間を変更できます）
+                    }
+                }
+            }
+
+            // 次回比較用に今回の総ラップ数を保存
+            lastTotalLapsCount = currentTotalLapsCount;
         }
 
-        // メモリアップデートを検知
+        // メモリアップデートを常時検知
         sharedCsvRep.on('change', (newVal) => {
             if (newVal) {
                 updatePositionMap(newVal);
