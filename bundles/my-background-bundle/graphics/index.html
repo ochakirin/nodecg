@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Stream Overlay (Index with Popup)</title>
+    <title>Stream Overlay (Perfect Individual Popup)</title>
     <style>
         body {
             margin: 0;
@@ -15,7 +15,7 @@
             position: relative;
         }
 
-        /* 🔴 背景画像設定 */
+        /* 背景画像設定 */
         .background-layer {
             position: absolute;
             top: 0;
@@ -28,7 +28,7 @@
             z-index: 1;
         }
 
-        /* 🔴 画面真ん中のポジションマップ（ベースライン） */
+        /* 画面真ん中のポジションマップ（ベースライン） */
         .position-map-container {
             position: absolute;
             top: 50%;
@@ -69,7 +69,7 @@
 
         .team-circle.is-tie { width: 50px; height: 50px; font-size: 18px; opacity: 0.95; border: 3px solid #fff; }
 
-        /* 🔴 タイマー設定（右下） */
+        /* タイマー設定（右下） */
         .timer-container {
             position: absolute;
             bottom: 40px;
@@ -86,33 +86,29 @@
             z-index: 20;
         }
 
-        /* 🔴 【新機能】右から入って左へ抜けるポップアップ通知のコンテナ */
+        /* 右から入って左へ抜けるポップアップ通知のコンテナ */
         .popup-notification {
             position: absolute;
-            top: 80px; /* 画面上の配置位置 */
+            top: 80px; 
             right: -500px; /* 初期状態は画面の右外側に隠す */
             width: 420px;
-            background: rgba(20, 25, 35, 0.92); /* 高級感のあるダークネイビー */
-            border-left: 6px solid #ff9800; /* アクセントのオレンジライン */
+            background: rgba(20, 25, 35, 0.92); 
+            border-left: 6px solid #ff9800; 
             border-radius: 4px 8px 8px 4px;
             padding: 15px;
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             z-index: 30;
-            
-            /* アニメーション用の変化設定 */
             transition: right 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
                         left 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
                         opacity 0.4s;
         }
 
-        /* アニメーション状態のクラス定義 */
-        .popup-notification.slide-in { right: 50px; } /* 右からスッと入ってきた状態 */
-        .popup-notification.slide-out { right: auto; left: -500px; opacity: 0; } /* 左へスーッと消えていく状態 */
+        .popup-notification.slide-in { right: 50px; } 
+        .popup-notification.slide-out { right: auto; left: -500px; opacity: 0; } 
 
         .popup-title { font-size: 14px; font-weight: bold; color: #ff9800; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
         
-        /* ポップアップ内の表スタイル */
         .popup-table { width: 100%; border-collapse: collapse; font-size: 14px; }
         .popup-table th { padding: 6px 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
         .popup-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -152,15 +148,15 @@
         const container = document.getElementById('map-container');
         const timerDisplay = document.getElementById('timer-display');
         
-        // ポップアップ用の要素
         const popupBoard = document.getElementById('popup-board');
         const popupTbody = document.getElementById('popup-tbody');
         const popupTitleText = document.getElementById('popup-title-text');
 
-        let lastTotalLapsCount = -1; // 前回の合計周回数を記録して更新を検知する
-        let popupTimeoutToken = null; // アニメーション制御用のタイマー
+        // 🔴 過去の全20チームのラップ数を記録するための変数（差分検知用）
+        let previousTeamLapsMap = {}; 
+        let isFirstLoad = true;
+        let popupTimeoutToken = null;
 
-        // タイマー常時同期
         timerRep.on('change', (newVal) => {
             if (newVal && newVal.formatted) {
                 timerDisplay.innerText = newVal.formatted;
@@ -179,7 +175,6 @@
             return rows;
         }
 
-        // タイム文字列を秒（数値）に変換
         function timeToSeconds(timeStr) {
             if (!timeStr || timeStr.includes('-')) return Infinity; 
             const parts = timeStr.split(':');
@@ -189,7 +184,6 @@
             return Infinity;
         }
 
-        // 秒数を「+mm:ss」の文字列に変換する関数
         function formatTimeDiff(diffSeconds) {
             if (diffSeconds <= 0) return "0.0";
             const mins = Math.floor(diffSeconds / 60);
@@ -203,12 +197,14 @@
             const rows = parseCSV(csvText);
             if (rows.length === 0) return;
 
-            const rowTitles = rows.map(r => r[0]); // A列（チェックポイントのタイトル）
+            const rowTitles = rows.map(r => r[0]); 
             const headers = rows[0];
             const teamDataList = [];
-            let currentTotalLapsCount = 0;
 
-            // 1. CSVから全20チームのデータを配列化
+            // 🔴 どのチェックポイントで変化（記入）があったかを追跡する変数
+            let triggeredLapIndex = -1;
+
+            // 1. CSVデータの解析とチーム配列の生成
             for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                 const teamName = headers[colIdx];
                 if (!teamName) continue;
@@ -219,18 +215,35 @@
                     if (cell && cell !== '-' && cell !== '') laps.push(cell);
                 }
 
-                currentTotalLapsCount += laps.length;
+                const currentLapCount = laps.length;
+                const teamNumStr = String(colIdx);
+
+                // 🔴 【最重要：個別変化の検知ロジック】
+                // 初回読み込み時はスルーし、2回目以降で「以前の記録より周回が増えたチーム」を見つける
+                if (!isFirstLoad) {
+                    const prevCount = previousTeamLapsMap[teamNumStr] || 0;
+                    if (currentLapCount > prevCount) {
+                        // まさに今このチームが通過した「そのラップ数（行インデックス）」をターゲットに設定！
+                        triggeredLapIndex = currentLapCount; 
+                    }
+                }
+
+                // 今回の状態をマップに保存
+                previousTeamLapsMap[teamNumStr] = currentLapCount;
 
                 teamDataList.push({
                     id: `team-circle-node-${colIdx}`, 
-                    displayNum: String(colIdx), // チーム名は「1〜20」の数字に固定
-                    lapCount: laps.length,
-                    lastTime: laps.length > 0 ? laps[laps.length - 1] : '--:--:--',
-                    allLaps: laps // 計算用に全周回のタイム配列を持たせる
+                    displayNum: teamNumStr,     
+                    lapCount: currentLapCount,
+                    lastTime: currentLapCount > 0 ? laps[currentLapCount - 1] : '--:--:--',
+                    allLaps: laps 
                 });
             }
 
-            // 2. 総合ランキングソート（マップ移動用）
+            // 初回ロードフラグを解除
+            isFirstLoad = false;
+
+            // 2. 総合ランキングソート（マップの○アイコンの配置用）
             teamDataList.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
                 if (a.lapCount > 0) {
@@ -290,85 +303,72 @@
                 circle.style.left = `${leftPositionPercent}%`;
             });
 
-            // 🔴 4. 【ここからポップアップ通知システム】 
-            // 起動直後(lastTotalLapsCountが初期値-1の時)は通知を出さず、2回目以降の「増減（更新）」のみ反応させるガード
-            if (lastTotalLapsCount !== -1 && currentTotalLapsCount !== lastTotalLapsCount) {
+            // 🔴 4. 【新・個別ポップアップ制御システム】
+            // 変化のあったラップ(triggeredLapIndex)が正しく特定できている場合のみ作動
+            if (triggeredLapIndex !== -1) {
                 
-                // 現在フィールド上で最も走っている最大ラップ数を特定
-                let maxLap = 0;
-                teamDataList.forEach(t => { if(t.lapCount > maxLap) maxLap = t.lapCount; });
+                const targetLapTitle = rowTitles[triggeredLapIndex]; // 動いたチェックポイントのA列タイトル
 
-                if (maxLap > 0) {
-                    // 最新チェックポイントの名前（例：「1周目終了」や「Lap 3」などA列の値）
-                    const targetLapTitle = rowTitles[maxLap]; 
-                    
-                    // 今回の基準チェックポイント(maxLap)に「到達しているチーム」だけをフィルタ抽出
-                    const activePopupTeams = teamDataList.filter(t => t.lapCount >= maxLap).map(t => {
-                        return {
-                            displayNum: t.displayNum,
-                            lapTimeStr: t.allLaps[maxLap - 1], // 対象ラップの通過タイム
-                            lapSeconds: timeToSeconds(t.allLaps[maxLap - 1])
-                        };
+                // 🔴 「今動いた特定のラップに、すでに到達しているチーム」だけを贅沢に抽出！
+                const activePopupTeams = teamDataList.filter(t => t.lapCount >= triggeredLapIndex).map(t => {
+                    return {
+                        displayNum: t.displayNum,
+                        lapTimeStr: t.allLaps[triggeredLapIndex - 1], // そのラップの通過タイム
+                        lapSeconds: timeToSeconds(t.allLaps[triggeredLapIndex - 1])
+                    };
+                });
+
+                // そのラップ内での通過タイム順（早い順）に正確にソート
+                activePopupTeams.sort((a, b) => a.lapSeconds - b.lapSeconds);
+
+                if (activePopupTeams.length > 0) {
+                    // そのラップにおける過去最速（1位）のタイムを基準点にする
+                    const leaderSeconds = activePopupTeams[0].lapSeconds;
+
+                    // ポップアップのタイトルを「通過した場所のタイトル」に固定
+                    popupTitleText.innerText = `⏱️ 通過情報: ${targetLapTitle}`;
+
+                    // リストの生成
+                    popupTbody.innerHTML = '';
+                    activePopupTeams.forEach((team, idx) => {
+                        const rank = idx + 1;
+                        const tr = document.createElement('tr');
+                        
+                        let timeCellHtml = '';
+                        if (rank === 1) {
+                            timeCellHtml = `<span class="pop-time-leader">${team.lapTimeStr}</span>`; // 1位は生タイム
+                        } else {
+                            const diff = team.lapSeconds - leaderSeconds;
+                            timeCellHtml = `<span class="pop-time-diff">${formatTimeDiff(diff)}</span>`; // 2位以降はトップ差
+                        }
+
+                        tr.innerHTML = `
+                            <td class="${rank === 1 ? 'pop-rank-1' : ''}">${rank}位</td>
+                            <td><span class="pop-team-num">チーム ${team.displayNum}</span></td>
+                            <td>${timeCellHtml}</td>
+                        `;
+                        popupTbody.appendChild(tr);
                     });
 
-                    // 通過タイム順（早い順）にソート
-                    activePopupTeams.sort((a, b) => a.lapSeconds - b.lapSeconds);
+                    // スライドイン・アウトのアニメーション
+                    if (popupTimeoutToken) clearTimeout(popupTimeoutToken);
 
-                    if (activePopupTeams.length > 0) {
-                        // 1位（トップ）のタイムを基準点にする
-                        const leaderSeconds = activePopupTeams[0].lapSeconds;
+                    popupBoard.classList.remove('slide-in', 'slide-out');
+                    
+                    setTimeout(() => {
+                        popupBoard.classList.add('slide-in');
+                    }, 50);
 
-                        // ポップアップのタイトルを設定
-                        popupTitleText.innerText = `⏱️ 通過ラップ情報: ${targetLapTitle}`;
-
-                        // テーブルの中身を一度クリアして再構築
-                        popupTbody.innerHTML = '';
-                        activePopupTeams.forEach((team, idx) => {
-                            const rank = idx + 1;
-                            const tr = document.createElement('tr');
-                            
-                            // タイム差、またはリーダー通過タイムのフォーマット
-                            let timeCellHtml = '';
-                            if (rank === 1) {
-                                timeCellHtml = `<span class="pop-time-leader">${team.lapTimeStr}</span>`;
-                            } else {
-                                const diff = team.lapSeconds - leaderSeconds;
-                                timeCellHtml = `<span class="pop-time-diff">${formatTimeDiff(diff)}</span>`;
-                            }
-
-                            tr.innerHTML = `
-                                <td class="${rank === 1 ? 'pop-rank-1' : ''}">${rank}位</td>
-                                <td><span class="pop-num-wrap pop-team-num">チーム ${team.displayNum}</span></td>
-                                <td>${timeCellHtml}</td>
-                            `;
-                            popupTbody.appendChild(tr);
-                        });
-
-                        // 🔴 スライドイン・アウトのアニメーション制御
-                        if (popupTimeoutToken) clearTimeout(popupTimeoutToken); // 動いている既存タイマーをクリア
-
-                        // 状態スタイルを一度完全に真っ白に戻してからスライド開始
-                        popupBoard.classList.remove('slide-in', 'slide-out');
-                        
-                        // 1. まず右側からスッと登場
-                        setTimeout(() => {
-                            popupBoard.classList.add('slide-in');
-                        }, 50);
-
-                        // 2. 7秒間キープしたあと、左へ消えていくタイマーを設定
-                        popupTimeoutToken = setTimeout(() => {
-                            popupBoard.classList.remove('slide-in');
-                            popupBoard.classList.add('slide-out');
-                        }, 7000); // 7000ms = 7秒（ここを自由に変えて表示時間を変更できます）
-                    }
+                    // 7秒間表示したあと、左へ受け流す
+                    popupTimeoutToken = setTimeout(() => {
+                        popupBoard.classList.remove('slide-in');
+                        popupBoard.classList.add('slide-out');
+                    }, 7000); 
                 }
             }
-
-            // 次回比較用に今回の総ラップ数を保存
-            lastTotalLapsCount = currentTotalLapsCount;
         }
 
-        // メモリアップデートを常時検知
+        // メモリアップデート検知
         sharedCsvRep.on('change', (newVal) => {
             if (newVal) {
                 updatePositionMap(newVal);
