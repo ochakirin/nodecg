@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DoraLeague - 5 Bomber Final Edition</title>
+    <title>DoraLeague - 5 Bomber Final Edition with BG</title>
     <style>
         body {
             margin: 0;
@@ -13,6 +13,23 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
             position: relative;
+        }
+
+        /* 🔴 【新設】背景画像レイヤー */
+        .background-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            background-image: url('bg2.jpg'); /* 指定の画像パス */
+            background-size: cover;
+            background-position: center;
+            z-index: 1; /* 一番後ろに配置 */
+            
+            /* 🔴 透明度と色彩の調整（不透明度を60%に落とし、彩度を40%削って見やすく調整） */
+            opacity: 0.6;
+            filter: saturate(0.6) brightness(0.8); 
         }
 
         /* 画面を均等に5分割するレーンシステム */
@@ -30,7 +47,8 @@
         .bomber-lane {
             flex: 1;
             height: 100%;
-            border-right: 4px dashed rgba(255, 255, 255, 0.15);
+            /* 背景が見えやすいよう、点線の白の濃さを少し控えめに調整 */
+            border-right: 4px dashed rgba(255, 255, 255, 0.1);
             box-sizing: border-box;
             position: relative;
             display: flex;
@@ -46,11 +64,11 @@
             font-size: 38px;
             font-weight: 900;
             color: #757575; 
-            background: rgba(30, 30, 30, 0.85);
+            background: rgba(20, 20, 20, 0.9); /* 背景画像の上でも文字が絶対に見えるよう少し濃く */
             padding: 12px 40px;
             border-radius: 6px;
             border: 3px solid #616161;
-            text-shadow: 0 4px 6px rgba(0,0,0,0.6);
+            text-shadow: 0 4px 6px rgba(0,0,0,0.8);
             transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
             z-index: 6;
         }
@@ -58,7 +76,7 @@
         /* 累計正解数に到達したレーンの発光スタイル */
         .bomber-lane.is-active .lane-status-text {
             color: #00ff66; 
-            background: rgba(0, 60, 20, 0.9);
+            background: rgba(0, 50, 15, 0.95);
             border-color: #00ff66;
             box-shadow: 0 0 25px rgba(0, 255, 102, 0.6);
             transform: scale(1.05);
@@ -103,14 +121,14 @@
             bottom: 20px; 
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(26, 35, 126, 0.95); 
+            background: rgba(13, 23, 85, 0.96); /* 少し明度を落とした深い紺 */
             border: 3px solid #2979ff;
             padding: 14px 50px;
             border-radius: 8px;
             color: #ffffff;
             font-size: 40px; 
             font-weight: bold;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
             z-index: 20;
             min-width: 500px;
             text-align: center;
@@ -123,7 +141,7 @@
             bottom: 140px; 
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(198, 40, 40, 0.95); 
+            background: rgba(166, 25, 25, 0.96); /* 背景と溶けないようクッキリした赤 */
             border: 3px solid #ff1744;
             padding: 12px 60px;
             border-radius: 50px; 
@@ -140,6 +158,8 @@
     </style>
 </head>
 <body>
+
+    <div class="background-layer"></div>
 
     <div class="bomber-stage">
         <div class="bomber-lane" id="lane-0"><div class="lane-status-text">1人目</div><div class="lane-goal"></div></div>
@@ -172,8 +192,7 @@
             soundBgm = new Audio('sounds/bgm.mp3');
             soundClear = new Audio('sounds/clear.mp3');
             soundCorrect = new Audio('sounds/correct.mp3'); 
-            soundBuzzer = new Audio('sounds/buzzer.mp3'); // 🔴 追加：ブザー音
-            // soundBgm.loop = true; 🔴 削除：ループを無効化して1回のみ再生にします
+            soundBuzzer = new Audio('sounds/buzzer.mp3');
         } catch(e) {
             console.error("Audio initialization failed:", e);
         }
@@ -186,7 +205,7 @@
         let bomberAnimationFrameToken = null;
         let bomberStartTime = null;
         let bomberCurrentStatus = 'idle';
-        let localBuzzerCount = 0; // ブザー連打判定用のローカルカウンタ
+        let localBuzzerCount = 0;
 
         function tickBomberDrop(timestamp) {
             if (bomberCurrentStatus !== 'playing') return;
@@ -205,7 +224,6 @@
             }
         }
         
-        // requestAnimationFrame用ヘルパー
         function tickDropHelper(ts) { tickBomberDrop(ts); }
 
         activeTitle.on('change', (newVal) => {
@@ -234,7 +252,6 @@
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
 
-            // 🔴 不正解（ブザー）ボタンの連動トリガー
             if (newVal.buzzerTrigger !== undefined && newVal.buzzerTrigger > localBuzzerCount) {
                 localBuzzerCount = newVal.buzzerTrigger;
                 if (soundBuzzer) {
@@ -261,7 +278,7 @@
             if (newVal.status === 'playing' && bomberCurrentStatus !== 'playing') {
                 bomberCurrentStatus = 'playing';
                 bomberStartTime = null; 
-                localBuzzerCount = newVal.buzzerTrigger || 0; // カウンタの同期
+                localBuzzerCount = newVal.buzzerTrigger || 0;
                 
                 if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
                 if (soundBgm) {
