@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
-        .ctrl-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .ctrl-group { display: flex; gap: 10px; margin-bottom: 10px; }
         button { flex: 1; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; transition: background 0.1s, transform 0.05s; }
         button:active { transform: scale(0.95); }
         .btn-start { background-color: #ff5722; }
         .btn-start:hover { background-color: #e64a19; }
+        .btn-buzzer { background-color: #f44336; }
+        .btn-buzzer:hover { background-color: #d32f2f; }
         .btn-reset { background-color: #607d8b; }
         .btn-reset:hover { background-color: #455a64; }
         .status-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -20,6 +22,9 @@
 
     <div class="ctrl-group">
         <button class="btn-start" id="btn-start">🚀 START (BGMオン)</button>
+        <button class="btn-buzzer" id="btn-buzzer">❌ 不正解 (ブザー)</button>
+    </div>
+    <div class="ctrl-group">
         <button class="btn-reset" id="btn-reset">🔄 RESET (全初期化)</button>
     </div>
 
@@ -29,20 +34,18 @@
     </div>
 
     <script>
-        // 5ボンバーの運行状態（playing / cleared / idle）を管理するReplicant
         const bomberRep = nodecg.Replicant('fiveBomberState', {
-            defaultValue: { status: 'idle', count: 0 }
+            defaultValue: { status: 'idle', count: 0, buzzerTrigger: 0 }
         });
 
-        // 🔴 5bomber.html が使用している実際のReplicantたちとダイレクト接続
         const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
         const checkedItems = nodecg.Replicant('checkedItems', { defaultValue: [] });
 
         const btnStart = document.getElementById('btn-start');
+        const btnBuzzer = document.getElementById('btn-buzzer');
         const btnReset = document.getElementById('btn-reset');
         const syncCount = document.getElementById('sync-count');
 
-        // 自身の運行ステータスを監視してスタートボタンの表示を制御
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
             if (newVal.status === 'playing') {
@@ -56,31 +59,30 @@
             }
         });
 
-        // 🔴 5bomber.html側の「蓄積されたチェック配列」を常時監視して同期
         checkedItems.on('change', (newVal) => {
             const activeCount = newVal ? newVal.length : 0;
             syncCount.innerText = `${activeCount} / 5`;
 
-            // 進行中に累計5個に達したら自動でクリアステータスへ移行
             if (activeCount >= 5 && bomberRep.value.status === 'playing') {
                 bomberRep.value.status = 'cleared';
             }
-            // 最新の数を共有
             bomberRep.value.count = activeCount;
         });
 
-        // スタート
         btnStart.addEventListener('click', () => {
             if (bomberRep.value.status !== 'playing') {
                 bomberRep.value.status = 'playing';
             }
         });
 
-        // 🔴 リセット：自身のタイマーを止め、5bomber.html側のデータも根こそぎ初期化
+        // 🔴 不正解ボタン：画面側にブザー音を鳴らすシグナルを送る
+        btnBuzzer.addEventListener('click', () => {
+            if (!bomberRep.value.buzzerTrigger) bomberRep.value.buzzerTrigger = 0;
+            bomberRep.value.buzzerTrigger++; // カウントを刻んで変化を通知
+        });
+
         btnReset.addEventListener('click', () => {
-            bomberRep.value = { status: 'idle', count: 0 };
-            
-            // 5bomber.html側のメモリをクリア（これで回答入力パネル側のチェックが全て自動で外れます）
+            bomberRep.value = { status: 'idle', count: 0, buzzerTrigger: 0 };
             activeAnswer.value = '';
             checkedItems.value = [];
         });
