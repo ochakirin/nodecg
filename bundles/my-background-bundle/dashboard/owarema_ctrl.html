@@ -76,9 +76,9 @@
                 gameRep.value = state;
             });
 
-            // 🔴 真の解決策：NodeCGの正規のグラフィックURLパスに修正
+            // 🔴 修正箇所：NodeCGの正しいパス（/bundles/バンドル名/graphics/...）に変更！
             const getPanelUrl = () => {
-                return `${window.location.origin}/graphics/my-background-bundle/owarema_pad.html?player=${i}`;
+                return `${window.location.origin}/bundles/my-background-bundle/graphics/owarema_pad.html?player=${i}`;
             };
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
