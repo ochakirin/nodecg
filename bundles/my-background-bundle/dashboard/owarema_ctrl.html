@@ -69,7 +69,6 @@
                 gameRep.value = state;
             });
 
-            // 🔴 修正：過去データによるエラーを防ぐため、names配列がなければ作成する
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
                 if (!state.names) state.names = ['', '', '', '', '', '', ''];
@@ -77,9 +76,9 @@
                 gameRep.value = state;
             });
 
-            // 🔴 修正：スマホ向けの安全な専用グラフィックURLへ案内
+            // 🔴 真の解決策：NodeCGの正規のグラフィックURLパスに修正
             const getPanelUrl = () => {
-                return `${window.location.origin}/bundles/my-background-bundle/graphics/owarema_pad.html?player=${i}`;
+                return `${window.location.origin}/graphics/my-background-bundle/owarema_pad.html?player=${i}`;
             };
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
