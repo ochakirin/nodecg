@@ -6,24 +6,18 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
+        /* 🔴 表題のデザイン設定 */
         .title-area { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
 
         .stage-container { position: absolute; top: 150px; left: 40px; right: 40px; bottom: 30px; display: flex; flex-direction: column; justify-content: center; gap: 25px; }
-
         .row { display: flex; justify-content: center; gap: 20px; width: 100%; }
 
         .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
-
         .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
-
-        /* 🔴 修正：画像が名前ラベルに絶対被らないように強力な枠組み（min-height: 0 と overflow: hidden）を設定 */
         .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 15px; box-sizing: border-box; min-height: 0; overflow: hidden; }
-
-        /* 🔴 修正：画像を枠に対して100%に指定し、縦横比を保ったまま収める */
         .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; } 
 
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; }
-        
         .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
         .is-open .cover { opacity: 0; pointer-events: none; }
@@ -45,7 +39,7 @@
 </head>
 <body>
 
-    <div class="title-area">全員そろうまで終われまテン！</div>
+    <div class="title-area">リーダー理解度王選手権</div>
 
     <div class="stage-container">
         <div class="row row-1" id="row-1"></div>
@@ -87,8 +81,9 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
 
-                if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
-                    nameTag.innerText = newVal.names[i];
+                // 🔴 1人目（i=0）も含め、確実に名前を反映させる安全なロジック
+                if (newVal.names && typeof newVal.names[i] === 'string' && newVal.names[i].trim() !== '') {
+                    nameTag.innerText = newVal.names[i].trim();
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
                 }
