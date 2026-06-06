@@ -6,20 +6,25 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        .title-area { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
+        .title-area { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
 
-        /* 🔴 総合点数表示エリア（右上） */
-        .total-score-area { position: absolute; top: 40px; right: 50px; background: #fff3e0; color: #e65100; padding: 15px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #ff9800; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; display: flex; align-items: center; gap: 15px; }
+        .total-score-area { position: absolute; top: 35px; right: 50px; background: #fff3e0; color: #e65100; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #ff9800; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; display: flex; align-items: center; gap: 15px; }
         .score-val { font-size: 48px; color: #d84315; }
 
-        .stage-container { position: absolute; top: 150px; left: 40px; right: 40px; bottom: 30px; display: flex; flex-direction: column; justify-content: center; gap: 25px; }
-        .row { display: flex; justify-content: center; gap: 20px; width: 100%; }
+        /* 🔴 画面下部のお題表示エリア */
+        .theme-area { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); color: #111; padding: 12px 60px; border-radius: 50px; font-size: 40px; font-weight: 900; border: 6px solid #e91e63; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; min-width: 800px; white-space: nowrap; display: none; /* 初期は非表示 */ }
 
-        .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
-        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; padding: 10px 0; }
+        /* 🔴 お題が入るスペースを空けるため、ひな壇の位置とサイズを少し調整 */
+        .stage-container { position: absolute; top: 130px; left: 40px; right: 40px; bottom: 120px; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
+        .row { display: flex; justify-content: center; gap: 15px; width: 100%; }
+
+        .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; padding: 8px 0; }
         
-        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 15px; box-sizing: border-box; min-height: 0; overflow: hidden; }
+        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 10px; box-sizing: border-box; min-height: 0; overflow: hidden; }
         .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; } 
+
+        .score-tag { background: #ffeb3b; color: #000; width: 100%; text-align: center; font-weight: 900; font-size: 24px; padding: 4px 0; z-index: 20; border-top: 3px solid #424242; }
 
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; }
         .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
@@ -27,13 +32,14 @@
         .is-open .cover { opacity: 0; pointer-events: none; }
         .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
 
-        .row-1 .answer-slot { width: 580px; height: 320px; border-color: #ff9800; }
-        .row-1 .player-name { font-size: 30px; padding: 12px 0; background: #222; }
-        .row-1 .cover { font-size: 34px; }
+        /* ひな壇のサイズ微調整 */
+        .row-1 .answer-slot { width: 520px; height: 290px; border-color: #ff9800; }
+        .row-1 .player-name { font-size: 28px; padding: 10px 0; background: #222; }
+        .row-1 .cover { font-size: 30px; }
 
-        .row-2 .answer-slot, .row-3 .answer-slot { width: 420px; height: 240px; }
-        .row-2 .player-name, .row-3 .player-name { font-size: 24px; }
-        .row-2 .cover, .row-3 .cover { font-size: 24px; }
+        .row-2 .answer-slot, .row-3 .answer-slot { width: 380px; height: 215px; }
+        .row-2 .player-name, .row-3 .player-name { font-size: 22px; }
+        .row-2 .cover, .row-3 .cover { font-size: 22px; }
 
         @keyframes popIn {
             0% { transform: scale(0.6); opacity: 0; }
@@ -55,15 +61,18 @@
         <div class="row row-3" id="row-3"></div>
     </div>
 
+    <div class="theme-area" id="theme-display">お題：未設定</div>
+
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0 }
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], scores: [0,0,0,0,0,0,0], totalScore: 0, theme: '' }
         });
         
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
         const row3 = document.getElementById('row-3');
         const totalScoreDisplay = document.getElementById('total-score-display');
+        const themeDisplay = document.getElementById('theme-display');
 
         for (let i = 0; i < 7; i++) {
             const slot = document.createElement('div');
@@ -75,6 +84,7 @@
                     <img class="answer-img" id="img-${i}" src="" alt="">
                     <div class="cover" id="cover-${i}">考え中...</div>
                 </div>
+                <div class="score-tag" id="score-tag-${i}">0点</div>
             `;
 
             if (i === 0) row1.appendChild(slot);
@@ -90,16 +100,31 @@
                 totalScoreDisplay.innerText = newVal.totalScore;
             }
 
+            // 🔴 お題の反映（空欄なら枠ごと隠す）
+            if (newVal.theme && newVal.theme.trim() !== '') {
+                themeDisplay.innerText = `お題：${newVal.theme}`;
+                themeDisplay.style.display = 'block';
+            } else {
+                themeDisplay.style.display = 'none';
+            }
+
             for (let i = 0; i < 7; i++) {
                 const slot = document.getElementById(`slot-${i}`);
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
+                const scoreTag = document.getElementById(`score-tag-${i}`);
 
                 if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
                     nameTag.innerText = newVal.names[i].trim();
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
+                }
+
+                if (newVal.scores && newVal.scores[i]) {
+                    scoreTag.innerText = `${newVal.scores[i]}点`;
+                } else {
+                    scoreTag.innerText = `0点`;
                 }
 
                 if (newVal.answers && newVal.answers[i] !== '') {
