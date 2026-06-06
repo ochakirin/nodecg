@@ -12,7 +12,7 @@
 
         .answer-slot { flex: 1; background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; height: 420px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; }
 
-        /* 🔴 プレイヤー名が表示されるエリア */
+        /* 🔴 プレイヤー名が表示されるネームエリア */
         .player-name { background: #333333; color: white; width: 100%; text-align: center; padding: 15px 0; font-size: 28px; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #fff; position: relative; }
@@ -42,6 +42,7 @@
         const gameRep = nodecg.Replicant('owarematenState');
         const container = document.getElementById('answers-container');
 
+        // 7人分の枠を初期生成
         for (let i = 0; i < 7; i++) {
             const slot = document.createElement('div');
             slot.className = 'answer-slot';
@@ -56,6 +57,7 @@
             container.appendChild(slot);
         }
 
+        // 🔴 コントローラー側の更新シグナルを受け取って実名をマッピング
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 7; i++) {
@@ -64,14 +66,14 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
 
-                // 🔴 名前のリアルタイム流し込み処理
+                // 🔴 名前の書き換えロジックを確実に実行
                 if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
                     nameTag.innerText = newVal.names[i];
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
                 }
 
-                // 提出データ画像
+                // 提出された画像の差し替え
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
                     cover.innerText = "回答完了！";
@@ -82,7 +84,7 @@
                     cover.classList.remove('submitted');
                 }
 
-                // オープン・クローズ
+                // 開閉判定
                 if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') {
                     slot.classList.add('is-open');
                 } else {
