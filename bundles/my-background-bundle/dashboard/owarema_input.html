@@ -5,76 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答ボード</title>
     <style>
-        /* 🔴 【変更】全体の背景をクイズ番組風のディープブルーグラデーションに、文字を白に統一 */
-        body { 
-            font-family: sans-serif; 
-            padding: 20px 15px; 
-            background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); 
-            color: #ffffff;
-            text-align: center; 
-            margin: 0 auto; 
-            max-width: 600px; 
-            touch-action: none; 
-            box-sizing: border-box; 
-        }
-        
-        .header-text { 
-            font-size: 20px; 
-            font-weight: bold; 
-            color: #ffffff; 
-            margin-bottom: 15px; 
-            background: rgba(255, 255, 255, 0.15); 
-            padding: 10px; 
-            border-radius: 6px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        select { 
-            width: 100%; 
-            padding: 12px; 
-            font-size: 16px; 
-            margin-bottom: 15px; 
-            border-radius: 6px; 
-            border: 1px solid rgba(255,255,255,0.3); 
-            font-weight: bold; 
-            background: #ffffff; 
-            color: #333333;
-        }
-        
-        /* 🔴 キャンバスの太枠を白に変更 */
-        canvas { 
-            display: block; 
-            background: #1565c0; 
-            border: 4px solid #ffffff; 
-            border-radius: 12px; 
-            width: 100%; 
-            height: 260px; 
-            cursor: crosshair; 
-            touch-action: none; 
-            box-shadow: 0 6px 20px rgba(0,0,0,0.4); 
-            margin: 0 auto; 
-        }
-        
+        body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
+        .header-text { font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 15px; background: rgba(255, 255, 255, 0.15); padding: 10px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-weight: bold; background: #ffffff; color: #333333; }
+        canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; width: 100%; }
         button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         button:active { transform: scale(0.95); }
-        
         .btn-clear { background: #546e7a; border: 1px solid rgba(255,255,255,0.1); }
-        .btn-clear:hover { background: #455a64; }
         .btn-submit { background: #ff9800; color: #fff; }
-        .btn-submit:hover { background: #f57c00; }
         .btn-submit.success { background: #4CAF50; }
 
-        /* 全員の回答確認プレビューエリア */
         .preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; }
         .preview-title { font-size: 14px; font-weight: bold; color: #b0bec5; margin-bottom: 10px; }
         .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         @media (max-width: 480px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
-        
         .preview-box { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 4px; text-align: center; }
         .preview-box .p-name { font-size: 11px; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 4px; margin-bottom: 5px; }
-        
-        /* 🔴 プレビュー枠の中も自動的に青背景になるため綺麗なグラデーションで統一されます */
         .preview-box img { width: 100%; height: 45px; object-fit: contain; background: #1565c0; display: block; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
         .preview-box .p-status { font-size: 11px; color: #b0bec5; padding: 14px 0; font-style: italic; }
     </style>
@@ -100,8 +47,8 @@
         <button class="btn-submit" id="btn-submit">🚀 送信</button>
     </div>
 
-    <div class="preview-section">
-        <div class="preview-title">📊 全員の回答状況（リアルタイム確認用）</div>
+    <div class="preview-section" id="preview-section">
+        <div class="preview-title">📊 全員の回答状況（MC・ダッシュボード確認用）</div>
         <div class="preview-grid" id="preview-grid"></div>
     </div>
 
@@ -115,9 +62,16 @@
         const playerSelect = document.getElementById('player-select');
         const displayName = document.getElementById('display-name');
         const previewGrid = document.getElementById('preview-grid');
+        const previewSection = document.getElementById('preview-section');
 
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = urlParams.get('id');
+        const isStandalone = urlParams.get('standalone') === 'true';
+
+        // 🔴 スタンドアローン（個別URL）で開いた時は、プレビュー一覧を非表示にする
+        if (isStandalone) {
+            previewSection.style.display = 'none';
+        }
 
         if (playerId !== null && playerId >= 0 && playerId <= 6) {
             playerSelect.value = playerId;
@@ -138,11 +92,11 @@
                 }
             }
 
+            // プレビュー表示（非表示の時も裏で更新だけはしておく）
             previewGrid.innerHTML = '';
             for (let i = 0; i < 7; i++) {
                 const box = document.createElement('div');
                 box.className = 'preview-box';
-                
                 const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
                 
                 if (newVal.answers && newVal.answers[i] !== '') {
@@ -154,60 +108,10 @@
             }
         });
 
-        // 🔴 【変更】初期の塗りつぶし背景を「鮮やかな青」、ペンを「完全な白」に変更
         function clearCanvas() {
-            ctx.fillStyle = "#1565c0"; // ロイヤルブルー
+            ctx.fillStyle = "#1565c0"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "#ffffff"; // 白文字
+            ctx.strokeStyle = "#ffffff"; 
             ctx.lineWidth = 8;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
-        }
-        clearCanvas();
-
-        let isDrawing = false;
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
-        }
-
-        function startDraw(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        function stopDraw(e) { e.preventDefault(); isDrawing = false; ctx.closePath(); }
-
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('mouseleave', stopDraw);
-
-        canvas.addEventListener('touchstart', startDraw, {passive: false});
-        canvas.addEventListener('touchmove', draw, {passive: false});
-        canvas.addEventListener('touchend', stopDraw, {passive: false});
-
-        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
-
-        document.getElementById('btn-submit').addEventListener('click', () => {
-            const playerIndex = parseInt(playerSelect.value);
-            const imageData = canvas.toDataURL('image/png');
-            
-            const currentState = gameRep.value;
-            currentState.answers[playerIndex] = imageData;
-            currentState.isOpen[playerIndex] = false; 
-            gameRep.value = currentState;
-
-            const btn = document.getElementById('btn-submit');
-            btn.innerText = "✅ 送信完了！";
-            btn.classList.add('success');
-            setTimeout(() => { 
-                btn.innerText = "🚀 送信 (再提出可)"; 
-                btn.classList.remove('success'); 
-            }, 3000);
-        });
-    </script>
-</body>
-</html>
