@@ -8,10 +8,10 @@
         body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
         .header-text { font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 15px; background: rgba(255, 255, 255, 0.15); padding: 10px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         
-        /* プルダウンメニュー（枠選択） */
-        #player-select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-weight: bold; background: #ffffff; color: #333333; display: none; /* 初期状態で非表示 */ }
+        #player-select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-weight: bold; background: #ffffff; color: #333333; display: none; }
         
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
+        
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; width: 100%; }
         button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         button:active { transform: scale(0.95); }
@@ -19,8 +19,7 @@
         .btn-submit { background: #ff9800; color: #fff; }
         .btn-submit.success { background: #4CAF50; }
 
-        /* 全員の回答プレビュー */
-        #preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; display: none; /* 初期状態で非表示 */ }
+        #preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; display: none; }
         .preview-title { font-size: 14px; font-weight: bold; color: #b0bec5; margin-bottom: 10px; }
         .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         @media (max-width: 480px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -68,57 +67,57 @@
         const previewSection = document.getElementById('preview-section');
         const previewGrid = document.getElementById('preview-grid');
 
-        // 🔴 判定ロジック：URLに ?player=〇 があるかチェック
+        // 🔴 エラー回避：URLパラメータを安全に整数に変換する
         const urlParams = new URLSearchParams(window.location.search);
-        const playerParam = urlParams.get('player');
+        const playerParamStr = urlParams.get('player');
+        const playerId = parseInt(playerParamStr, 10);
+        
+        // パラメータが正常な数字（0〜6）の場合のみスタンドアローンと判定
+        const isStandalone = !isNaN(playerId) && playerId >= 0 && playerId <= 6;
 
-        if (playerParam !== null && playerParam >= 0 && playerParam <= 6) {
-            // 【スマホ・スタンドアローン版（出演者用）の表示】
-            playerSelect.value = playerParam;
-            // CSSで初期非表示（display: none）にしているため、ここでは何もしなくてOK（枠選択もプレビューも出ない）
+        if (isStandalone) {
+            playerSelect.style.display = 'none';
+            previewSection.style.display = 'none';
         } else {
-            // 【ダッシュボード版（MC・スタッフ用）の表示】
-            playerSelect.style.display = 'block'; // 枠選択プルダウンを表示
-            previewSection.style.display = 'block'; // 全員プレビューを表示
-            displayName.innerText = `手書き回答ボード (管理・プレビュー用)`;
+            playerSelect.style.display = 'block'; 
+            previewSection.style.display = 'block'; 
+            displayName.innerText = `手書き回答ボード (ダッシュボード用)`;
         }
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            // 出演者用画面の名前リアルタイム反映
-            if (playerParam !== null && playerParam >= 0 && playerParam <= 6 && newVal.names) {
-                const targetName = newVal.names[playerParam];
-                if (targetName && targetName.trim() !== '') {
-                    displayName.innerText = `あなたは【 ${targetName} 】の回答枠です`;
+            // 🔴 スタンドアローンの場合、確実にヘッダーに名前を反映
+            if (isStandalone && newVal.names) {
+                const targetName = newVal.names[playerId];
+                if (targetName && typeof targetName === 'string' && targetName.trim() !== '') {
+                    displayName.innerText = `【 ${targetName} 】さんの回答ボード`;
                 } else {
-                    displayName.innerText = `あなたは【${parseInt(playerParam) + 1}人目】の回答枠です`;
+                    displayName.innerText = `【 ${playerId + 1}人目 】の回答ボード`;
                 }
             }
 
             // ダッシュボード用プレビューの更新
-            previewGrid.innerHTML = '';
-            for (let i = 0; i < 7; i++) {
-                const box = document.createElement('div');
-                box.className = 'preview-box';
-                const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
-                
-                if (newVal.answers && newVal.answers[i] !== '') {
-                    box.innerHTML = `<div class="p-name">${pName}</div><img src="${newVal.answers[i]}">`;
-                } else {
-                    box.innerHTML = `<div class="p-name">${pName}</div><div class="p-status">考え中...</div>`;
+            if (!isStandalone) {
+                previewGrid.innerHTML = '';
+                for (let i = 0; i < 7; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'preview-box';
+                    const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
+                    
+                    if (newVal.answers && newVal.answers[i] !== '') {
+                        box.innerHTML = `<div class="p-name">${pName}</div><img src="${newVal.answers[i]}">`;
+                    } else {
+                        box.innerHTML = `<div class="p-name">${pName}</div><div class="p-status">考え中...</div>`;
+                    }
+                    previewGrid.appendChild(box);
                 }
-                previewGrid.appendChild(box);
             }
         });
 
         function clearCanvas() {
             ctx.fillStyle = "#1565c0"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "#ffffff"; 
-            ctx.lineWidth = 8;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
         }
         clearCanvas();
 
@@ -133,9 +132,32 @@
             };
         }
 
-        function startDraw(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        function stopDraw(e) { e.preventDefault(); isDrawing = false; ctx.closePath(); }
+        // 🔴 描画開始時に「必ず白ペン・太さ8」になるように強制上書き設定
+        function startDraw(e) { 
+            e.preventDefault(); 
+            isDrawing = true; 
+            const pos = getPos(e); 
+            ctx.beginPath(); 
+            ctx.strokeStyle = "#ffffff"; 
+            ctx.lineWidth = 8;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.moveTo(pos.x, pos.y); 
+        }
+
+        function draw(e) { 
+            if (!isDrawing) return; 
+            e.preventDefault(); 
+            const pos = getPos(e); 
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
+
+        function stopDraw(e) { 
+            e.preventDefault(); 
+            isDrawing = false; 
+            ctx.closePath(); 
+        }
 
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', draw);
@@ -148,12 +170,13 @@
         document.getElementById('btn-clear').addEventListener('click', clearCanvas);
 
         document.getElementById('btn-submit').addEventListener('click', () => {
-            const playerIndex = parseInt(playerSelect.value);
+            // 🔴 スタンドアローン時はURLパラメータの数字を、ダッシュボード時はプルダウンの数字を採用
+            const targetIndex = isStandalone ? playerId : parseInt(playerSelect.value, 10);
             const imageData = canvas.toDataURL('image/png');
             
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            state.answers[playerIndex] = imageData;
-            state.isOpen[playerIndex] = false; 
+            state.answers[targetIndex] = imageData;
+            state.isOpen[targetIndex] = false; 
             gameRep.value = state;
 
             const btn = document.getElementById('btn-submit');
