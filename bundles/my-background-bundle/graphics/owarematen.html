@@ -2,37 +2,32 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Owarema-ten Overlay</title>
+    <title>Owarema-ten Overlay Perfect Sync</title>
     <style>
-        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: sans-serif; overflow: hidden; position: relative; }
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        /* タイトルや問題文を置くスペース（上部） */
-        .title-area { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 20px 60px; border-radius: 12px; font-size: 48px; font-weight: bold; border: 4px solid #ff9800; text-align: center; }
+        .title-area { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 18px 60px; border-radius: 12px; font-size: 46px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
 
-        /* 7つの回答枠を並べるコンテナ */
-        .answers-container { position: absolute; top: 400px; left: 50px; right: 50px; display: flex; justify-content: space-between; gap: 20px; }
+        .answers-container { position: absolute; top: 360px; left: 40px; right: 40px; display: flex; justify-content: space-between; gap: 15px; }
 
-        /* 1つの回答枠（縦長） */
-        .answer-slot { flex: 1; background: #1e1e1e; border: 6px solid #424242; border-radius: 16px; height: 400px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+        .answer-slot { flex: 1; background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; height: 420px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; }
 
-        .player-name { background: #424242; color: white; width: 100%; text-align: center; padding: 15px 0; font-size: 32px; font-weight: bold; }
+        /* 🔴 プレイヤー名が表示されるエリア */
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; padding: 15px 0; font-size: 28px; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #fff; position: relative; }
 
-        /* 手書き画像 */
-        .answer-img { width: 90%; height: auto; object-fit: contain; display: none; } /* 初期は非表示 */
+        .answer-img { width: 92%; height: auto; object-fit: contain; display: none; } 
 
-        /* フタ（考え中・回答完了の表示） */
-        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eceff1; display: flex; justify-content: center; align-items: center; font-size: 36px; font-weight: bold; color: #9e9e9e; transition: opacity 0.3s; z-index: 10; }
+        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: bold; color: #78909c; transition: all 0.3s ease; z-index: 10; text-align: center; padding: 10px; box-sizing: border-box; }
         
-        .cover.submitted { background: #ff4081; color: white; }
+        .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
-        /* オープン時のアニメーション */
         .is-open .cover { opacity: 0; pointer-events: none; }
-        .is-open .answer-img { display: block; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
 
         @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
+            0% { transform: scale(0.6); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
     </style>
@@ -41,20 +36,18 @@
 
     <div class="title-area">全員そろうまで終われまテン！</div>
 
-    <div class="answers-container" id="answers-container">
-        </div>
+    <div class="answers-container" id="answers-container"></div>
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState');
         const container = document.getElementById('answers-container');
 
-        // 7枠の生成
         for (let i = 0; i < 7; i++) {
             const slot = document.createElement('div');
             slot.className = 'answer-slot';
             slot.id = `slot-${i}`;
             slot.innerHTML = `
-                <div class="player-name">${i + 1}人目</div>
+                <div class="player-name" id="name-tag-${i}">${i + 1}人目</div>
                 <div class="board-area">
                     <img class="answer-img" id="img-${i}" src="" alt="">
                     <div class="cover" id="cover-${i}">考え中...</div>
@@ -63,16 +56,23 @@
             container.appendChild(slot);
         }
 
-        // 同期処理
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 7; i++) {
                 const slot = document.getElementById(`slot-${i}`);
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
+                const nameTag = document.getElementById(`name-tag-${i}`);
 
-                // 画像データを入れる
-                if (newVal.answers[i] !== '') {
+                // 🔴 名前のリアルタイム流し込み処理
+                if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
+                    nameTag.innerText = newVal.names[i];
+                } else {
+                    nameTag.innerText = `${i + 1}人目`;
+                }
+
+                // 提出データ画像
+                if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
                     cover.innerText = "回答完了！";
                     cover.classList.add('submitted');
@@ -82,8 +82,8 @@
                     cover.classList.remove('submitted');
                 }
 
-                // オープン処理
-                if (newVal.isOpen[i] && newVal.answers[i] !== '') {
+                // オープン・クローズ
+                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') {
                     slot.classList.add('is-open');
                 } else {
                     slot.classList.remove('is-open');
