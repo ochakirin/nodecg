@@ -5,16 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答ボード</title>
     <style>
-        body { font-family: sans-serif; padding: 20px 15px; background: #eceff1; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; }
-        .header-text { font-size: 20px; font-weight: bold; color: #37474f; margin-bottom: 15px; background: #cfd8dc; padding: 8px; border-radius: 4px; }
-        select { width: 100%; padding: 12px; font-size: 18px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; background: white; }
-        canvas { display: block; background: white; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 300px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
-        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 20px; width: 100%; }
-        button { flex: 1; padding: 18px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: transform 0.1s; }
+        body { font-family: sans-serif; padding: 15px; background: #eceff1; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
+        .header-text { font-size: 18px; font-weight: bold; color: #37474f; margin-bottom: 12px; background: #cfd8dc; padding: 8px; border-radius: 4px; }
+        select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; background: white; }
+        canvas { display: block; background: white; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; width: 100%; }
+        button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: transform 0.1s; }
         button:active { transform: scale(0.95); }
         .btn-clear { background: #607d8b; }
         .btn-submit { background: #e91e63; }
         .btn-submit.success { background: #4CAF50; }
+
+        /* 🔴 【新設】全員の回答をまとめて確認できるプレビューエリア */
+        .preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #b0bec5; text-align: left; }
+        .preview-title { font-size: 14px; font-weight: bold; color: #546e7a; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        @media (max-width: 480px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
+        
+        .preview-box { background: white; border: 1px solid #cfd8dc; border-radius: 4px; padding: 4px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .preview-box .p-name { font-size: 11px; font-weight: bold; color: #37474f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #f5f7f8; padding: 2px; border-radius: 2px; margin-bottom: 4px; }
+        .preview-box img { width: 100%; height: 45px; object-fit: contain; background: white; display: block; border-radius: 2px; }
+        .preview-box .p-status { font-size: 11px; color: #b0bec5; padding: 14px 0; font-style: italic; }
     </style>
 </head>
 <body>
@@ -38,6 +49,11 @@
         <button class="btn-submit" id="btn-submit">🚀 送信</button>
     </div>
 
+    <div class="preview-section">
+        <div class="preview-title">📊 全員の回答状況（リアルタイム確認用）</div>
+        <div class="preview-grid" id="preview-grid"></div>
+    </div>
+
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
             defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
@@ -47,6 +63,7 @@
         const ctx = canvas.getContext('2d');
         const playerSelect = document.getElementById('player-select');
         const displayName = document.getElementById('display-name');
+        const previewGrid = document.getElementById('preview-grid');
 
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = urlParams.get('id');
@@ -58,16 +75,36 @@
             displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】の回答枠です`;
         }
 
-        // 🔴 コントローラーで入力された参加者名をリアルタイムにボードへ反映
+        // 🔴 データの変更を検知して、自分自身の名前および「全員の回答プレビュー」を完全同期
         gameRep.on('change', (newVal) => {
-            if (!newVal || !newVal.names) return;
-            if (playerId !== null && playerId >= 0 && playerId <= 6) {
+            if (!newVal) return;
+            
+            // 自分のヘッダー名前更新
+            if (playerId !== null && playerId >= 0 && playerId <= 6 && newVal.names) {
                 const targetName = newVal.names[playerId];
                 if (targetName && targetName.trim() !== '') {
                     displayName.innerText = `あなたは【 ${targetName} 】の回答枠です`;
                 } else {
                     displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】の回答枠です`;
                 }
+            }
+
+            // 🔴 全員分のまとめ確認ボードを動的に再描画
+            previewGrid.innerHTML = '';
+            for (let i = 0; i < 7; i++) {
+                const box = document.createElement('div');
+                box.className = 'preview-box';
+                
+                // 名前の決定
+                const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
+                
+                // 送信済み画像があるか、まだ考えている最中か
+                if (newVal.answers && newVal.answers[i] !== '') {
+                    box.innerHTML = `<div class="p-name">${pName}</div><img src="${newVal.answers[i]}">`;
+                } else {
+                    box.innerHTML = `<div class="p-name">${pName}</div><div class="p-status">考え中...</div>`;
+                }
+                previewGrid.appendChild(box);
             }
         });
 
