@@ -73,15 +73,15 @@
                 gameRep.value = state;
             });
 
-            // 🔴 修正：確実に名前の変更をReplicantに保存する処理
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
                 state.names[i] = e.target.value;
                 gameRep.value = state;
             });
 
+            // 🔴 修正：判定用URLパラメータを ?player=i に変更
             const getPanelUrl = () => {
-                return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_input.html?id=${i}&standalone=true`;
+                return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_input.html?player=${i}`;
             };
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
