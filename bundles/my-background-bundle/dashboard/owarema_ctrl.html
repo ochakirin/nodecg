@@ -7,7 +7,6 @@
         .control-panel { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .panel-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
         
-        /* 1人ずつの管理枠ボックス */
         .control-row { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
         .row-header { display: flex; justify-content: space-between; align-items: center; }
         .row-body { display: flex; gap: 8px; align-items: center; }
@@ -45,11 +44,7 @@
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { 
-                answers: ['', '', '', '', '', '', ''], 
-                isOpen: [false, false, false, false, false, false, false],
-                names: ['', '', '', '', '', '', ''] 
-            }
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
         });
 
         const container = document.getElementById('player-controls');
@@ -73,16 +68,18 @@
             container.appendChild(row);
 
             document.getElementById(`toggle-btn-${i}`).addEventListener('click', () => {
-                const state = gameRep.value;
+                const state = JSON.parse(JSON.stringify(gameRep.value));
                 state.isOpen[i] = !state.isOpen[i];
                 gameRep.value = state;
             });
 
+            // 🔴 修正：確実に名前の変更をReplicantに保存する処理
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
-                gameRep.value.names[i] = e.target.value;
+                const state = JSON.parse(JSON.stringify(gameRep.value));
+                state.names[i] = e.target.value;
+                gameRep.value = state;
             });
 
-            // 🔴 修正：NodeCGの仕様に合わせた正しい実体ファイル（owarema_input.html）へのフルパスに変更
             const getPanelUrl = () => {
                 return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_input.html?id=${i}&standalone=true`;
             };
@@ -93,9 +90,7 @@
                     const btn = document.getElementById(`copy-btn-${i}`);
                     btn.innerText = "✅ 完了";
                     setTimeout(() => { btn.innerText = "🔗 コピー"; }, 1500);
-                }).catch(err => {
-                    alert("コピー失敗、手動で控えてください: " + url);
-                });
+                }).catch(err => alert("コピー失敗: " + url));
             });
 
             document.getElementById(`jump-btn-${i}`).addEventListener('click', () => {
@@ -133,18 +128,14 @@
         });
 
         document.getElementById('btn-all-open').addEventListener('click', () => {
-            const state = gameRep.value;
+            const state = JSON.parse(JSON.stringify(gameRep.value));
             for (let i = 0; i < 7; i++) { if (state.answers[i] !== '') state.isOpen[i] = true; }
             gameRep.value = state;
         });
 
         document.getElementById('btn-reset').addEventListener('click', () => {
-            if (confirm("名前設定を含め、全員の描画回答データを完全に消去します。よろしいですか？")) {
-                gameRep.value = { 
-                    answers: ['', '', '', '', '', '', ''], 
-                    isOpen: [false, false, false, false, false, false, false],
-                    names: ['', '', '', '', '', '', '']
-                };
+            if (confirm("全員の描画回答データを完全に消去します。よろしいですか？")) {
+                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] };
             }
         });
     </script>
