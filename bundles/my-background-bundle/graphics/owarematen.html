@@ -12,9 +12,14 @@
         .row { display: flex; justify-content: center; gap: 20px; width: 100%; }
 
         .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
-        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; padding: 10px 0; }
+        
+        /* 画像が枠に被らないようにする制限 */
         .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 15px; box-sizing: border-box; min-height: 0; overflow: hidden; }
         .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; } 
+
+        /* 点数表示タグ */
+        .score-tag { background: #ffeb3b; color: #000; width: 100%; text-align: center; font-weight: 900; font-size: 26px; padding: 5px 0; z-index: 20; border-top: 3px solid #424242; }
 
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; }
         .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
@@ -27,7 +32,7 @@
         .row-1 .cover { font-size: 34px; }
 
         .row-2 .answer-slot, .row-3 .answer-slot { width: 420px; height: 240px; }
-        .row-2 .player-name, .row-3 .player-name { font-size: 24px; padding: 8px 0; }
+        .row-2 .player-name, .row-3 .player-name { font-size: 24px; }
         .row-2 .cover, .row-3 .cover { font-size: 24px; }
 
         @keyframes popIn {
@@ -47,7 +52,9 @@
     </div>
 
     <script>
-        const gameRep = nodecg.Replicant('owarematenState');
+        const gameRep = nodecg.Replicant('owarematenState', {
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], scores: [0,0,0,0,0,0,0] }
+        });
         
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
@@ -63,6 +70,7 @@
                     <img class="answer-img" id="img-${i}" src="" alt="">
                     <div class="cover" id="cover-${i}">考え中...</div>
                 </div>
+                <div class="score-tag" id="score-tag-${i}">0点</div>
             `;
 
             if (i === 0) row1.appendChild(slot);
@@ -77,14 +85,23 @@
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
+                const scoreTag = document.getElementById(`score-tag-${i}`);
 
-                // 🔴 古いデータ対策：names配列が存在するか安全確認
+                // 名前の反映
                 if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
                     nameTag.innerText = newVal.names[i].trim();
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
                 }
 
+                // 点数の反映
+                if (newVal.scores && newVal.scores[i]) {
+                    scoreTag.innerText = `${newVal.scores[i]}点`;
+                } else {
+                    scoreTag.innerText = `0点`;
+                }
+
+                // 画像の反映
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
                     cover.innerText = "回答完了！";
@@ -95,6 +112,7 @@
                     cover.classList.remove('submitted');
                 }
 
+                // 開閉
                 if (newVal.isOpen && newVal.isOpen[i] && newVal.answers && newVal.answers[i] !== '') {
                     slot.classList.add('is-open');
                 } else {
