@@ -5,26 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答ボード</title>
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #eceff1; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
-        .header-text { font-size: 18px; font-weight: bold; color: #37474f; margin-bottom: 12px; background: #cfd8dc; padding: 8px; border-radius: 4px; }
-        select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; background: white; }
-        canvas { display: block; background: white; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
+        /* 🔴 【変更】全体の背景をクイズ番組風のディープブルーグラデーションに、文字を白に統一 */
+        body { 
+            font-family: sans-serif; 
+            padding: 20px 15px; 
+            background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); 
+            color: #ffffff;
+            text-align: center; 
+            margin: 0 auto; 
+            max-width: 600px; 
+            touch-action: none; 
+            box-sizing: border-box; 
+        }
+        
+        .header-text { 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: #ffffff; 
+            margin-bottom: 15px; 
+            background: rgba(255, 255, 255, 0.15); 
+            padding: 10px; 
+            border-radius: 6px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        select { 
+            width: 100%; 
+            padding: 12px; 
+            font-size: 16px; 
+            margin-bottom: 15px; 
+            border-radius: 6px; 
+            border: 1px solid rgba(255,255,255,0.3); 
+            font-weight: bold; 
+            background: #ffffff; 
+            color: #333333;
+        }
+        
+        /* 🔴 キャンバスの太枠を白に変更 */
+        canvas { 
+            display: block; 
+            background: #1565c0; 
+            border: 4px solid #ffffff; 
+            border-radius: 12px; 
+            width: 100%; 
+            height: 260px; 
+            cursor: crosshair; 
+            touch-action: none; 
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4); 
+            margin: 0 auto; 
+        }
+        
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; width: 100%; }
-        button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: transform 0.1s; }
+        button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         button:active { transform: scale(0.95); }
-        .btn-clear { background: #607d8b; }
-        .btn-submit { background: #e91e63; }
+        
+        .btn-clear { background: #546e7a; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-clear:hover { background: #455a64; }
+        .btn-submit { background: #ff9800; color: #fff; }
+        .btn-submit:hover { background: #f57c00; }
         .btn-submit.success { background: #4CAF50; }
 
-        /* 🔴 【新設】全員の回答をまとめて確認できるプレビューエリア */
-        .preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #b0bec5; text-align: left; }
-        .preview-title { font-size: 14px; font-weight: bold; color: #546e7a; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        /* 全員の回答確認プレビューエリア */
+        .preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; }
+        .preview-title { font-size: 14px; font-weight: bold; color: #b0bec5; margin-bottom: 10px; }
         .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         @media (max-width: 480px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
         
-        .preview-box { background: white; border: 1px solid #cfd8dc; border-radius: 4px; padding: 4px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .preview-box .p-name { font-size: 11px; font-weight: bold; color: #37474f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #f5f7f8; padding: 2px; border-radius: 2px; margin-bottom: 4px; }
-        .preview-box img { width: 100%; height: 45px; object-fit: contain; background: white; display: block; border-radius: 2px; }
+        .preview-box { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 4px; text-align: center; }
+        .preview-box .p-name { font-size: 11px; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 4px; margin-bottom: 5px; }
+        
+        /* 🔴 プレビュー枠の中も自動的に青背景になるため綺麗なグラデーションで統一されます */
+        .preview-box img { width: 100%; height: 45px; object-fit: contain; background: #1565c0; display: block; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
         .preview-box .p-status { font-size: 11px; color: #b0bec5; padding: 14px 0; font-style: italic; }
     </style>
 </head>
@@ -75,11 +126,9 @@
             displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】の回答枠です`;
         }
 
-        // 🔴 データの変更を検知して、自分自身の名前および「全員の回答プレビュー」を完全同期
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            // 自分のヘッダー名前更新
             if (playerId !== null && playerId >= 0 && playerId <= 6 && newVal.names) {
                 const targetName = newVal.names[playerId];
                 if (targetName && targetName.trim() !== '') {
@@ -89,16 +138,13 @@
                 }
             }
 
-            // 🔴 全員分のまとめ確認ボードを動的に再描画
             previewGrid.innerHTML = '';
             for (let i = 0; i < 7; i++) {
                 const box = document.createElement('div');
                 box.className = 'preview-box';
                 
-                // 名前の決定
                 const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
                 
-                // 送信済み画像があるか、まだ考えている最中か
                 if (newVal.answers && newVal.answers[i] !== '') {
                     box.innerHTML = `<div class="p-name">${pName}</div><img src="${newVal.answers[i]}">`;
                 } else {
@@ -108,10 +154,11 @@
             }
         });
 
+        // 🔴 【変更】初期の塗りつぶし背景を「鮮やかな青」、ペンを「完全な白」に変更
         function clearCanvas() {
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "#1565c0"; // ロイヤルブルー
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "black";
+            ctx.strokeStyle = "#ffffff"; // 白文字
             ctx.lineWidth = 8;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
