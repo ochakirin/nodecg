@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答ボード</title>
     <style>
-        /* スマホの意図しないスクロールやスワイプリロードを強制ブロック */
-        html, body {
-            overscroll-behavior-y: none;
-            -webkit-overflow-scrolling: touch;
-        }
-
+        html, body { overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
         body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
         .header-text { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 20px; background: rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
@@ -24,7 +19,7 @@
 </head>
 <body>
 
-    <div class="header-text" id="display-name">読み込み中...</div>
+    <div class="header-text" id="display-name">システム接続中...</div>
     
     <canvas id="draw-pad" width="600" height="300"></canvas>
 
@@ -34,7 +29,8 @@
     </div>
 
     <script>
-        // 🔴 修正：エラー停止を防ぐため、必ず初期値を読み込ませる
+        // ここが動かなかったのはURLのパス（/bundles/〜）が間違っていたためです。
+        // 正規のパス（/graphics/〜）から開くことで、Replicantが正常に作動します。
         const gameRep = nodecg.Replicant('owarematenState', {
             defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
         });
@@ -67,8 +63,6 @@
         clearCanvas();
 
         let isDrawing = false;
-        
-        // 🔴 修正：あらゆるスマホ機種・PCブラウザで絶対にエラーを起こさず座標を取得する関数
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX, clientY;
@@ -95,7 +89,7 @@
         }
 
         function startDraw(e) { 
-            e.preventDefault(); 
+            if (e.cancelable) e.preventDefault(); 
             isDrawing = true; 
             const pos = getPos(e); 
             ctx.beginPath(); 
@@ -104,18 +98,22 @@
             ctx.lineCap = "round"; 
             ctx.lineJoin = "round"; 
             ctx.moveTo(pos.x, pos.y); 
+            
+            // 🔴 改善：タップだけでも「点」が描けるようにする
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
         }
 
         function draw(e) { 
             if (!isDrawing) return; 
-            e.preventDefault(); 
+            if (e.cancelable) e.preventDefault(); 
             const pos = getPos(e); 
             ctx.lineTo(pos.x, pos.y); 
             ctx.stroke(); 
         }
 
         function stopDraw(e) { 
-            if (e.type !== 'mouseleave') e.preventDefault(); 
+            if (e.type !== 'mouseleave' && e.cancelable) e.preventDefault(); 
             isDrawing = false; 
             ctx.closePath(); 
         }
@@ -135,7 +133,6 @@
             if (isNaN(playerId)) return alert("IDエラー：送信できません");
             const imageData = canvas.toDataURL('image/png');
             
-            // 🔴 修正：データが空っぽの状態からでも絶対に保存エラーを起こさない処理
             let state = gameRep.value;
             if (!state) {
                 state = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] };
