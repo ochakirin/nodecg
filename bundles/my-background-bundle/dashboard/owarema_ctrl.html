@@ -44,7 +44,6 @@
     </div>
 
     <script>
-        // 共有メモリに names 配列を拡張
         const gameRep = nodecg.Replicant('owarematenState', {
             defaultValue: { 
                 answers: ['', '', '', '', '', '', ''], 
@@ -55,7 +54,6 @@
 
         const container = document.getElementById('player-controls');
 
-        // 7人分の枠をループで自動構築
         for (let i = 0; i < 7; i++) {
             const row = document.createElement('div');
             row.className = 'control-row';
@@ -74,24 +72,21 @@
             `;
             container.appendChild(row);
 
-            // 個別フタ開け閉め
             document.getElementById(`toggle-btn-${i}`).addEventListener('click', () => {
                 const state = gameRep.value;
                 state.isOpen[i] = !state.isOpen[i];
                 gameRep.value = state;
             });
 
-            // 🔴 参加者の名前リアルタイム入力同期
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
                 gameRep.value.names[i] = e.target.value;
             });
 
-            // 🔴 配布用個別URLの生成関数
+            // 🔴 修正：NodeCGの仕様に合わせた正しい実体ファイル（owarema_input.html）へのフルパスに変更
             const getPanelUrl = () => {
-                return `${window.location.origin}/panel/my-background-bundle/owarema-input?id=${i}`;
+                return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_input.html?id=${i}&standalone=true`;
             };
 
-            // 🔴 専用URLクリップボードコピー
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
                 const url = getPanelUrl();
                 navigator.clipboard.writeText(url).then(() => {
@@ -103,13 +98,11 @@
                 });
             });
 
-            // 🔴 ワンクリック別タブジャンプ
             document.getElementById(`jump-btn-${i}`).addEventListener('click', () => {
                 window.open(getPanelUrl(), '_blank');
             });
         }
 
-        // 状態監視とUIの常時アップデート
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 7; i++) {
@@ -117,7 +110,6 @@
                 const btn = document.getElementById(`toggle-btn-${i}`);
                 const nameInput = document.getElementById(`name-input-${i}`);
                 
-                // 回答提出バッジ
                 if (newVal.answers && newVal.answers[i] !== '') {
                     badge.innerText = "提出済！";
                     badge.classList.add('submitted');
@@ -126,7 +118,6 @@
                     badge.classList.remove('submitted');
                 }
 
-                // オープン状態ボタン
                 if (newVal.isOpen && newVal.isOpen[i]) {
                     btn.innerText = "閉じる";
                     btn.classList.add('is-open');
@@ -135,21 +126,18 @@
                     btn.classList.remove('is-open');
                 }
 
-                // 名前の同期（入力中の文字消えを防ぐため、フォーカスがない時のみ更新）
                 if (newVal.names && document.activeElement !== nameInput) {
                     nameInput.value = newVal.names[i] || '';
                 }
             }
         });
 
-        // 一斉オープン
         document.getElementById('btn-all-open').addEventListener('click', () => {
             const state = gameRep.value;
             for (let i = 0; i < 7; i++) { if (state.answers[i] !== '') state.isOpen[i] = true; }
             gameRep.value = state;
         });
 
-        // 完全初期化
         document.getElementById('btn-reset').addEventListener('click', () => {
             if (confirm("名前設定を含め、全員の描画回答データを完全に消去します。よろしいですか？")) {
                 gameRep.value = { 
