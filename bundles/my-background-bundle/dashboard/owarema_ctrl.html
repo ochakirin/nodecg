@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; background: #f0f2f5; margin: 0; }
+        
+        /* 🔴 総合点数パネル */
+        .score-panel { background: #fff3e0; padding: 15px; border-radius: 8px; border: 2px solid #ff9800; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .score-input { width: 100px; padding: 10px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
+
         .control-panel { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; }
         .panel-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
-        
         .control-row { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
         .row-header { display: flex; justify-content: space-between; align-items: center; }
         .row-body { display: flex; gap: 8px; align-items: center; }
-        .row-actions { display: flex; gap: 6px; width: 40%; }
+        .row-actions { display: flex; gap: 6px; width: 45%; }
         
         .name-input { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .score-input { width: 60px; padding: 7px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
         .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; background: #9e9e9e; white-space: nowrap; }
         .status-badge.submitted { background: #e91e63; }
         
@@ -34,8 +37,15 @@
 </head>
 <body>
 
+    <div class="score-panel">
+        <div>🏆 現在の総合点数</div>
+        <div>
+            <input type="number" class="score-input" id="total-score-input" value="0"> 点
+        </div>
+    </div>
+
     <div class="control-panel">
-        <div class="panel-title">👥 参加者名簿 ＆ 個別回答・点数制御</div>
+        <div class="panel-title">👥 参加者名簿 ＆ 個別回答制御</div>
         <div id="player-controls"></div>
     </div>
 
@@ -46,11 +56,20 @@
     </div>
 
     <script>
+        // 🔴 総合点数（totalScore）をメモリに追加
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], scores: [0,0,0,0,0,0,0] }
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0 }
         });
 
         const container = document.getElementById('player-controls');
+        const totalScoreInput = document.getElementById('total-score-input');
+
+        // 総合点数の同期処理
+        totalScoreInput.addEventListener('input', (e) => {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            state.totalScore = e.target.value;
+            gameRep.value = state;
+        });
 
         for (let i = 0; i < 7; i++) {
             const row = document.createElement('div');
@@ -62,7 +81,6 @@
                 </div>
                 <div class="row-body">
                     <input type="text" class="name-input" id="name-input-${i}" placeholder="名前を入力">
-                    <input type="number" class="score-input" id="score-input-${i}" placeholder="点数" value="0">
                     <div class="row-actions">
                         <button class="btn-copy" id="copy-btn-${i}">🔗 コピー</button>
                         <button class="btn-jump" id="jump-btn-${i}">🚀 開く</button>
@@ -85,15 +103,9 @@
                 gameRep.value = state;
             });
 
-            document.getElementById(`score-input-${i}`).addEventListener('input', (e) => {
-                const state = JSON.parse(JSON.stringify(gameRep.value));
-                if (!state.scores) state.scores = [0,0,0,0,0,0,0];
-                state.scores[i] = e.target.value;
-                gameRep.value = state;
-            });
-
+            // 🔴 修正：Dashboard側のスタンドアローン表示（NodeCGシェルなし）に誘導するURL
             const getPanelUrl = () => {
-                return `${window.location.origin}/bundles/my-background-bundle/graphics/owarema_pad.html?player=${i}`;
+                return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?player=${i}&standalone=true`;
             };
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
@@ -112,11 +124,15 @@
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
+            
+            if (newVal.totalScore !== undefined && document.activeElement !== totalScoreInput) {
+                totalScoreInput.value = newVal.totalScore;
+            }
+
             for (let i = 0; i < 7; i++) {
                 const badge = document.getElementById(`badge-${i}`);
                 const btn = document.getElementById(`toggle-btn-${i}`);
                 const nameInput = document.getElementById(`name-input-${i}`);
-                const scoreInput = document.getElementById(`score-input-${i}`);
                 
                 if (newVal.answers && newVal.answers[i] !== '') {
                     badge.innerText = "提出済！";
@@ -137,10 +153,6 @@
                 if (newVal.names && document.activeElement !== nameInput) {
                     nameInput.value = newVal.names[i] || '';
                 }
-
-                if (newVal.scores && document.activeElement !== scoreInput) {
-                    scoreInput.value = newVal.scores[i] || 0;
-                }
             }
         });
 
@@ -151,6 +163,7 @@
             gameRep.value = state;
         });
 
+        // 🔴 回答のみリセット（名前と総合点数はキープ）
         document.getElementById('btn-reset-answers').addEventListener('click', () => {
             if (confirm("【回答のみ】を消去し、名前と点数は残します。よろしいですか？")) {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
@@ -162,7 +175,7 @@
 
         document.getElementById('btn-reset-full').addEventListener('click', () => {
             if (confirm("名前・点数を含め、全員の全データを完全に消去します。よろしいですか？")) {
-                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], scores: [0,0,0,0,0,0,0] };
+                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0 };
             }
         });
     </script>
