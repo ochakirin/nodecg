@@ -57,6 +57,22 @@
         "headerColor": "#E91E63",
         "width": 3,
         "workspace": "ファイブボンバー"
+      },
+      {
+        "name": "owarema-input",
+        "title": "✍️ 手書き回答ボード (出演者用)",
+        "file": "owarema_input.html",
+        "headerColor": "#4CAF50",
+        "width": 4,
+        "workspace": "終われまテン"
+      },
+      {
+        "name": "owarema-control",
+        "title": "👑 進行管理 (MC用)",
+        "file": "owarema_ctrl.html",
+        "headerColor": "#9C27B0",
+        "width": 3,
+        "workspace": "終われまテン"
       }
     ],
     "graphics": [
@@ -67,6 +83,11 @@
       },
       {
         "file": "doraleague.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "owarematen.html",
         "width": 1920,
         "height": 1080
       }
