@@ -3,20 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手書き回答ボード</title>
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #eceff1; text-align: center; margin: 0; touch-action: none; }
-        select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
+        body { font-family: sans-serif; padding: 15px; background: #eceff1; text-align: center; margin: 0; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+        .header-text { font-size: 20px; font-weight: bold; color: #37474f; margin-bottom: 10px; }
+        select { width: 100%; max-width: 600px; padding: 12px; font-size: 18px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; font-weight: bold; background: white; }
         /* キャンバス（手書きエリア）の設定 */
-        canvas { background: white; border: 2px solid #37474f; border-radius: 8px; width: 100%; max-width: 600px; height: 300px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; max-width: 600px; margin-left: auto; margin-right: auto; }
-        button { flex: 1; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; }
+        canvas { background: white; border: 3px solid #37474f; border-radius: 8px; width: 100%; max-width: 600px; height: 300px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 20px; width: 100%; max-width: 600px; }
+        button { flex: 1; padding: 18px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: transform 0.1s; }
+        button:active { transform: scale(0.95); }
         .btn-clear { background: #607d8b; }
         .btn-submit { background: #e91e63; }
-        .btn-submit:active { background: #c2185b; }
+        .btn-submit.success { background: #4CAF50; }
     </style>
 </head>
 <body>
 
+    <div class="header-text" id="display-name">あなたの回答枠を選んでください</div>
+    
     <select id="player-select">
         <option value="0">1人目 の回答枠</option>
         <option value="1">2人目 の回答枠</option>
@@ -35,31 +40,39 @@
     </div>
 
     <script>
-        // 全員の回答(Base64画像)とオープン状態を管理するReplicant
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: {
-                answers: ['', '', '', '', '', '', ''],
-                isOpen: [false, false, false, false, false, false, false]
-            }
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false] }
         });
 
         const canvas = document.getElementById('draw-pad');
         const ctx = canvas.getContext('2d');
         const playerSelect = document.getElementById('player-select');
-        let isDrawing = false;
+        const displayName = document.getElementById('display-name');
 
-        // 背景を白で塗りつぶす（透過PNGだと配信画面で見えなくなるため）
+        // 🔴 URLパラメータから ?id=〇 を取得し、自動選択＆ロックする処理
+        const urlParams = new URLSearchParams(window.location.search);
+        const playerId = urlParams.get('id');
+
+        if (playerId !== null && playerId >= 0 && playerId <= 6) {
+            playerSelect.value = playerId;
+            playerSelect.disabled = true; // 他の人の枠を選べないようにロック
+            playerSelect.style.display = 'none'; // 邪魔なので非表示にする
+            displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】です`;
+        }
+
+        // 背景を白で塗りつぶす
         function clearCanvas() {
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.strokeStyle = "black";
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 8;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
         }
         clearCanvas();
 
-        // 描画ロジック（マウス＆タッチ対応）
+        // 描画ロジック（スマホのタッチ対応）
+        let isDrawing = false;
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -85,21 +98,24 @@
 
         document.getElementById('btn-clear').addEventListener('click', clearCanvas);
 
-        // 送信ボタン：Canvasの絵を画像データ（文字列）に変換してReplicantに保存
+        // 送信ボタン
         document.getElementById('btn-submit').addEventListener('click', () => {
             const playerIndex = parseInt(playerSelect.value);
-            const imageData = canvas.toDataURL('image/png'); // 画像を文字に変換
+            const imageData = canvas.toDataURL('image/png'); // 画像を文字データ化
             
             const currentState = gameRep.value;
             currentState.answers[playerIndex] = imageData;
             currentState.isOpen[playerIndex] = false; // 送信時は伏せた状態
             gameRep.value = currentState;
 
-            // 送信完了のフィードバック
+            // 送信完了の演出
             const btn = document.getElementById('btn-submit');
             btn.innerText = "✅ 送信完了！";
-            btn.style.background = "#4CAF50";
-            setTimeout(() => { btn.innerText = "🚀 送信"; btn.style.background = "#e91e63"; }, 2000);
+            btn.classList.add('success');
+            setTimeout(() => { 
+                btn.innerText = "🚀 送信 (再提出可)"; 
+                btn.classList.remove('success'); 
+            }, 3000);
         });
     </script>
 </body>
