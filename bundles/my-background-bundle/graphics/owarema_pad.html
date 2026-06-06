@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答ボード</title>
     <style>
+        /* スマホの意図しないスクロールやスワイプリロードを強制ブロック */
+        html, body {
+            overscroll-behavior-y: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
         body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
         .header-text { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 20px; background: rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
@@ -28,13 +34,15 @@
     </div>
 
     <script>
-        const gameRep = nodecg.Replicant('owarematenState');
+        // 🔴 修正：エラー停止を防ぐため、必ず初期値を読み込ませる
+        const gameRep = nodecg.Replicant('owarematenState', {
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
+        });
 
         const canvas = document.getElementById('draw-pad');
         const ctx = canvas.getContext('2d');
         const displayName = document.getElementById('display-name');
 
-        // URLから ?player=〇 を取得
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = parseInt(urlParams.get('player'), 10);
 
@@ -42,7 +50,6 @@
             if (!newVal) return;
             
             if (!isNaN(playerId) && playerId >= 0 && playerId <= 6) {
-                // 古いデータで名前リストがない場合のエラー回避
                 if (newVal.names && newVal.names[playerId] && newVal.names[playerId].trim() !== '') {
                     displayName.innerText = `【 ${newVal.names[playerId]} 】さんの回答ボード`;
                 } else {
@@ -60,28 +67,64 @@
         clearCanvas();
 
         let isDrawing = false;
+        
+        // 🔴 修正：あらゆるスマホ機種・PCブラウザで絶対にエラーを起こさず座標を取得する関数
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            let clientX, clientY;
+
+            if (e.type.includes('touch')) {
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else if (e.changedTouches && e.changedTouches.length > 0) {
+                    clientX = e.changedTouches[0].clientX;
+                    clientY = e.changedTouches[0].clientY;
+                } else {
+                    clientX = 0; clientY = 0;
+                }
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
             return {
                 x: (clientX - rect.left) * (canvas.width / rect.width),
                 y: (clientY - rect.top) * (canvas.height / rect.height)
             };
         }
 
-        // 強制的に白ペン設定
         function startDraw(e) { 
-            e.preventDefault(); isDrawing = true; const pos = getPos(e); 
-            ctx.beginPath(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.moveTo(pos.x, pos.y); 
+            e.preventDefault(); 
+            isDrawing = true; 
+            const pos = getPos(e); 
+            ctx.beginPath(); 
+            ctx.strokeStyle = "#ffffff"; 
+            ctx.lineWidth = 8; 
+            ctx.lineCap = "round"; 
+            ctx.lineJoin = "round"; 
+            ctx.moveTo(pos.x, pos.y); 
         }
-        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
-        function stopDraw(e) { e.preventDefault(); isDrawing = false; ctx.closePath(); }
+
+        function draw(e) { 
+            if (!isDrawing) return; 
+            e.preventDefault(); 
+            const pos = getPos(e); 
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
+
+        function stopDraw(e) { 
+            if (e.type !== 'mouseleave') e.preventDefault(); 
+            isDrawing = false; 
+            ctx.closePath(); 
+        }
 
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDraw);
         canvas.addEventListener('mouseleave', stopDraw);
+        
         canvas.addEventListener('touchstart', startDraw, {passive: false});
         canvas.addEventListener('touchmove', draw, {passive: false});
         canvas.addEventListener('touchend', stopDraw, {passive: false});
@@ -92,7 +135,14 @@
             if (isNaN(playerId)) return alert("IDエラー：送信できません");
             const imageData = canvas.toDataURL('image/png');
             
-            const state = JSON.parse(JSON.stringify(gameRep.value));
+            // 🔴 修正：データが空っぽの状態からでも絶対に保存エラーを起こさない処理
+            let state = gameRep.value;
+            if (!state) {
+                state = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] };
+            } else {
+                state = JSON.parse(JSON.stringify(state)); 
+            }
+            
             if (!state.answers) state.answers = ['', '', '', '', '', '', ''];
             if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
             
