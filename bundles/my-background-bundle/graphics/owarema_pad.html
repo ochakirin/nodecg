@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手書き回答ボード</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
+        .header-text { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 20px; background: rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 20px; width: 100%; }
+        button { flex: 1; padding: 18px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        button:active { transform: scale(0.95); }
+        .btn-clear { background: #546e7a; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-submit { background: #ff9800; color: #fff; }
+        .btn-submit.success { background: #4CAF50; }
+    </style>
+</head>
+<body>
+
+    <div class="header-text" id="display-name">読み込み中...</div>
+    
+    <canvas id="draw-pad" width="600" height="300"></canvas>
+
+    <div class="btn-group">
+        <button class="btn-clear" id="btn-clear">🗑️ 消す</button>
+        <button class="btn-submit" id="btn-submit">🚀 送信</button>
+    </div>
+
+    <script>
+        const gameRep = nodecg.Replicant('owarematenState');
+
+        const canvas = document.getElementById('draw-pad');
+        const ctx = canvas.getContext('2d');
+        const displayName = document.getElementById('display-name');
+
+        // URLから ?player=〇 を取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const playerId = parseInt(urlParams.get('player'), 10);
+
+        gameRep.on('change', (newVal) => {
+            if (!newVal) return;
+            
+            if (!isNaN(playerId) && playerId >= 0 && playerId <= 6) {
+                // 古いデータで名前リストがない場合のエラー回避
+                if (newVal.names && newVal.names[playerId] && newVal.names[playerId].trim() !== '') {
+                    displayName.innerText = `【 ${newVal.names[playerId]} 】さんの回答ボード`;
+                } else {
+                    displayName.innerText = `【 ${playerId + 1}人目 】の回答ボード`;
+                }
+            } else {
+                displayName.innerText = `プレイヤーIDが不正です`;
+            }
+        });
+
+        function clearCanvas() {
+            ctx.fillStyle = "#1565c0"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        clearCanvas();
+
+        let isDrawing = false;
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        // 強制的に白ペン設定
+        function startDraw(e) { 
+            e.preventDefault(); isDrawing = true; const pos = getPos(e); 
+            ctx.beginPath(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.moveTo(pos.x, pos.y); 
+        }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+        function stopDraw(e) { e.preventDefault(); isDrawing = false; ctx.closePath(); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDraw, {passive: false});
+
+        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            if (isNaN(playerId)) return alert("IDエラー：送信できません");
+            const imageData = canvas.toDataURL('image/png');
+            
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.answers) state.answers = ['', '', '', '', '', '', ''];
+            if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
+            
+            state.answers[playerId] = imageData;
+            state.isOpen[playerId] = false; 
+            gameRep.value = state;
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = "✅ 送信完了！";
+            btn.classList.add('success');
+            setTimeout(() => { btn.innerText = "🚀 送信 (再提出可)"; btn.classList.remove('success'); }, 3000);
+        });
+    </script>
+</body>
+</html>
