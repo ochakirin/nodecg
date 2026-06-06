@@ -6,7 +6,6 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        /* 🔴 表題のデザイン設定 */
         .title-area { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
 
         .stage-container { position: absolute; top: 150px; left: 40px; right: 40px; bottom: 30px; display: flex; flex-direction: column; justify-content: center; gap: 25px; }
@@ -48,9 +47,7 @@
     </div>
 
     <script>
-        const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
-        });
+        const gameRep = nodecg.Replicant('owarematenState');
         
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
@@ -81,8 +78,8 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
 
-                // 🔴 1人目（i=0）も含め、確実に名前を反映させる安全なロジック
-                if (newVal.names && typeof newVal.names[i] === 'string' && newVal.names[i].trim() !== '') {
+                // 🔴 古いデータ対策：names配列が存在するか安全確認
+                if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
                     nameTag.innerText = newVal.names[i].trim();
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
@@ -98,7 +95,7 @@
                     cover.classList.remove('submitted');
                 }
 
-                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') {
+                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers && newVal.answers[i] !== '') {
                     slot.classList.add('is-open');
                 } else {
                     slot.classList.remove('is-open');
