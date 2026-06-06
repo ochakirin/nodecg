@@ -7,7 +7,10 @@
     <style>
         body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
         .header-text { font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 15px; background: rgba(255, 255, 255, 0.15); padding: 10px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-weight: bold; background: #ffffff; color: #333333; }
+        
+        /* プルダウンメニュー（枠選択） */
+        #player-select { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); font-weight: bold; background: #ffffff; color: #333333; display: none; /* 初期状態で非表示 */ }
+        
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; width: 100%; }
         button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
@@ -16,7 +19,8 @@
         .btn-submit { background: #ff9800; color: #fff; }
         .btn-submit.success { background: #4CAF50; }
 
-        .preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; }
+        /* 全員の回答プレビュー */
+        #preview-section { margin-top: 25px; padding-top: 15px; border-top: 2px dashed rgba(255,255,255,0.2); text-align: left; display: none; /* 初期状態で非表示 */ }
         .preview-title { font-size: 14px; font-weight: bold; color: #b0bec5; margin-bottom: 10px; }
         .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
         @media (max-width: 480px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -28,7 +32,7 @@
 </head>
 <body>
 
-    <div class="header-text" id="display-name">あなたの回答枠を読み込み中...</div>
+    <div class="header-text" id="display-name">読み込み中...</div>
     
     <select id="player-select">
         <option value="0">1人目 の回答枠</option>
@@ -48,7 +52,7 @@
     </div>
 
     <div class="preview-section" id="preview-section">
-        <div class="preview-title">📊 全員の回答状況（MC・ダッシュボード確認用）</div>
+        <div class="preview-title">📊 全員の回答状況（ダッシュボード確認用）</div>
         <div class="preview-grid" id="preview-grid"></div>
     </div>
 
@@ -61,38 +65,38 @@
         const ctx = canvas.getContext('2d');
         const playerSelect = document.getElementById('player-select');
         const displayName = document.getElementById('display-name');
-        const previewGrid = document.getElementById('preview-grid');
         const previewSection = document.getElementById('preview-section');
+        const previewGrid = document.getElementById('preview-grid');
 
+        // 🔴 判定ロジック：URLに ?player=〇 があるかチェック
         const urlParams = new URLSearchParams(window.location.search);
-        const playerId = urlParams.get('id');
-        const isStandalone = urlParams.get('standalone') === 'true';
+        const playerParam = urlParams.get('player');
 
-        // 🔴 スタンドアローン（個別URL）で開いた時は、プレビュー一覧を非表示にする
-        if (isStandalone) {
-            previewSection.style.display = 'none';
-        }
-
-        if (playerId !== null && playerId >= 0 && playerId <= 6) {
-            playerSelect.value = playerId;
-            playerSelect.disabled = true; 
-            playerSelect.style.display = 'none'; 
-            displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】の回答枠です`;
+        if (playerParam !== null && playerParam >= 0 && playerParam <= 6) {
+            // 【スマホ・スタンドアローン版（出演者用）の表示】
+            playerSelect.value = playerParam;
+            // CSSで初期非表示（display: none）にしているため、ここでは何もしなくてOK（枠選択もプレビューも出ない）
+        } else {
+            // 【ダッシュボード版（MC・スタッフ用）の表示】
+            playerSelect.style.display = 'block'; // 枠選択プルダウンを表示
+            previewSection.style.display = 'block'; // 全員プレビューを表示
+            displayName.innerText = `手書き回答ボード (管理・プレビュー用)`;
         }
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            if (playerId !== null && playerId >= 0 && playerId <= 6 && newVal.names) {
-                const targetName = newVal.names[playerId];
+            // 出演者用画面の名前リアルタイム反映
+            if (playerParam !== null && playerParam >= 0 && playerParam <= 6 && newVal.names) {
+                const targetName = newVal.names[playerParam];
                 if (targetName && targetName.trim() !== '') {
                     displayName.innerText = `あなたは【 ${targetName} 】の回答枠です`;
                 } else {
-                    displayName.innerText = `あなたは【${parseInt(playerId) + 1}人目】の回答枠です`;
+                    displayName.innerText = `あなたは【${parseInt(playerParam) + 1}人目】の回答枠です`;
                 }
             }
 
-            // プレビュー表示（非表示の時も裏で更新だけはしておく）
+            // ダッシュボード用プレビューの更新
             previewGrid.innerHTML = '';
             for (let i = 0; i < 7; i++) {
                 const box = document.createElement('div');
@@ -115,3 +119,51 @@
             ctx.lineWidth = 8;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
+        }
+        clearCanvas();
+
+        let isDrawing = false;
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function startDraw(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+        function stopDraw(e) { e.preventDefault(); isDrawing = false; ctx.closePath(); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDraw, {passive: false});
+
+        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            const playerIndex = parseInt(playerSelect.value);
+            const imageData = canvas.toDataURL('image/png');
+            
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            state.answers[playerIndex] = imageData;
+            state.isOpen[playerIndex] = false; 
+            gameRep.value = state;
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = "✅ 送信完了！";
+            btn.classList.add('success');
+            setTimeout(() => { 
+                btn.innerText = "🚀 送信 (再提出可)"; 
+                btn.classList.remove('success'); 
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
