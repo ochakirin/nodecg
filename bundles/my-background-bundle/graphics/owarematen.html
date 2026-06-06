@@ -2,141 +2,38 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Owarema-ten Overlay Pyramid Layout</title>
+    <title>Owarema-ten Overlay</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            width: 1920px; 
-            height: 1080px; 
-            background: transparent; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            overflow: hidden; 
-            position: relative; 
-        }
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        .title-area { 
-            position: absolute; 
-            top: 40px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: rgba(0, 0, 0, 0.85); 
-            color: white; 
-            padding: 15px 50px; 
-            border-radius: 12px; 
-            font-size: 40px; 
-            font-weight: bold; 
-            border: 4px solid #ff9800; 
-            text-align: center; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3); 
-            z-index: 100;
-        }
+        .title-area { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
 
-        /* 🔴 ひな壇（ピラミッド型）レイアウトコンテナ */
-        .stage-container {
-            position: absolute;
-            top: 150px;
-            left: 40px;
-            right: 40px;
-            bottom: 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 25px;
-        }
+        .stage-container { position: absolute; top: 150px; left: 40px; right: 40px; bottom: 30px; display: flex; flex-direction: column; justify-content: center; gap: 25px; }
 
-        .row {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            width: 100%;
-        }
+        .row { display: flex; justify-content: center; gap: 20px; width: 100%; }
 
-        /* 全解答枠共通のベーススタイル */
-        .answer-slot { 
-            background: #1e1e1e; 
-            border: 5px solid #424242; 
-            border-radius: 14px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            position: relative; 
-            box-shadow: 0 12px 35px rgba(0,0,0,0.6); 
-            overflow: hidden; 
-            transition: all 0.3s ease;
-        }
+        .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 12px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
 
-        .player-name { 
-            background: #333333; 
-            color: white; 
-            width: 100%; 
-            text-align: center; 
-            font-weight: bold; 
-            border-bottom: 3px solid #424242; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-        }
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
 
-        .board-area { 
-            flex: 1; 
-            width: 100%; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: #111; /* 青い回答がパッと映えるシックな暗めの背景 */
-            position: relative; 
-        }
+        /* 🔴 修正：余白を設けて、画像が絶対に名前ラベルに被らないようにする */
+        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 15px; box-sizing: border-box; }
 
-        .answer-img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
-            display: none; 
-        } 
+        /* 🔴 修正：画像サイズを90%に抑え、枠をはみ出させない */
+        .answer-img { max-width: 95%; max-height: 95%; object-fit: contain; display: none; } 
 
-        .cover { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: #cfd8dc; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-weight: bold; 
-            color: #78909c; 
-            transition: all 0.3s ease; 
-            text-align: center; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            z-index: 10; 
-        }
+        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; }
         
-        .cover.submitted { 
-            background: #e91e63; 
-            color: white; 
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3); 
-        }
+        .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
         .is-open .cover { opacity: 0; pointer-events: none; }
         .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
 
-        /* 🔴 1列目：1人目（ひな壇最上部・特大サイズ） */
-        .row-1 .answer-slot {
-            width: 580px;
-            height: 320px;
-            border-color: #ff9800; /* 特別感を出すオレンジ枠 */
-        }
+        .row-1 .answer-slot { width: 580px; height: 320px; border-color: #ff9800; }
         .row-1 .player-name { font-size: 30px; padding: 12px 0; background: #222; }
         .row-1 .cover { font-size: 34px; }
 
-        /* 🔴 2列目（4人分）＆ 3列目（2人分）：（通常の解答席サイズ） */
-        .row-2 .answer-slot, .row-3 .answer-slot {
-            width: 420px;
-            height: 240px;
-        }
+        .row-2 .answer-slot, .row-3 .answer-slot { width: 420px; height: 240px; }
         .row-2 .player-name, .row-3 .player-name { font-size: 24px; padding: 8px 0; }
         .row-2 .cover, .row-3 .cover { font-size: 24px; }
 
@@ -157,13 +54,15 @@
     </div>
 
     <script>
-        const gameRep = nodecg.Replicant('owarematenState');
+        // 🔴 修正：初期起動時でも確実に名前枠（names）が認識されるように defaultValue を付与
+        const gameRep = nodecg.Replicant('owarematenState', {
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
+        });
         
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
         const row3 = document.getElementById('row-3');
 
-        // 7つの解答枠をそれぞれの行コンテナへ自動分配
         for (let i = 0; i < 7; i++) {
             const slot = document.createElement('div');
             slot.className = 'answer-slot';
@@ -176,14 +75,9 @@
                 </div>
             `;
 
-            // 🔴 配分ロジック
-            if (i === 0) {
-                row1.appendChild(slot);  // 1人目は最上部
-            } else if (i >= 1 && i <= 4) {
-                row2.appendChild(slot);  // 2〜5人目は2列目
-            } else {
-                row3.appendChild(slot);  // 6〜7人目は3列目
-            }
+            if (i === 0) row1.appendChild(slot);
+            else if (i >= 1 && i <= 4) row2.appendChild(slot);
+            else row3.appendChild(slot);
         }
 
         gameRep.on('change', (newVal) => {
@@ -194,12 +88,14 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
 
+                // 名前の反映
                 if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
                     nameTag.innerText = newVal.names[i];
                 } else {
                     nameTag.innerText = `${i + 1}人目`;
                 }
 
+                // 画像の反映
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
                     cover.innerText = "回答完了！";
@@ -210,6 +106,7 @@
                     cover.classList.remove('submitted');
                 }
 
+                // 開閉
                 if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') {
                     slot.classList.add('is-open');
                 } else {
