@@ -6,7 +6,6 @@
         body { font-family: sans-serif; padding: 12px; background: #f0f2f5; margin: 0; }
         .panel-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 12px; border-bottom: 2px solid #e91e63; padding-bottom: 6px; }
         
-        /* 4人分のグリッドレイアウト */
         .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .control-box { background: white; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         
@@ -14,8 +13,8 @@
         .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; background: #9e9e9e; }
         .status-badge.submitted { background: #e91e63; }
         
-        /* 🔴 リアルタイムプレビュー枠 */
-        .live-preview { width: 100%; height: 120px; background: #fdfdfd; border: 2px dashed #ccc; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; position: relative; }
+        /* 🔴 リアルタイムプレビュー枠の高さを拡大 (120px -> 180px) */
+        .live-preview { width: 100%; height: 180px; background: #fdfdfd; border: 2px dashed #ccc; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
         .live-preview img { width: 100%; height: 100%; object-fit: contain; }
         .live-text { position: absolute; font-size: 11px; color: #aaa; }
         
@@ -23,14 +22,11 @@
         
         .action-btns { display: flex; gap: 5px; }
         button { flex: 1; padding: 6px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; color: white; font-size: 12px; }
-        .btn-open { background: #2196f3; }
-        .btn-open.is-open { background: #4caf50; }
         .btn-copy { background: #009688; }
         .btn-jump { background: #795548; }
         
         .master-btns { display: flex; gap: 10px; margin-top: 15px; }
         .master-btns button { flex: 1; padding: 14px; font-size: 14px; }
-        .btn-all-open { background: #ff9800; }
         .btn-reset { background: #607d8b; }
     </style>
 </head>
@@ -41,11 +37,11 @@
     <div class="grid-container" id="player-controls"></div>
 
     <div class="master-btns">
-        <button class="btn-all-open" id="btn-all-open">🎉 全員一斉オープン</button>
         <button class="btn-reset" id="btn-reset">🔄 全データリセット</button>
     </div>
 
     <script>
+        // ※ 常に配信画面に絵がダダ漏れになる仕様にしたため、MCの「オープン」ボタンは役割がなくなったので削除しました。
         const gameRep = nodecg.Replicant('paintState', {
             defaultValue: { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] }
         });
@@ -66,19 +62,11 @@
                 </div>
                 <input type="text" class="name-input" id="name-input-${i}" placeholder="名前を入力">
                 <div class="action-btns">
-                    <button class="btn-open" id="toggle-btn-${i}">👁️ オープン</button>
                     <button class="btn-copy" id="copy-btn-${i}">🔗 コピー</button>
-                    <button class="btn-jump" id="jump-btn-${i}">🚀</button>
+                    <button class="btn-jump" id="jump-btn-${i}">🚀 開く</button>
                 </div>
             `;
             container.appendChild(box);
-
-            document.getElementById(`toggle-btn-${i}`).addEventListener('click', () => {
-                const state = JSON.parse(JSON.stringify(gameRep.value));
-                if (!state.isOpen) state.isOpen = [false, false, false, false];
-                state.isOpen[i] = !state.isOpen[i];
-                gameRep.value = state;
-            });
 
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
@@ -102,12 +90,10 @@
             if (!newVal) return;
             for (let i = 0; i < 4; i++) {
                 const badge = document.getElementById(`badge-${i}`);
-                const btn = document.getElementById(`toggle-btn-${i}`);
                 const nameInput = document.getElementById(`name-input-${i}`);
                 const liveImg = document.getElementById(`live-img-${i}`);
                 const liveText = document.getElementById(`live-text-${i}`);
                 
-                // リアルタイムプレビューの表示
                 if (newVal.live && newVal.live[i] && newVal.live[i] !== '') {
                     liveImg.src = newVal.live[i];
                     liveImg.style.display = 'block';
@@ -125,25 +111,10 @@
                     badge.classList.remove('submitted');
                 }
 
-                if (newVal.isOpen && newVal.isOpen[i]) {
-                    btn.innerText = "閉じる";
-                    btn.classList.add('is-open');
-                } else {
-                    btn.innerText = "👁️ オープン";
-                    btn.classList.remove('is-open');
-                }
-
                 if (newVal.names && document.activeElement !== nameInput) {
                     nameInput.value = newVal.names[i] || '';
                 }
             }
-        });
-
-        document.getElementById('btn-all-open').addEventListener('click', () => {
-            const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.isOpen) state.isOpen = [false, false, false, false];
-            for (let i = 0; i < 4; i++) { if (state.answers && state.answers[i] !== '') state.isOpen[i] = true; }
-            gameRep.value = state;
         });
 
         document.getElementById('btn-reset').addEventListener('click', () => {
