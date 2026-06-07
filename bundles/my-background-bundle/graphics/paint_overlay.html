@@ -6,24 +6,20 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        .stage-container { position: absolute; top: 80px; left: 80px; right: 80px; bottom: 80px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 40px; }
+        /* 🔴 枠を極限まで大きくするため、上下左右の余白と隙間(gap)を小さくしました */
+        .stage-container { position: absolute; top: 30px; left: 30px; right: 30px; bottom: 30px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px; }
 
-        .answer-slot { background: #ffffff; border: 8px solid #607d8b; border-radius: 16px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.4); overflow: hidden; transition: all 0.3s ease; }
-        .player-name { background: #607d8b; color: white; width: 100%; text-align: center; font-weight: bold; font-size: 36px; padding: 15px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
+        .answer-slot { background: #ffffff; border: 8px solid #607d8b; border-radius: 16px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.4); overflow: hidden; }
+        .player-name { background: #607d8b; color: white; width: 100%; text-align: center; font-weight: bold; font-size: 36px; padding: 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
         
-        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #fff; position: relative; padding: 20px; box-sizing: border-box; min-height: 0; overflow: hidden; }
-        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; } 
-
-        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eceff1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #90a4ae; font-size: 40px; transition: all 0.3s ease; z-index: 10; }
-        .cover.submitted { background: #e91e63; color: white; }
+        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #fff; position: relative; padding: 10px; box-sizing: border-box; min-height: 0; overflow: hidden; }
         
-        .is-open .cover { opacity: 0; pointer-events: none; }
-        .is-open .answer-img { display: block; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
+        /* 🔴 画像が枠いっぱいに表示されるように調整 */
+        .answer-img { width: 100%; height: 100%; object-fit: contain; display: block; } 
 
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eceff1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #90a4ae; font-size: 40px; z-index: 10; transition: opacity 0.3s; }
+        .cover.submitted { background: rgba(233, 30, 99, 0.2); border: 10px solid #e91e63; color: #e91e63; font-size: 60px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; pointer-events: none; }
+
     </style>
 </head>
 <body>
@@ -44,8 +40,8 @@
             slot.innerHTML = `
                 <div class="player-name" id="name-tag-${i}">${i + 1}人目</div>
                 <div class="board-area">
-                    <img class="answer-img" id="img-${i}" src="" alt="">
-                    <div class="cover" id="cover-${i}">お絵かき中...</div>
+                    <img class="answer-img" id="img-${i}" src="">
+                    <div class="cover" id="cover-${i}">お絵かき待機中...</div>
                 </div>
             `;
             container.appendChild(slot);
@@ -54,7 +50,6 @@
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 4; i++) {
-                const slot = document.getElementById(`slot-${i}`);
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
@@ -65,20 +60,26 @@
                     nameTag.innerText = `${i + 1}人目`;
                 }
 
+                // 🔴 リアルタイムダダ漏れロジック
                 if (newVal.answers && newVal.answers[i] !== '') {
+                    // 送信完了時：絵はそのまま見せつつ「完成！」のスタンプ風カバーを被せる
                     img.src = newVal.answers[i];
                     cover.innerText = "完成！";
                     cover.classList.add('submitted');
-                } else {
-                    img.src = "";
-                    cover.innerText = "お絵かき中...";
+                    cover.style.opacity = '1';
+                    cover.style.background = 'rgba(255,255,255,0)'; // 絵を隠さないように透明化
+                } else if (newVal.live && newVal.live[i] !== '') {
+                    // 描いている最中：絵を常に表示し、カバーを完全に透明にして消す
+                    img.src = newVal.live[i];
                     cover.classList.remove('submitted');
-                }
-
-                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers && newVal.answers[i] !== '') {
-                    slot.classList.add('is-open');
+                    cover.style.opacity = '0';
                 } else {
-                    slot.classList.remove('is-open');
+                    // まだ何も描いていない初期状態
+                    img.src = "";
+                    cover.innerText = "お絵かき待機中...";
+                    cover.classList.remove('submitted');
+                    cover.style.opacity = '1';
+                    cover.style.background = '#eceff1'; // グレーで覆う
                 }
             }
         });
