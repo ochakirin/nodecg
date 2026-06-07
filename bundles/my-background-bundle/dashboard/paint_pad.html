@@ -70,7 +70,7 @@
         let currentColor = "#000000";
         let currentWidth = 8;
         let isEraser = false;
-        let undoStack = []; // 戻る機能のための履歴
+        let undoStack = []; 
 
         const colorPicker = document.getElementById('color-picker');
         const widthSlider = document.getElementById('line-width');
@@ -83,7 +83,7 @@
 
         function saveState() {
             undoStack.push(canvas.toDataURL());
-            if (undoStack.length > 15) undoStack.shift(); // 最大15回まで戻れる
+            if (undoStack.length > 15) undoStack.shift(); 
         }
 
         btnUndo.addEventListener('click', () => {
@@ -94,7 +94,7 @@
                 img.onload = () => {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0);
-                    sendLivePreview(); // 戻った時もプレビューを更新
+                    sendLivePreview(); 
                 }
             } else {
                 clearCanvas();
@@ -107,16 +107,24 @@
             undoStack = [];
             sendLivePreview();
         }
-        clearCanvas();
 
-        // 🔴 描画をMC画面にリアルタイム転送する機能
+        // 🔴 修正：初期化時に通信が確立していなくても絶対にエラーを起こさない安全装置
         function sendLivePreview() {
             if (isNaN(playerId)) return;
-            const state = JSON.parse(JSON.stringify(gameRep.value));
+            
+            let state = gameRep.value;
+            if (!state) {
+                state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] };
+            } else {
+                state = JSON.parse(JSON.stringify(state));
+            }
+            
             if (!state.live) state.live = ['', '', '', ''];
             state.live[playerId] = canvas.toDataURL('image/png');
             gameRep.value = state;
         }
+
+        clearCanvas();
 
         // --- 描画ロジック ---
         let isDrawing = false;
@@ -133,7 +141,7 @@
 
         function startDraw(e) { 
             if (e.cancelable) e.preventDefault(); 
-            saveState(); // 描き始める前の状態を保存
+            saveState(); 
             isDrawing = true; 
             const pos = getPos(e); 
             ctx.beginPath(); 
@@ -159,7 +167,7 @@
             if (isDrawing) {
                 isDrawing = false; 
                 ctx.closePath(); 
-                sendLivePreview(); // 🔴 一筆描き終わるたびにMCへ転送
+                sendLivePreview(); 
             }
         }
 
@@ -177,7 +185,13 @@
             if (isNaN(playerId)) return alert("IDエラー：送信できません");
             const imageData = canvas.toDataURL('image/png');
             
-            let state = JSON.parse(JSON.stringify(gameRep.value));
+            let state = gameRep.value;
+            if (!state) {
+                state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] };
+            } else {
+                state = JSON.parse(JSON.stringify(state));
+            }
+            
             if (!state.answers) state.answers = ['', '', '', ''];
             if (!state.isOpen) state.isOpen = [false, false, false, false];
             
