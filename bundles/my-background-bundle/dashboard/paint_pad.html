@@ -6,10 +6,10 @@
     <title>本格ペイントボード</title>
     <style>
         html, body { overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
-        body { font-family: sans-serif; padding: 15px; background: #eceff1; color: #333; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
+        /* 🔴 画面幅の最大値を800pxに拡大 */
+        body { font-family: sans-serif; padding: 15px; background: #eceff1; color: #333; text-align: center; margin: 0 auto; max-width: 800px; touch-action: none; box-sizing: border-box; }
         .header-text { font-size: 20px; font-weight: bold; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        /* ペイントツールバー */
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); align-items: center; }
         .tool-item { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: bold; }
         input[type="color"] { width: 40px; height: 40px; border: none; cursor: pointer; padding: 0; background: none; }
@@ -17,7 +17,8 @@
         .btn-tool { padding: 8px 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; background: #607d8b; transition: 0.1s; }
         .btn-tool.active { background: #e91e63; }
         
-        canvas { display: block; background: #ffffff; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 350px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
+        /* 🔴 キャンバスの縦幅も拡大 */
+        canvas { display: block; background: #ffffff; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 450px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
         
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; width: 100%; }
         button.action { flex: 1; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
@@ -32,12 +33,12 @@
     
     <div class="toolbar">
         <div class="tool-item">色: <input type="color" id="color-picker" value="#000000"></div>
-        <div class="tool-item">太さ: <input type="range" id="line-width" min="1" max="30" value="8"></div>
+        <div class="tool-item">太さ: <input type="range" id="line-width" min="1" max="40" value="8"></div>
         <button class="btn-tool" id="btn-eraser">消しゴム</button>
         <button class="btn-tool" id="btn-undo">↩ 戻る</button>
     </div>
 
-    <canvas id="draw-pad" width="600" height="350"></canvas>
+    <canvas id="draw-pad" width="800" height="500"></canvas>
 
     <div class="btn-group">
         <button class="action btn-clear" id="btn-clear">🗑️ 全消去</button>
@@ -66,7 +67,6 @@
             }
         });
 
-        // --- ペイント機能の初期設定 ---
         let currentColor = "#000000";
         let currentWidth = 8;
         let isEraser = false;
@@ -108,17 +108,11 @@
             sendLivePreview();
         }
 
-        // 🔴 修正：初期化時に通信が確立していなくても絶対にエラーを起こさない安全装置
         function sendLivePreview() {
             if (isNaN(playerId)) return;
-            
             let state = gameRep.value;
-            if (!state) {
-                state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] };
-            } else {
-                state = JSON.parse(JSON.stringify(state));
-            }
-            
+            if (!state) { state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] }; } 
+            else { state = JSON.parse(JSON.stringify(state)); }
             if (!state.live) state.live = ['', '', '', ''];
             state.live[playerId] = canvas.toDataURL('image/png');
             gameRep.value = state;
@@ -126,7 +120,6 @@
 
         clearCanvas();
 
-        // --- 描画ロジック ---
         let isDrawing = false;
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -186,11 +179,8 @@
             const imageData = canvas.toDataURL('image/png');
             
             let state = gameRep.value;
-            if (!state) {
-                state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] };
-            } else {
-                state = JSON.parse(JSON.stringify(state));
-            }
+            if (!state) { state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] }; } 
+            else { state = JSON.parse(JSON.stringify(state)); }
             
             if (!state.answers) state.answers = ['', '', '', ''];
             if (!state.isOpen) state.isOpen = [false, false, false, false];
