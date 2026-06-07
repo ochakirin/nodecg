@@ -10,20 +10,116 @@
     "compatibleRange": "^1.0.0 || ^2.0.0",
     "hasExtension": true,
     "dashboardPanels": [
-      { "name": "timer-control", "title": "タイマーコントローラー", "file": "timer.html", "headerColor": "#52575c", "width": 3, "workspace": "1.メイン管理" },
-      { "name": "lap-counter", "title": "ラップ記録（20チーム分）", "file": "lap.html", "headerColor": "#009688", "width": 4, "workspace": "1.メイン管理" },
-      { "name": "sheet-preview", "title": "シートプレビュー", "file": "preview.html", "headerColor": "#673AB7", "width": 5, "workspace": "1.メイン管理" },
-      { "name": "ranking-display", "title": "チームランキング", "file": "ranking.html", "headerColor": "#FF9800", "width": 4, "workspace": "1.メイン管理" },
-      { "name": "5-bomber", "title": "5ボンバー回答入力", "file": "5bomber.html", "headerColor": "#FF5722", "width": 3, "workspace": "2.ファイブボンバー" },
-      { "name": "5-bomber-control", "title": "5ボンバー運行管理", "file": "5bomber_ctrl.html", "headerColor": "#E91E63", "width": 3, "workspace": "2.ファイブボンバー" },
-      { "name": "owarema-input", "title": "✍️ 手書き回答ボード (出演者用)", "file": "owarema_input.html", "headerColor": "#4CAF50", "width": 4, "workspace": "3.リーダー理解度王" },
-      { "name": "owarema-control", "title": "👑 進行管理 (MC用)", "file": "owarema_ctrl.html", "headerColor": "#9C27B0", "width": 5, "workspace": "3.リーダー理解度王" },
-      { "name": "owarema-pad", "title": "📱 出演者パッド (配信用・触らない)", "file": "owarema_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" }
+      {
+        "name": "timer-control",
+        "title": "タイマーコントローラー",
+        "file": "timer.html",
+        "headerColor": "#52575c",
+        "width": 3,
+        "workspace": "1.メイン管理"
+      },
+      {
+        "name": "lap-counter",
+        "title": "ラップ記録（20チーム分）",
+        "file": "lap.html",
+        "headerColor": "#009688",
+        "width": 4,
+        "workspace": "1.メイン管理"
+      },
+      {
+        "name": "sheet-preview",
+        "title": "シートプレビュー",
+        "file": "preview.html",
+        "headerColor": "#673AB7",
+        "width": 5,
+        "workspace": "1.メイン管理"
+      },
+      {
+        "name": "ranking-display",
+        "title": "チームランキング",
+        "file": "ranking.html",
+        "headerColor": "#FF9800",
+        "width": 4,
+        "workspace": "1.メイン管理"
+      },
+      {
+        "name": "5-bomber",
+        "title": "5ボンバー回答入力",
+        "file": "5bomber.html",
+        "headerColor": "#FF5722",
+        "width": 3,
+        "workspace": "2.ファイブボンバー"
+      },
+      {
+        "name": "5-bomber-control",
+        "title": "5ボンバー運行管理",
+        "file": "5bomber_ctrl.html",
+        "headerColor": "#E91E63",
+        "width": 3,
+        "workspace": "2.ファイブボンバー"
+      },
+      {
+        "name": "owarema-input",
+        "title": "✍️ 手書きボード (出演者用)",
+        "file": "owarema_input.html",
+        "headerColor": "#4CAF50",
+        "width": 4,
+        "workspace": "3.リーダー理解度王"
+      },
+      {
+        "name": "owarema-control",
+        "title": "👑 進行管理 (MC用)",
+        "file": "owarema_ctrl.html",
+        "headerColor": "#9C27B0",
+        "width": 5,
+        "workspace": "3.リーダー理解度王"
+      },
+      {
+        "name": "paint-control",
+        "title": "🎨 ペイント進行管理 (MC用)",
+        "file": "paint_ctrl.html",
+        "headerColor": "#E91E63",
+        "width": 4,
+        "workspace": "4.ペイント"
+      },
+      {
+        "name": "owarema-pad",
+        "title": "📱 出演者パッド (バックグラウンド)",
+        "file": "owarema_pad.html",
+        "headerColor": "#000000",
+        "width": 2,
+        "workspace": "99.バックグラウンド"
+      },
+      {
+        "name": "paint-pad",
+        "title": "📱 ペイントパッド (バックグラウンド)",
+        "file": "paint_pad.html",
+        "headerColor": "#000000",
+        "width": 2,
+        "workspace": "99.バックグラウンド"
+      }
     ],
     "graphics": [
-      { "file": "index.html", "width": 1920, "height": 1080 },
-      { "file": "doraleague.html", "width": 1920, "height": 1080 },
-      { "file": "owarematen.html", "width": 1920, "height": 1080 }
+      {
+        "file": "index.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "doraleague.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "owarematen.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "paint_overlay.html",
+        "width": 1920,
+        "height": 1080
+      }
     ]
   },
   "dependencies": {}
