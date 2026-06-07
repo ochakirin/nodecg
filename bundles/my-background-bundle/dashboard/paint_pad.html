@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>本格ペイントボード</title>
+    <style>
+        html, body { overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
+        body { font-family: sans-serif; padding: 15px; background: #eceff1; color: #333; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
+        .header-text { font-size: 20px; font-weight: bold; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* ペイントツールバー */
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); align-items: center; }
+        .tool-item { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: bold; }
+        input[type="color"] { width: 40px; height: 40px; border: none; cursor: pointer; padding: 0; background: none; }
+        input[type="range"] { width: 100px; }
+        .btn-tool { padding: 8px 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; background: #607d8b; transition: 0.1s; }
+        .btn-tool.active { background: #e91e63; }
+        
+        canvas { display: block; background: #ffffff; border: 3px solid #37474f; border-radius: 8px; width: 100%; height: 350px; cursor: crosshair; touch-action: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 0 auto; }
+        
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; width: 100%; }
+        button.action { flex: 1; padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .btn-clear { background: #90a4ae; }
+        .btn-submit { background: #e91e63; }
+        .btn-submit.success { background: #4CAF50; }
+    </style>
+</head>
+<body>
+
+    <div class="header-text" id="display-name">接続中...</div>
+    
+    <div class="toolbar">
+        <div class="tool-item">色: <input type="color" id="color-picker" value="#000000"></div>
+        <div class="tool-item">太さ: <input type="range" id="line-width" min="1" max="30" value="8"></div>
+        <button class="btn-tool" id="btn-eraser">消しゴム</button>
+        <button class="btn-tool" id="btn-undo">↩ 戻る</button>
+    </div>
+
+    <canvas id="draw-pad" width="600" height="350"></canvas>
+
+    <div class="btn-group">
+        <button class="action btn-clear" id="btn-clear">🗑️ 全消去</button>
+        <button class="action btn-submit" id="btn-submit">🚀 送信</button>
+    </div>
+
+    <script>
+        const gameRep = nodecg.Replicant('paintState', {
+            defaultValue: { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] }
+        });
+
+        const canvas = document.getElementById('draw-pad');
+        const ctx = canvas.getContext('2d');
+        const displayName = document.getElementById('display-name');
+        const urlParams = new URLSearchParams(window.location.search);
+        const playerId = parseInt(urlParams.get('player'), 10);
+
+        gameRep.on('change', (newVal) => {
+            if (!newVal) return;
+            if (!isNaN(playerId) && playerId >= 0 && playerId <= 3) {
+                if (newVal.names && newVal.names[playerId] && newVal.names[playerId].trim() !== '') {
+                    displayName.innerText = `🎨 【 ${newVal.names[playerId]} 】さんのキャンバス`;
+                } else {
+                    displayName.innerText = `🎨 【 ${playerId + 1}人目 】のキャンバス`;
+                }
+            }
+        });
+
+        // --- ペイント機能の初期設定 ---
+        let currentColor = "#000000";
+        let currentWidth = 8;
+        let isEraser = false;
+        let undoStack = []; // 戻る機能のための履歴
+
+        const colorPicker = document.getElementById('color-picker');
+        const widthSlider = document.getElementById('line-width');
+        const btnEraser = document.getElementById('btn-eraser');
+        const btnUndo = document.getElementById('btn-undo');
+
+        colorPicker.addEventListener('input', (e) => { currentColor = e.target.value; isEraser = false; btnEraser.classList.remove('active'); });
+        widthSlider.addEventListener('input', (e) => { currentWidth = e.target.value; });
+        btnEraser.addEventListener('click', () => { isEraser = !isEraser; btnEraser.classList.toggle('active', isEraser); });
+
+        function saveState() {
+            undoStack.push(canvas.toDataURL());
+            if (undoStack.length > 15) undoStack.shift(); // 最大15回まで戻れる
+        }
+
+        btnUndo.addEventListener('click', () => {
+            if (undoStack.length > 0) {
+                let imgData = undoStack.pop();
+                let img = new Image();
+                img.src = imgData;
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    sendLivePreview(); // 戻った時もプレビューを更新
+                }
+            } else {
+                clearCanvas();
+            }
+        });
+
+        function clearCanvas() {
+            ctx.fillStyle = "#ffffff"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            undoStack = [];
+            sendLivePreview();
+        }
+        clearCanvas();
+
+        // 🔴 描画をMC画面にリアルタイム転送する機能
+        function sendLivePreview() {
+            if (isNaN(playerId)) return;
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.live) state.live = ['', '', '', ''];
+            state.live[playerId] = canvas.toDataURL('image/png');
+            gameRep.value = state;
+        }
+
+        // --- 描画ロジック ---
+        let isDrawing = false;
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.type.includes('touch')) {
+                if (e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
+                else if (e.changedTouches && e.changedTouches.length > 0) { clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY; } 
+                else { clientX = 0; clientY = 0; }
+            } else { clientX = e.clientX; clientY = e.clientY; }
+            return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
+        }
+
+        function startDraw(e) { 
+            if (e.cancelable) e.preventDefault(); 
+            saveState(); // 描き始める前の状態を保存
+            isDrawing = true; 
+            const pos = getPos(e); 
+            ctx.beginPath(); 
+            ctx.strokeStyle = isEraser ? "#ffffff" : currentColor; 
+            ctx.lineWidth = currentWidth; 
+            ctx.lineCap = "round"; 
+            ctx.lineJoin = "round"; 
+            ctx.moveTo(pos.x, pos.y); 
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function draw(e) { 
+            if (!isDrawing) return; 
+            if (e.cancelable) e.preventDefault(); 
+            const pos = getPos(e); 
+            ctx.lineTo(pos.x, pos.y); 
+            ctx.stroke(); 
+        }
+
+        function stopDraw(e) { 
+            if (e.type !== 'mouseleave' && e.cancelable) e.preventDefault(); 
+            if (isDrawing) {
+                isDrawing = false; 
+                ctx.closePath(); 
+                sendLivePreview(); // 🔴 一筆描き終わるたびにMCへ転送
+            }
+        }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDraw, {passive: false});
+
+        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            if (isNaN(playerId)) return alert("IDエラー：送信できません");
+            const imageData = canvas.toDataURL('image/png');
+            
+            let state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.answers) state.answers = ['', '', '', ''];
+            if (!state.isOpen) state.isOpen = [false, false, false, false];
+            
+            state.answers[playerId] = imageData;
+            state.isOpen[playerId] = false; 
+            gameRep.value = state;
+
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = "✅ 送信完了！";
+            btn.classList.add('success');
+            setTimeout(() => { btn.innerText = "🚀 送信 (再提出可)"; btn.classList.remove('success'); }, 3000);
+        });
+    </script>
+</body>
+</html>
