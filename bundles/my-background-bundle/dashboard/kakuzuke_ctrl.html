@@ -12,7 +12,6 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-up { background: #2196f3; }
         .btn-down { background: #e91e63; }
-        
         .r-0 { background: #ffff00; color: #000; } 
         .r-1 { background: #ffffff; border: 1px solid #ccc; color: #000; } 
         .r-2 { background: #00ffff; color: #000; } 
@@ -22,83 +21,31 @@
     </style>
 </head>
 <body>
-
     <h3 style="margin-top:0; color:#d32f2f;">▼ 格付けボード操作</h3>
     <div id="controls-container"></div>
-
     <div style="margin-top: 20px;">
         <button style="background: #607d8b; width: 100%; padding: 12px;" onclick="resetRanks()">全員「一流」にリセット</button>
     </div>
 
     <script>
         const rankNames = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
+        
         const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
             defaultValue: { 
-                names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
+                names: [...defaultNames], 
                 ranks: [0, 0, 0, 0, 0, 0, 0] 
             },
             persistent: true 
         });
 
-        // データが壊れている場合も補修して返す安全な関数
-        function getSafeState() {
-            if (!kakuzukeRep.value) return { names: Array(7).fill(''), ranks: Array(7).fill(0) };
-            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-            if (!Array.isArray(state.names)) state.names = Array(7).fill('');
-            if (!Array.isArray(state.ranks)) state.ranks = Array(7).fill(0);
-            return state;
-        }
-
-        // 🔴 画面上の入力欄の値をすべて取得して強制的に最新化する
-        function syncNamesFromUI(state) {
-            for (let i = 0; i < 7; i++) {
-                const input = document.getElementById(`name-${i}`);
-                if (input) {
-                    state.names[i] = input.value;
-                }
-            }
-            return state;
-        }
-
-        window.changeName = function(index, newName) {
-            let state = getSafeState();
-            state.names[index] = newName;
-            kakuzukeRep.value = state;
-        };
-
-        window.changeRank = function(index, delta) {
-            let state = getSafeState();
-            state = syncNamesFromUI(state); // 🔴 ランク変更時に「入力途中の名前」も確実に保存！
-            
-            let currentRank = parseInt(state.ranks[index], 10);
-            if (isNaN(currentRank)) currentRank = 0;
-            
-            let newRank = currentRank + delta;
-            if (newRank >= 0 && newRank <= 5) {
-                state.ranks[index] = newRank;
-                kakuzukeRep.value = state;
-                
-                if (delta > 0) {
-                    nodecg.sendMessage('play_open_se');
-                }
-            }
-        };
-
-        window.resetRanks = function() {
-            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
-                let state = getSafeState();
-                state = syncNamesFromUI(state); // リセット時も名前を保存
-                state.ranks = [0, 0, 0, 0, 0, 0, 0];
-                kakuzukeRep.value = state;
-            }
-        };
-
+        // UIの生成
         const container = document.getElementById('controls-container');
         for (let i = 0; i < 7; i++) {
             const div = document.createElement('div');
             div.className = 'row';
             div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" oninput="changeName(${i}, this.value)">
+                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" onchange="changeName(${i}, this.value)">
                 <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
                 <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
                 <div class="rank-display" id="rank-text-${i}">一流</div>
@@ -106,10 +53,46 @@
             container.appendChild(div);
         }
 
+        // 🔴 NodeCGの「直接書き換え方式」（名前が消えるエラーを完全防止）
+        window.changeName = function(index, newName) {
+            if (kakuzukeRep.value && kakuzukeRep.value.names) {
+                // 名前だけをピンポイントで更新
+                kakuzukeRep.value.names[index] = newName || defaultNames[index];
+            }
+        };
+
+        window.changeRank = function(index, delta) {
+            if (kakuzukeRep.value && kakuzukeRep.value.ranks) {
+                let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
+                if (isNaN(currentRank)) currentRank = 0;
+                
+                let newRank = currentRank + delta;
+                if (newRank >= 0 && newRank <= 5) {
+                    // 🔴 ランクだけをピンポイントで更新（名前に干渉しない）
+                    kakuzukeRep.value.ranks[index] = newRank;
+                    
+                    if (delta > 0) {
+                        nodecg.sendMessage('play_open_se');
+                    }
+                }
+            }
+        };
+
+        window.resetRanks = function() {
+            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
+                if (kakuzukeRep.value && kakuzukeRep.value.ranks) {
+                    for (let i = 0; i < 7; i++) {
+                        kakuzukeRep.value.ranks[i] = 0;
+                    }
+                }
+            }
+        };
+
         kakuzukeRep.on('change', (newVal) => {
             if (!newVal) return;
-            const names = newVal.names || [];
-            const ranks = newVal.ranks || [];
+            
+            const names = newVal.names || defaultNames;
+            const ranks = newVal.ranks || [0,0,0,0,0,0,0];
 
             for (let i = 0; i < 7; i++) {
                 const nameInput = document.getElementById(`name-${i}`);
@@ -117,12 +100,13 @@
                 const btnUp = document.getElementById(`up-${i}`);
                 const btnDown = document.getElementById(`down-${i}`);
                 
-                if (nameInput && document.activeElement !== nameInput) {
-                    nameInput.value = names[i] || '';
-                }
-                
                 let rankVal = parseInt(ranks[i], 10);
                 if (isNaN(rankVal)) rankVal = 0;
+
+                if (nameInput && document.activeElement !== nameInput) {
+                    // 空文字が入っていたらデフォルト名に戻す
+                    nameInput.value = names[i] || defaultNames[i];
+                }
 
                 if (rankText) {
                     rankText.innerText = rankNames[rankVal];
