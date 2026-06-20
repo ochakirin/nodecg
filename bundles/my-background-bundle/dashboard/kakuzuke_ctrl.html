@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 10px; background: #f5f5f5; }
+        .team-row { display: flex; align-items: center; gap: 10px; background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid #9c27b0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .team-row input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 120px; }
+        .rank-badge { font-weight: bold; width: 100px; text-align: center; padding: 4px; border-radius: 4px; background: #eee; }
+        .btn-down { background: #e91e63; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-up { background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-down:hover, .btn-up:hover { opacity: 0.8; }
+        .btn-down:disabled { background: #ccc; cursor: not-allowed; }
+        #reset-btn { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h3 style="margin-top:0;">▼ チーム一覧とランク操作</h3>
+    <div id="teams-container"></div>
+    <button id="reset-btn">🔄 全チームを「一流」にリセット</button>
+
+    <script>
+        const ranks = ["一流", "普通", "二流", "三流", "そっくりさん", "映す価値なし"];
+        // デフォルトは6チーム想定（必要に応じて増減可能）
+        const defaultState = Array(6).fill().map((_, i) => ({ name: `チーム${i+1}`, rank: 0 }));
+        const kakuzukeRep = nodecg.Replicant('kakuzukeState', { defaultValue: defaultState });
+
+        function render() {
+            const container = document.getElementById('teams-container');
+            container.innerHTML = '';
+            const state = kakuzukeRep.value || defaultState;
+
+            state.forEach((team, idx) => {
+                const isWorst = team.rank >= ranks.length - 1;
+                const isBest = team.rank <= 0;
+                
+                container.innerHTML += `
+                    <div class="team-row">
+                        <span style="font-size:12px; color:#666;">${idx+1}</span>
+                        <input type="text" value="${team.name}" onchange="updateName(${idx}, this.value)" placeholder="チーム名">
+                        <div class="rank-badge">${ranks[team.rank]}</div>
+                        <button class="btn-down" onclick="changeRank(${idx}, 1)" ${isWorst ? 'disabled' : ''}>⬇ 降格</button>
+                        <button class="btn-up" onclick="changeRank(${idx}, -1)" ${isBest ? 'disabled' : ''}>⬆ 昇格</button>
+                    </div>
+                `;
+            });
+        }
+
+        window.updateName = function(idx, newName) {
+            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+            state[idx].name = newName;
+            kakuzukeRep.value = state;
+        };
+
+        window.changeRank = function(idx, diff) {
+            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+            state[idx].rank += diff;
+            // 降格時にSEを鳴らす連動
+            if (diff > 0) nodecg.sendMessage('play_se'); 
+            kakuzukeRep.value = state;
+        };
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if(!confirm('全チームのランクを「一流」に戻しますか？')) return;
+            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+            state.forEach(t => t.rank = 0);
+            kakuzukeRep.value = state;
+        });
+
+        kakuzukeRep.on('change', render);
+    </script>
+</body>
+</html>
