@@ -2,7 +2,6 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- スマホやタブレットでの拡大縮小を防ぎ、アプリのように操作させるための設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手書き回答パッド</title>
     <style>
@@ -24,10 +23,14 @@
         .canvas-container { 
             flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative;
         }
+        
+        /* 🔴 キャンバスの見た目を青色に変更（データ自体は透明です） */
         canvas { 
-            background: white; border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            background-color: #1565c0; 
+            border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
             touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%;
         }
+        
         .controls { 
             padding: 10px 15px 20px; display: flex; gap: 15px; background: #ffffff; border-top: 1px solid #cfd8dc; 
         }
@@ -53,15 +56,13 @@
     <div class="header">
         <span class="team-badge" id="team-badge">読み込み中...</span>
         <span id="player-label">プレイヤー</span>
-        <span style="width: 60px;"></span> <!-- レイアウト調整用 -->
+        <span style="width: 60px;"></span>
     </div>
     
     <div id="theme-display">お題: 取得中...</div>
     
     <div class="canvas-container" id="canvas-wrapper">
-        <!-- キャンバスの解像度は固定し、CSSで画面サイズにフィットさせます -->
         <canvas id="draw-canvas" width="800" height="450"></canvas>
-        
         <div id="status-overlay">
             <div>回答を送信しました！</div>
             <div class="status-sub">進行の指示があるまで、<br>そのままお待ちください。</div>
@@ -75,17 +76,10 @@
     </div>
 
     <script>
-        // -----------------------------------------------------------
-        // プレイヤー情報とチームの判定
-        // -----------------------------------------------------------
         const urlParams = new URLSearchParams(window.location.search);
-        // ?p=0 〜 13 でアクセス。指定がない場合は 0 をデフォルトとする
         const playerId = parseInt(urlParams.get('p') || '0', 10);
-        
-        // 0〜6 ならチームA(0)、7〜13 ならチームB(1)
         const myTeamIdx = playerId < 7 ? 0 : 1; 
         
-        // 役割ラベルの生成
         const localIdx = myTeamIdx === 0 ? playerId : playerId - 7;
         const roleName = localIdx === 0 ? "👑 リーダー" : `回答者 ${localIdx}`;
         
@@ -94,22 +88,16 @@
         badgeEl.innerText = myTeamIdx === 0 ? "🟥 チームA" : "🟦 チームB";
         badgeEl.style.background = myTeamIdx === 0 ? "#d32f2f" : "#1976d2";
 
-        // -----------------------------------------------------------
-        // NodeCG Replicant 連携
-        // -----------------------------------------------------------
         const gameRep = nodecg.Replicant('owarematenState');
         const themeDisplay = document.getElementById('theme-display');
         const overlay = document.getElementById('status-overlay');
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
-
-            // 1. お題の反映（自分の所属するチームのお題を引っ張ってくる）
             const themes = newVal.teamThemes || ['', ''];
             const myTheme = themes[myTeamIdx] || "未設定";
             themeDisplay.innerText = `お題: ${myTheme}`;
 
-            // 2. 提出状態の反映（すでに自分の回答データが入っていれば送信完了画面を出す）
             if (newVal.answers && newVal.answers[playerId] !== '') {
                 overlay.style.display = 'flex';
             } else {
@@ -117,37 +105,28 @@
             }
         });
 
-        // -----------------------------------------------------------
-        // お絵かきキャンバスの実装
-        // -----------------------------------------------------------
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
         
-        // 背景を白で初期化
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 🔴 初期化時に白で塗りつぶす処理を削除（透明なままにする）
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // ペンの設定
-        ctx.strokeStyle = '#000000'; // 黒色
-        ctx.lineWidth = 8;           // 線の太さ
-        ctx.lineCap = 'round';       // 線の端を丸く
-        ctx.lineJoin = 'round';      // 線のつなぎ目を丸く
+        // 🔴 ペンの設定（青背景に合わせて白ペンに変更）
+        ctx.strokeStyle = '#ffffff'; 
+        ctx.lineWidth = 8;           
+        ctx.lineCap = 'round';       
+        ctx.lineJoin = 'round';      
 
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
 
-        // 座標計算関数（画面サイズにフィットしたキャンバスの実際の座標を計算）
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            // タッチイベントかマウスイベントか判別
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // CSSで縮小拡大されている比率を計算して座標を補正
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
             return {
                 x: (clientX - rect.left) * scaleX,
                 y: (clientY - rect.top) * scaleY
@@ -166,12 +145,10 @@
             e.preventDefault();
             if (!isDrawing) return;
             const pos = getPos(e);
-            
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            
             lastX = pos.x;
             lastY = pos.y;
         }
@@ -181,50 +158,37 @@
             isDrawing = false;
         }
 
-        // マウスイベント
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
         canvas.addEventListener('mouseout', stopDrawing);
-
-        // タッチイベント（スマホ・タブレット用）
         canvas.addEventListener('touchstart', startDrawing, { passive: false });
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDrawing, { passive: false });
         canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-
-        // -----------------------------------------------------------
-        // ボタン操作の処理
-        // -----------------------------------------------------------
         
-        // 全消去ボタン
+        // 🔴 全消去ボタン（白塗りつぶしではなく、透明クリアに変更）
         document.getElementById('btn-clear').addEventListener('click', () => {
             if (confirm('描いた内容をすべて消去しますか？')) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         });
 
-        // 送信ボタン
         document.getElementById('btn-submit').addEventListener('click', () => {
-            // キャンバスの内容をBase64の画像データ(PNG)に変換
+            // 背景が透明なPNGとして出力されます
             const dataUrl = canvas.toDataURL('image/png');
-            
-            // Replicantのデータを更新して送信
             const state = JSON.parse(JSON.stringify(gameRep.value));
             if (!state.answers) state.answers = Array(14).fill('');
             state.answers[playerId] = dataUrl;
             gameRep.value = state;
         });
 
-        // やり直し（修正）ボタン
         document.getElementById('btn-edit').addEventListener('click', () => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
             if (!state.answers) state.answers = Array(14).fill('');
-            state.answers[playerId] = ''; // 画像データを空文字にして未提出状態に戻す
+            state.answers[playerId] = ''; 
             gameRep.value = state;
         });
-
     </script>
 </body>
 </html>
