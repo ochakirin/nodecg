@@ -32,30 +32,53 @@
 
     <script>
         const rankNames = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
+        
+        // persistent: true を明示的に指定して確実な保存を促す
         const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
             defaultValue: { 
                 names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
                 ranks: [0, 0, 0, 0, 0, 0, 0] 
-            }
+            },
+            persistent: true 
         });
 
-        // 🔴 NodeCG推奨の「データを直接書き換える方式」に変更してエラーを防止
+        // UI（入力欄とボタン）を生成
+        const container = document.getElementById('controls-container');
+        for (let i = 0; i < 7; i++) {
+            const div = document.createElement('div');
+            div.className = 'row';
+            // 🔴 oninput を onchange に変更し、ページ読み込み時の意図しない上書きを防止
+            div.innerHTML = `
+                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" onchange="changeName(${i}, this.value)">
+                <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
+                <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
+                <div class="rank-display" id="rank-text-${i}">一流</div>
+            `;
+            container.appendChild(div);
+        }
+
+        // 🔴 データを丸ごと上書き(JSONコピー)する方式に戻し、NodeCGに「データが変わった」と確実に保存させる
         window.changeName = function(index, newName) {
             if (!kakuzukeRep.value) return;
-            if (!kakuzukeRep.value.names) kakuzukeRep.value.names = [];
-            kakuzukeRep.value.names[index] = newName;
+            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+            if (!state.names) state.names = [];
+            state.names[index] = newName;
+            kakuzukeRep.value = state;
         };
 
         window.changeRank = function(index, delta) {
             if (!kakuzukeRep.value) return;
-            if (!kakuzukeRep.value.ranks) kakuzukeRep.value.ranks = [0,0,0,0,0,0,0];
+            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+            if (!state.ranks) state.ranks = [0,0,0,0,0,0,0];
             
-            let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
+            let currentRank = parseInt(state.ranks[index], 10);
             if (isNaN(currentRank)) currentRank = 0;
             
             let newRank = currentRank + delta;
             if (newRank >= 0 && newRank <= 5) {
-                kakuzukeRep.value.ranks[index] = newRank;
+                state.ranks[index] = newRank;
+                kakuzukeRep.value = state; // ここで確実に保存される
+                
                 if (delta > 0) {
                     nodecg.sendMessage('play_open_se');
                 }
@@ -65,23 +88,11 @@
         window.resetRanks = function() {
             if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
                 if (!kakuzukeRep.value) return;
-                kakuzukeRep.value.ranks = [0, 0, 0, 0, 0, 0, 0];
+                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+                state.ranks = [0, 0, 0, 0, 0, 0, 0];
+                kakuzukeRep.value = state;
             }
         };
-
-        // UI（入力欄とボタン）を生成
-        const container = document.getElementById('controls-container');
-        for (let i = 0; i < 7; i++) {
-            const div = document.createElement('div');
-            div.className = 'row';
-            div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" oninput="changeName(${i}, this.value)">
-                <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
-                <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
-                <div class="rank-display" id="rank-text-${i}">一流</div>
-            `;
-            container.appendChild(div);
-        }
 
         // データの変更を監視してパネルの表示を更新
         kakuzukeRep.on('change', (newVal) => {
@@ -95,7 +106,7 @@
                 const btnUp = document.getElementById(`up-${i}`);
                 const btnDown = document.getElementById(`down-${i}`);
                 
-                // 自分が文字を入力中でなければ名前を更新
+                // 入力中でない場合のみ名前を反映
                 if (nameInput && document.activeElement !== nameInput) {
                     nameInput.value = names[i] || '';
                 }
