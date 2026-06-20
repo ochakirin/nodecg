@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Five League Overlay</title>
+    <style>
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
+        
+        .team-area { position: absolute; top: 35px; left: 50px; background: #e3f2fd; color: #1565c0; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #2196f3; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; }
+        .score-area { position: absolute; top: 35px; right: 50px; background: #fff3e0; color: #e65100; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #ff9800; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; display: flex; align-items: center; gap: 15px; }
+        .score-val { font-size: 48px; color: #d84315; }
+
+        .question-area { position: absolute; top: 180px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 25px 60px; border-radius: 12px; font-size: 48px; font-weight: bold; border: 4px solid #1e88e5; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 100; min-width: 1200px; }
+
+        .slots-container { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 30px; width: 1800px; justify-content: center; }
+
+        .slot { width: 320px; background: #1e1e1e; border: 6px solid #424242; border-radius: 16px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 4px solid #424242; font-size: 26px; padding: 12px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
+        
+        .board-area { width: 100%; height: 320px; position: relative; background: #111; padding: 10px; box-sizing: border-box; }
+        
+        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; position: relative; background-color: #1565c0; border-radius: 8px; border: 3px solid #ffffff; transition: background-color 0.1s; } 
+
+        .cover { position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; font-size: 32px; border-radius: 8px; z-index: 10; }
+        .cover.submitted { background: #e91e63; color: white; }
+        
+        .is-open .cover { opacity: 0; pointer-events: none; }
+        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
+
+        .slot.is-correct { transform: scale(1.05) translateY(-10px); z-index: 50; border-color: #ffeb3b; }
+        .slot.is-correct .answer-img { background-color: #d32f2f !important; border-color: #ffeb3b !important; box-shadow: 0 0 40px rgba(211, 47, 47, 0.9) !important; }
+
+        @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="team-area" id="team-display">チーム準備中...</div>
+    <div class="score-area">得点: <span class="score-val" id="score-display">0</span> 点</div>
+    <div class="question-area" id="question-display">問題：未設定</div>
+
+    <div class="slots-container" id="slots-container">
+        </div>
+
+    <script>
+        const stateRep = nodecg.Replicant('fiveLeagueState');
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
+
+        const container = document.getElementById('slots-container');
+        for (let i = 0; i < 5; i++) {
+            container.innerHTML += `
+                <div class="slot" id="slot-${i}">
+                    <div class="player-name" id="name-${i}"></div>
+                    <div class="board-area">
+                        <img class="answer-img" id="img-${i}" src="">
+                        <div class="cover" id="cover-${i}">考え中...</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let soundOpen;
+        try { soundOpen = new Audio('sounds/open.mp3'); } catch(e) {}
+        nodecg.listenFor('play_open_se', () => {
+            if (soundOpen) {
+                soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                soundOpen.currentTime = 0;
+                soundOpen.play().catch(e => {});
+            }
+        });
+
+        stateRep.on('change', (newVal) => {
+            if (!newVal) return;
+
+            document.getElementById('team-display').innerText = newVal.teamName || '未設定';
+            document.getElementById('score-display').innerText = newVal.score || 0;
+            
+            const qEl = document.getElementById('question-display');
+            if (newVal.question && newVal.question.trim() !== '') {
+                qEl.innerText = `問題：${newVal.question}`;
+                qEl.style.display = 'block';
+            } else {
+                qEl.style.display = 'none';
+            }
+
+            for (let i = 0; i < 5; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                const cover = document.getElementById(`cover-${i}`);
+                const img = document.getElementById(`img-${i}`);
+                const nameTag = document.getElementById(`name-${i}`);
+
+                nameTag.innerText = newVal.names[i] || `回答者 ${i+1}`;
+
+                if (newVal.answers && newVal.answers[i] !== '') {
+                    img.src = newVal.answers[i];
+                    cover.innerText = "回答完了！";
+                    cover.classList.add('submitted');
+                } else {
+                    img.src = "";
+                    cover.innerText = "考え中...";
+                    cover.classList.remove('submitted');
+                }
+
+                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') slot.classList.add('is-open');
+                else slot.classList.remove('is-open');
+
+                if (newVal.isCorrect && newVal.isCorrect[i]) slot.classList.add('is-correct');
+                else slot.classList.remove('is-correct');
+            }
+        });
+    </script>
+</body>
+</html>
