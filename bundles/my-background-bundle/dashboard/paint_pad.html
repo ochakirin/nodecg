@@ -51,21 +51,44 @@
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = parseInt(urlParams.get('player'), 10);
 
+        let currentColor = "#000000";
+        let currentWidth = 8;
+        let isEraser = false;
+        let undoStack = []; 
+        let isDrawing = false;
+        let isRestoring = false;
+        let lastSentLiveImage = ""; // 通信の無限ループを防ぐための変数
+
+        // 🔴 NodeCGからデータを受信した時の処理（復元機能）
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             if (!isNaN(playerId) && playerId >= 0 && playerId <= 3) {
+                // 名前の反映
                 if (newVal.names && newVal.names[playerId] && newVal.names[playerId].trim() !== '') {
                     displayName.innerText = `🎨 【 ${newVal.names[playerId]} 】さんのキャンバス`;
                 } else {
                     displayName.innerText = `🎨 【 ${playerId + 1}人目 】のキャンバス`;
                 }
+
+                // 🔴 スリープ復帰時などのCanvas復元処理
+                if (newVal.live && newVal.live[playerId] && newVal.live[playerId] !== '') {
+                    const incomingImage = newVal.live[playerId];
+                    // 自分が描いている最中ではなく、かつ「自分が最後に送った絵」と違う場合のみ復元する（リロード時対策）
+                    if (!isDrawing && incomingImage !== lastSentLiveImage) {
+                        isRestoring = true;
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.fillStyle = "#ffffff";
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                            lastSentLiveImage = incomingImage; // 復元した画像を自分の最新として記憶
+                            isRestoring = false;
+                        };
+                        img.src = incomingImage;
+                    }
+                }
             }
         });
-
-        let currentColor = "#000000";
-        let currentWidth = 8;
-        let isEraser = false;
-        let undoStack = []; 
 
         const colorPicker = document.getElementById('color-picker');
         const widthSlider = document.getElementById('line-width');
@@ -104,18 +127,22 @@
         }
 
         function sendLivePreview() {
-            if (isNaN(playerId)) return;
+            if (isNaN(playerId) || isRestoring) return;
             let state = gameRep.value;
             if (!state) { state = { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['', '', '', ''], live: ['', '', '', ''] }; } 
             else { state = JSON.parse(JSON.stringify(state)); }
             if (!state.live) state.live = ['', '', '', ''];
-            state.live[playerId] = canvas.toDataURL('image/png');
+            
+            const imageData = canvas.toDataURL('image/png');
+            state.live[playerId] = imageData;
+            lastSentLiveImage = imageData; // 自分が送信した画像を記憶しておく
             gameRep.value = state;
         }
 
-        clearCanvas();
+        // 初期化（白背景）
+        ctx.fillStyle = "#ffffff"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        let isDrawing = false;
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX, clientY;
@@ -150,6 +177,7 @@
             ctx.stroke(); 
         }
 
+        // 描画終了時にデータを送信
         function stopDraw(e) { 
             if (e.type !== 'mouseleave' && e.cancelable) e.preventDefault(); 
             if (isDrawing) {
@@ -167,7 +195,11 @@
         canvas.addEventListener('touchmove', draw, {passive: false});
         canvas.addEventListener('touchend', stopDraw, {passive: false});
 
-        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (confirm("キャンバスをすべて消去しますか？")) {
+                clearCanvas();
+            }
+        });
 
     </script>
 </body>
