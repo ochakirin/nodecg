@@ -36,7 +36,6 @@
         .row-2 .player-name, .row-3 .player-name { font-size: 22px; }
         .row-2 .cover, .row-3 .cover { font-size: 22px; }
 
-        /* 🔴 新設：正解時の赤背景エフェクト（優先度を上げるために!importantを使用） */
         .answer-slot.is-correct {
             border-color: #ff1744 !important;
             box-shadow: 0 10px 40px rgba(255, 23, 68, 0.8) !important;
@@ -76,7 +75,7 @@
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '', isCorrect: [false, false, false, false, false, false, false] }
+            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }
         });
         
         const row1 = document.getElementById('row-1');
@@ -85,18 +84,30 @@
         const totalScoreDisplay = document.getElementById('total-score-display');
         const themeDisplay = document.getElementById('theme-display');
 
+        // 🔴 演出用サウンドのロードと再生リスナー
+        let soundOpen;
+        try {
+            soundOpen = new Audio('sounds/open.mp3');
+        } catch(e) { console.error("Audio Load Error:", e); }
+
+        nodecg.listenFor('play_open_se', () => {
+            if (soundOpen) {
+                soundOpen.currentTime = 0;
+                soundOpen.play().catch(e => console.log('SE Play Error:', e));
+            }
+        });
+
         for (let i = 0; i < 7; i++) {
             const slot = document.createElement('div');
             slot.className = 'answer-slot';
             slot.id = `slot-${i}`;
             slot.innerHTML = `
-                <div class="player-name" id="name-tag-${i}">${i + 1}人目</div>
+                <div class="player-name" id="name-tag-${i}"></div>
                 <div class="board-area">
                     <img class="answer-img" id="img-${i}" src="" alt="">
                     <div class="cover" id="cover-${i}">考え中...</div>
                 </div>
             `;
-
             if (i === 0) row1.appendChild(slot);
             else if (i >= 1 && i <= 4) row2.appendChild(slot);
             else row3.appendChild(slot);
@@ -105,8 +116,12 @@
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
 
-            if (newVal.totalScore !== undefined) {
-                totalScoreDisplay.innerText = newVal.totalScore;
+            // 🔴 配信画面に映すチーム（0 または 1）に基づいてデータをずらす
+            const activeTeam = newVal.activeTeam || 0;
+            const offset = activeTeam === 1 ? 7 : 0;
+
+            if (newVal.totalScores !== undefined) {
+                totalScoreDisplay.innerText = newVal.totalScores[activeTeam];
             }
 
             if (newVal.theme && newVal.theme.trim() !== '') {
@@ -117,19 +132,22 @@
             }
 
             for (let i = 0; i < 7; i++) {
+                const pIdx = i + offset; // 表示対象のプレイヤーID（0〜6 または 7〜13）
                 const slot = document.getElementById(`slot-${i}`);
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-tag-${i}`);
 
-                if (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') {
-                    nameTag.innerText = newVal.names[i].trim();
+                // 名前がなければ「👑 リーダー」または「回答者〇」をデフォルト表示
+                const roleName = i === 0 ? "👑 リーダー" : `回答者${i}`;
+                if (newVal.names && newVal.names[pIdx] && newVal.names[pIdx].trim() !== '') {
+                    nameTag.innerText = newVal.names[pIdx].trim();
                 } else {
-                    nameTag.innerText = `${i + 1}人目`;
+                    nameTag.innerText = roleName;
                 }
 
-                if (newVal.answers && newVal.answers[i] !== '') {
-                    img.src = newVal.answers[i];
+                if (newVal.answers && newVal.answers[pIdx] !== '') {
+                    img.src = newVal.answers[pIdx];
                     cover.innerText = "回答完了！";
                     cover.classList.add('submitted');
                 } else {
@@ -138,14 +156,13 @@
                     cover.classList.remove('submitted');
                 }
 
-                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers && newVal.answers[i] !== '') {
+                if (newVal.isOpen && newVal.isOpen[pIdx] && newVal.answers && newVal.answers[pIdx] !== '') {
                     slot.classList.add('is-open');
                 } else {
                     slot.classList.remove('is-open');
                 }
 
-                // 🔴 新設：赤背景のクラスを付け外しする
-                if (newVal.isCorrect && newVal.isCorrect[i]) {
+                if (newVal.isCorrect && newVal.isCorrect[pIdx]) {
                     slot.classList.add('is-correct');
                 } else {
                     slot.classList.remove('is-correct');
