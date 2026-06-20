@@ -2,126 +2,188 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>格付け結果ビュー</title>
+    <title>Kakuzuke Board</title>
     <style>
-        body {
-            margin: 0; padding: 0; width: 1920px; height: 1080px;
-            background: transparent; /* OBS上では透明 */
-            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-            display: flex; justify-content: center; align-items: flex-end; padding-bottom: 50px;
-        }
-
-        .board {
-            display: flex; gap: 20px;
-        }
-
-        .team-plate {
-            width: 250px; height: 350px;
-            background: rgba(0, 0, 0, 0.85);
-            border: 4px solid #fff;
-            border-radius: 12px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        
+        /* 表全体の設定（赤枠・黄色背景） */
+        .rating-table {
+            width: 1700px;
+            height: 950px;
+            border-collapse: collapse;
+            border: 6px solid #d32f2f; /* 外枠の赤色 */
+            background-color: #ffff00; /* 全体の黄色背景 */
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            table-layout: fixed;
             position: relative;
         }
 
-        /* ランクダウン時のアニメーション */
-        .rank-down-anim {
-            animation: dropShake 0.6s ease-in-out;
-        }
-        @keyframes dropShake {
-            0% { transform: translateY(0); }
-            20% { transform: translateY(30px) rotate(3deg); }
-            40% { transform: translateY(30px) rotate(-3deg); }
-            60% { transform: translateY(30px) rotate(2deg); }
-            80% { transform: translateY(30px) rotate(-1deg); }
-            100% { transform: translateY(0); }
+        /* セルの枠線 */
+        .rating-table th, .rating-table td {
+            border: 2px solid #d32f2f;
+            text-align: center;
+            vertical-align: middle;
         }
 
-        .team-name {
-            color: #fff; font-size: 32px; font-weight: bold; margin-bottom: 20px;
-            text-align: center; word-break: break-all; padding: 0 10px;
+        /* ヘッダー行（階級名）の設定 */
+        .rating-table th {
+            height: 120px;
+            font-size: 38px;
+            font-weight: 900;
+            line-height: 1.2;
+            letter-spacing: 2px;
         }
 
-        .rank-title {
-            font-size: 48px; font-weight: 900;
-            padding: 10px 20px; border-radius: 8px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        /* 画像に合わせた階級ごとのヘッダーカラー */
+        .h-0 { background-color: #ffff00; color: #000; } /* 一流 */
+        .h-1 { background-color: #ffffff; color: #000; } /* 普通 */
+        .h-2 { background-color: #00ffff; color: #000; } /* 二流 */
+        .h-3 { background-color: #ff00ff; color: #000; } /* 三流 */
+        .h-4 { background-color: #b0bec5; color: #000; } /* マネマネ */
+        .h-5 { background-color: #ffffff; color: #000; } /* ニフラム */
+
+        /* 🔴 滑らかに移動する名前プレートの土台 */
+        #players-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        /* ランクごとのスタイル定義 */
-        .rank-0 { background: linear-gradient(135deg, #ffd700, #daa520); color: #fff; border: 2px solid #fff; } /* 一流 */
-        .rank-1 { background: linear-gradient(135deg, #c0c0c0, #a9a9a9); color: #fff; border: 2px solid #fff; } /* 普通 */
-        .rank-2 { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #fff; border: 2px solid #fff; } /* 二流 */
-        .rank-3 { background: linear-gradient(135deg, #4caf50, #2e7d32); color: #fff; border: 2px solid #fff; } /* 三流 */
-        .rank-4 { background: #eeeeee; color: #555; font-size: 36px; border: 2px dashed #999; } /* そっくりさん */
-        
-        /* 映す価値なし (画面から消える演出) */
-        .rank-5 { opacity: 0; pointer-events: none; transform: translateY(100px); }
+        /* プレイヤーの名前札（青枠・黄色背景） */
+        .nameplate-wrapper {
+            position: absolute;
+            display: flex; justify-content: center; align-items: center;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); /* ここで移動アニメーション！ */
+        }
 
+        .nameplate {
+            background-color: #ffff00; /* 札自体の背景も黄色 */
+            border: 5px solid #1565c0; /* 札の青枠 */
+            color: #000;
+            font-size: 34px;
+            font-weight: bold;
+            padding: 10px 15px;
+            width: 80%;
+            box-sizing: border-box;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+            transition: all 0.5s ease;
+        }
+
+        /* ニフラム（ランク5）の時の演出：半透明になって消えかける */
+        .is-nifram .nameplate {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            box-shadow: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="board" id="board">
-        <!-- Javascriptで自動生成 -->
+    <div style="position: relative;">
+        <table class="rating-table" id="bg-table">
+            <thead>
+                <tr>
+                    <th class="h-0">一流<br>プレイヤー</th>
+                    <th class="h-1">普通<br>プレイヤー</th>
+                    <th class="h-2">二流<br>プレイヤー</th>
+                    <th class="h-3">三流<br>プレイヤー</th>
+                    <th class="h-4">マネマネ</th>
+                    <th class="h-5">ニフラム</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+
+        <div id="players-layer"></div>
     </div>
 
     <script>
-        const ranks = ["一流", "普通", "二流", "三流", "そっくりさん", "映す価値なし"];
-        const kakuzukeRep = nodecg.Replicant('kakuzukeState');
-        let previousState = [];
+        const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
+            defaultValue: { 
+                names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
+                ranks: [0, 0, 0, 0, 0, 0, 0] 
+            }
+        });
+
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
+
+        const tbody = document.getElementById('table-body');
+        const playersLayer = document.getElementById('players-layer');
+
+        // 音の準備（降格時などに鳴らす）
+        let soundMove;
+        try { soundMove = new Audio('sounds/open.mp3'); } catch(e) {}
+        nodecg.listenFor('play_open_se', () => {
+            if (soundMove) {
+                soundMove.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                soundMove.currentTime = 0;
+                soundMove.play().catch(e => console.log('SE Play Error:', e));
+            }
+        });
+
+        // 背景テーブル（7行6列）と名前プレート（7つ）を初期生成
+        for (let i = 0; i < 7; i++) {
+            // テーブル行生成
+            const tr = document.createElement('tr');
+            for (let j = 0; j < 6; j++) {
+                const td = document.createElement('td');
+                td.id = `cell-${i}-${j}`; 
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+
+            // 名前プレート生成
+            const wrapper = document.createElement('div');
+            wrapper.className = 'nameplate-wrapper';
+            wrapper.id = `player-wrapper-${i}`;
+            wrapper.innerHTML = `<div class="nameplate" id="player-name-${i}"></div>`;
+            playersLayer.appendChild(wrapper);
+        }
 
         kakuzukeRep.on('change', (newVal) => {
             if (!newVal) return;
-            const board = document.getElementById('board');
-            
-            // 初回レンダリング
-            if (board.children.length === 0) {
-                newVal.forEach((team, idx) => {
-                    const plate = document.createElement('div');
-                    plate.id = `plate-${idx}`;
-                    plate.className = `team-plate rank-${team.rank === 5 ? '5' : 'visible'}`;
-                    if (team.rank === 5) plate.style.opacity = '0'; // 映す価値なし対応
 
-                    plate.innerHTML = `
-                        <div class="team-name" id="name-${idx}">${team.name}</div>
-                        <div class="rank-title rank-${team.rank}" id="rank-${idx}">${ranks[team.rank]}</div>
-                    `;
-                    board.appendChild(plate);
-                });
-            } else {
-                // 差分更新とアニメーション
-                newVal.forEach((team, idx) => {
-                    document.getElementById(`name-${idx}`).innerText = team.name;
+            // DOMの描画が完了してから座標を計算するために少し遅延させる（またはrequestAnimationFrame）
+            requestAnimationFrame(() => {
+                for (let i = 0; i < 7; i++) {
+                    const rank = newVal.ranks[i];
+                    const nameText = newVal.names[i] || `プレイヤー${i+1}`;
                     
-                    const rankEl = document.getElementById(`rank-${idx}`);
-                    const plateEl = document.getElementById(`plate-${idx}`);
+                    const wrapper = document.getElementById(`player-wrapper-${i}`);
+                    const nameplate = document.getElementById(`player-name-${i}`);
+                    const targetCell = document.getElementById(`cell-${i}-${rank}`);
                     
-                    if (previousState[idx] && previousState[idx].rank !== team.rank) {
-                        // ランクが変わった場合
-                        rankEl.className = `rank-title rank-${team.rank}`;
-                        rankEl.innerText = ranks[team.rank];
+                    // 🔴 魔法の座標計算：目的のセルの位置（left, top）とサイズを取得
+                    // ※ テーブル自体が親要素(relative)内にあるため、そのままの座標を使えます
+                    const cellTop = targetCell.offsetTop;
+                    const cellLeft = targetCell.offsetLeft;
+                    const cellWidth = targetCell.offsetWidth;
+                    const cellHeight = targetCell.offsetHeight;
 
-                        // ランクダウン（数字が増えた）ならガクッと揺らす
-                        if (team.rank > previousState[idx].rank) {
-                            plateEl.classList.remove('rank-down-anim');
-                            void plateEl.offsetWidth; // アニメーションのリセット用ハック
-                            plateEl.classList.add('rank-down-anim');
-                        }
+                    // 名前プレートの文字更新
+                    nameplate.innerText = nameText;
 
-                        // 映す価値なしの透過処理
-                        if (team.rank === 5) {
-                            plateEl.classList.add('rank-5');
-                        } else {
-                            plateEl.classList.remove('rank-5');
-                        }
+                    // wrapperのサイズをセルと全く同じにして、その中をFlexboxで中央揃えにする
+                    wrapper.style.width = `${cellWidth}px`;
+                    wrapper.style.height = `${cellHeight}px`;
+                    
+                    // X座標・Y座標を移動させる（CSSのtransitionで滑らかに動く！）
+                    wrapper.style.transform = `translate(${cellLeft}px, ${cellTop}px)`;
+
+                    // ニフラム（ランク5）の時は透明にする演出
+                    if (rank === 5) {
+                        wrapper.classList.add('is-nifram');
+                    } else {
+                        wrapper.classList.remove('is-nifram');
                     }
-                });
-            }
-            
-            // 前回の状態を保存
-            previousState = JSON.parse(JSON.stringify(newVal));
+                }
+            });
         });
     </script>
 </body>
