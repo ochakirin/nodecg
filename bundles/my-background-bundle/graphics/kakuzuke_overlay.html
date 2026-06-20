@@ -30,7 +30,9 @@
         #players-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
         .nameplate-wrapper {
-            position: absolute; display: flex; justify-content: center; align-items: center;
+            position: absolute; 
+            top: 0; left: 0; /* 🔴 修正：これを起点にしないとアニメーションが動きません */
+            display: flex; justify-content: center; align-items: center;
             transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
@@ -83,7 +85,6 @@
             }
         });
 
-        // テーブルとプレートの枠組みを生成
         for (let i = 0; i < 7; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
@@ -104,12 +105,14 @@
 
         function renderBoard() {
             if (!currentState) return;
-            // データが存在しない場合の安全策
-            const names = currentState.names || ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
-            const ranks = currentState.ranks || [0, 0, 0, 0, 0, 0, 0];
+            const names = currentState.names || [];
+            const ranks = currentState.ranks || [];
 
             for (let i = 0; i < 7; i++) {
-                const rank = ranks[i] || 0;
+                // 強制的に数値化（エラー防止）
+                let rank = parseInt(ranks[i], 10);
+                if (isNaN(rank)) rank = 0;
+
                 const nameText = names[i] || `プレイヤー${i+1}`;
                 
                 const wrapper = document.getElementById(`player-wrapper-${i}`);
@@ -123,9 +126,9 @@
                 const cellWidth = targetCell.offsetWidth;
                 const cellHeight = targetCell.offsetHeight;
 
-                // 画面描画前でサイズが取れない場合は、少し待ってから再実行（これが見えなくなる原因対策）
+                // 画面描画前でサイズが取れない場合は少し待ってから再実行
                 if (cellWidth === 0) {
-                    setTimeout(renderBoard, 50);
+                    setTimeout(renderBoard, 100);
                     return;
                 }
 
@@ -147,7 +150,6 @@
             requestAnimationFrame(renderBoard);
         });
 
-        // 画面リサイズ時などにも念のため再計算
         window.addEventListener('resize', renderBoard);
         window.addEventListener('load', renderBoard);
     </script>
