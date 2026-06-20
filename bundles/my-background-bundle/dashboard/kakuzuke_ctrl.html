@@ -42,85 +42,89 @@
             persistent: true 
         });
 
-        // UIの生成（oninputで一文字打つごとに保存されるように変更）
+        // 1. UIの生成
         const container = document.getElementById('controls-container');
         for (let i = 0; i < 7; i++) {
             const div = document.createElement('div');
             div.className = 'row';
             div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" oninput="changeName(${i}, this.value)">
+                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名">
                 <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
                 <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
                 <div class="rank-display" id="rank-text-${i}">一流</div>
             `;
             container.appendChild(div);
+
+            // 文字が入力されたら「配列の該当箇所だけ」をピンポイントで保存する
+            document.getElementById(`name-${i}`).addEventListener('change', function(e) {
+                if (kakuzukeRep.value && kakuzukeRep.value.names) {
+                    kakuzukeRep.value.names[i] = e.target.value;
+                }
+            });
         }
 
-        // 安全にデータをディープコピーする関数
-        function getSafeState() {
-            if (!kakuzukeRep.value) return { names: [...defaultNames], ranks: [0,0,0,0,0,0,0] };
-            let state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-            if (!state.names || !Array.isArray(state.names)) state.names = [...defaultNames];
-            if (!state.ranks || !Array.isArray(state.ranks)) state.ranks = [0,0,0,0,0,0,0];
-            return state;
-        }
-
-        window.changeName = function(index, newName) {
-            let state = getSafeState();
-            state.names[index] = newName;
-            kakuzukeRep.value = state; // これで名前が確実に保存される
-        };
-
+        // 2. ランクの変更処理（絶対にフリーズさせないピンポイント書き換え方式）
         window.changeRank = function(index, delta) {
-            let state = getSafeState();
+            if (!kakuzukeRep.value) return;
 
-            // 🔴 最終防衛線：ボタンを押した瞬間に、画面に入力されている名前を強制的に取得する
-            const currentInput = document.getElementById(`name-${index}`);
-            if (currentInput) {
-                state.names[index] = currentInput.value;
+            // 【重要防衛線】ボタンを押した瞬間に、入力途中の文字を強制的に確定させて保存する（名前消失を防止）
+            const input = document.getElementById(`name-${index}`);
+            if (input && kakuzukeRep.value.names) {
+                kakuzukeRep.value.names[index] = input.value;
             }
 
-            let currentRank = parseInt(state.ranks[index], 10);
-            if (isNaN(currentRank)) currentRank = 0;
+            if (kakuzukeRep.value.ranks) {
+                let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
+                if (isNaN(currentRank)) currentRank = 0;
 
-            let newRank = currentRank + delta;
-            if (newRank >= 0 && newRank <= 5) {
-                state.ranks[index] = newRank;
-                kakuzukeRep.value = state; // 🔴 コピーしたデータを「丸ごと上書き」することでイベントが発火し、ボタンが動く！
-
-                if (delta > 0) {
-                    nodecg.sendMessage('play_open_se');
+                let newRank = currentRank + delta;
+                if (newRank >= 0 && newRank <= 5) {
+                    // 🔴 ここで配列の数字だけを直接書き換えます（これで確実にボタンが反応します）
+                    kakuzukeRep.value.ranks[index] = newRank;
+                    
+                    if (delta > 0) {
+                        nodecg.sendMessage('play_open_se');
+                    }
                 }
             }
         };
 
+        // 全員リセット処理
         window.resetRanks = function() {
             if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
-                let state = getSafeState();
-                state.ranks = [0, 0, 0, 0, 0, 0, 0];
-                kakuzukeRep.value = state;
+                if (kakuzukeRep.value && kakuzukeRep.value.ranks) {
+                    for (let i = 0; i < 7; i++) {
+                        kakuzukeRep.value.ranks[i] = 0;
+                    }
+                }
             }
         };
 
-        // 状態が変更されたらパネルを更新
+        // 3. データ変更を監視して画面に反映
         kakuzukeRep.on('change', (newVal) => {
             if (!newVal) return;
-            const names = newVal.names || defaultNames;
-            const ranks = newVal.ranks || [0,0,0,0,0,0,0];
+            
+            // 過去のエラーデータが残っていた場合の自動修復
+            if (!newVal.names || !Array.isArray(newVal.names)) newVal.names = [...defaultNames];
+            if (!newVal.ranks || !Array.isArray(newVal.ranks)) newVal.ranks = [0,0,0,0,0,0,0];
 
             for (let i = 0; i < 7; i++) {
-                const nameInput = document.getElementById(`name-${i}`);
+                const input = document.getElementById(`name-${i}`);
                 const rankText = document.getElementById(`rank-text-${i}`);
                 const btnUp = document.getElementById(`up-${i}`);
                 const btnDown = document.getElementById(`down-${i}`);
                 
-                let rankVal = parseInt(ranks[i], 10);
-                if (isNaN(rankVal)) rankVal = 0;
-
-                // 文字を入力中の場合は、カーソルが飛ぶのを防ぐため上書きしない
-                if (nameInput && document.activeElement !== nameInput) {
-                    nameInput.value = names[i] || defaultNames[i];
+                // 名前テキストの反映（ユーザーが現在入力中の場合は上書きしない）
+                if (input && document.activeElement !== input) {
+                    const newName = newVal.names[i];
+                    if (input.value !== newName && newName !== undefined) {
+                        input.value = newName;
+                    }
                 }
+                
+                // ランクとボタン状態の反映
+                let rankVal = parseInt(newVal.ranks[i], 10);
+                if (isNaN(rankVal)) rankVal = 0;
 
                 if (rankText) {
                     rankText.innerText = rankNames[rankVal];
