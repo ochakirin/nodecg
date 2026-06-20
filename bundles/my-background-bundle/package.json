@@ -83,12 +83,20 @@
         "workspace": "4.ペイント"
       },
       {
+        "name": "kakuzuke-control",
+        "title": "👑 格付け進行管理",
+        "file": "kakuzuke_ctrl.html",
+        "headerColor": "#9C27B0",
+        "width": 4,
+        "workspace": "5.格付けチェック"
+      },
+      {
         "name": "sound-control",
         "title": "🔊 サウンド音量管理",
         "file": "sound_ctrl.html",
         "headerColor": "#00BCD4",
         "width": 3,
-        "workspace": "5.サウンド管理"
+        "workspace": "6.サウンド管理"
       },
       {
         "name": "owarema-pad",
@@ -125,6 +133,11 @@
       },
       {
         "file": "paint_overlay.html",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "file": "kakuzuke_overlay.html",
         "width": 1920,
         "height": 1080
       }
