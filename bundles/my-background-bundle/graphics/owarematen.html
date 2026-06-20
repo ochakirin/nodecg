@@ -1,81 +1,13 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>Owarema-ten Overlay</title>
-    <style>
-        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
-        
-        .title-area { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
-
-        .total-score-area { position: absolute; top: 35px; right: 50px; background: #fff3e0; color: #e65100; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #ff9800; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; display: flex; align-items: center; gap: 15px; }
-        .score-val { font-size: 48px; color: #d84315; }
-
-        .theme-area { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); color: #111; padding: 12px 60px; border-radius: 50px; font-size: 40px; font-weight: 900; border: 6px solid #e91e63; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; min-width: 800px; white-space: nowrap; display: none; }
-
-        .stage-container { position: absolute; top: 130px; left: 40px; right: 40px; bottom: 120px; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
-        .row { display: flex; justify-content: center; gap: 15px; width: 100%; }
-
-        .answer-slot { background: #1e1e1e; border: 5px solid #424242; border-radius: 14px; display: flex; flex-direction: column; align-items: center; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
-        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 3px solid #424242; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; padding: 8px 0; transition: all 0.3s ease; }
-        
-        .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 10px; box-sizing: border-box; min-height: 0; overflow: hidden; transition: all 0.3s ease; }
-        
-        /* 🔴 変更：画像（キャンバス）自体にデフォルトの青い背景色を持たせる */
-        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; position: relative; background-color: #1565c0; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 2px solid #ffffff; transition: background-color 0.1s; } 
-
-        .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; border-radius: 6px; }
-        .cover.submitted { background: #e91e63; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-        
-        .is-open .cover { opacity: 0; pointer-events: none; }
-        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
-
-        .row-1 .answer-slot { width: 520px; height: 290px; border-color: #ff9800; }
-        .row-1 .player-name { font-size: 28px; padding: 10px 0; background: #222; }
-        .row-1 .cover { font-size: 30px; }
-
-        .row-2 .answer-slot, .row-3 .answer-slot { width: 380px; height: 215px; }
-        .row-2 .player-name, .row-3 .player-name { font-size: 22px; }
-        .row-2 .cover, .row-3 .cover { font-size: 22px; }
-
-        /* 🔴 変更：正解時は外枠ではなく、回答ボードの背景色を赤に塗り替える */
-        .answer-slot.is-correct {
-            transform: scale(1.03); /* ちょっとだけ手前に浮き出す演出 */
-            z-index: 50;
-        }
-        .answer-slot.is-correct .answer-img {
-            background-color: #d32f2f !important; /* 背景を赤に！ */
-            border-color: #ffeb3b !important; /* 枠線を黄色にして豪華に */
-            box-shadow: 0 0 30px rgba(211, 47, 47, 0.9) !important;
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="title-area">リーダー理解度王選手権</div>
-
-    <div class="total-score-area">
-        現在の点数: <span class="score-val" id="total-score-display">0</span> 点
-    </div>
-
-    <div class="stage-container">
-        <div class="row row-1" id="row-1"></div>
-        <div class="row row-2" id="row-2"></div>
-        <div class="row row-3" id="row-3"></div>
-    </div>
-
-    <div class="theme-area" id="theme-display">お題：未設定</div>
-
-    <script>
+<script>
         const gameRep = nodecg.Replicant('owarematenState', {
             defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }
         });
         
+        // 🔴 追加：サウンド設定を監視するReplicant
+        const soundRep = nodecg.Replicant('soundSettings', {
+            defaultValue: { seVolume: 0.5, bgmVolume: 0.5 }
+        });
+
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
         const row3 = document.getElementById('row-3');
@@ -89,81 +21,11 @@
 
         nodecg.listenFor('play_open_se', () => {
             if (soundOpen) {
+                // 🔴 変更：再生前にサウンド管理パネルで設定された音量を適用する
+                soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                 soundOpen.currentTime = 0;
                 soundOpen.play().catch(e => console.log('SE Play Error:', e));
             }
         });
 
-        for (let i = 0; i < 7; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'answer-slot';
-            slot.id = `slot-${i}`;
-            slot.innerHTML = `
-                <div class="player-name" id="name-tag-${i}"></div>
-                <div class="board-area">
-                    <img class="answer-img" id="img-${i}" src="" alt="">
-                    <div class="cover" id="cover-${i}">考え中...</div>
-                </div>
-            `;
-            if (i === 0) row1.appendChild(slot);
-            else if (i >= 1 && i <= 4) row2.appendChild(slot);
-            else row3.appendChild(slot);
-        }
-
-        gameRep.on('change', (newVal) => {
-            if (!newVal) return;
-
-            const activeTeam = newVal.activeTeam || 0;
-            const offset = activeTeam === 1 ? 7 : 0;
-
-            if (newVal.totalScores !== undefined) {
-                totalScoreDisplay.innerText = newVal.totalScores[activeTeam];
-            }
-
-            if (newVal.theme && newVal.theme.trim() !== '') {
-                themeDisplay.innerText = `お題：${newVal.theme}`;
-                themeDisplay.style.display = 'block';
-            } else {
-                themeDisplay.style.display = 'none';
-            }
-
-            for (let i = 0; i < 7; i++) {
-                const pIdx = i + offset; 
-                const slot = document.getElementById(`slot-${i}`);
-                const cover = document.getElementById(`cover-${i}`);
-                const img = document.getElementById(`img-${i}`);
-                const nameTag = document.getElementById(`name-tag-${i}`);
-
-                const roleName = i === 0 ? "👑 リーダー" : `回答者${i}`;
-                if (newVal.names && newVal.names[pIdx] && newVal.names[pIdx].trim() !== '') {
-                    nameTag.innerText = newVal.names[pIdx].trim();
-                } else {
-                    nameTag.innerText = roleName;
-                }
-
-                if (newVal.answers && newVal.answers[pIdx] !== '') {
-                    img.src = newVal.answers[pIdx];
-                    cover.innerText = "回答完了！";
-                    cover.classList.add('submitted');
-                } else {
-                    img.src = "";
-                    cover.innerText = "考え中...";
-                    cover.classList.remove('submitted');
-                }
-
-                if (newVal.isOpen && newVal.isOpen[pIdx] && newVal.answers && newVal.answers[pIdx] !== '') {
-                    slot.classList.add('is-open');
-                } else {
-                    slot.classList.remove('is-open');
-                }
-
-                if (newVal.isCorrect && newVal.isCorrect[pIdx]) {
-                    slot.classList.add('is-correct');
-                } else {
-                    slot.classList.remove('is-correct');
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+        // --- 以下、既存の forループ や gameRep.on('change', ...) の処理が続きます ---
