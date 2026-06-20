@@ -3,34 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; background: #f0f2f5; margin: 0; }
+        /* 🔴 画面が狭くならないよう最小幅を設定 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; background: #f0f2f5; margin: 0; min-width: 900px; }
         
-        /* 📺 配信スイッチとタブ */
         .team-switch-container { background: #e3f2fd; padding: 15px; border-radius: 8px; border: 2px solid #2196f3; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
         .radio-group { display: flex; gap: 20px; font-weight: bold; font-size: 16px; justify-content: center; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .radio-group label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
-        .tabs { display: flex; gap: 5px; }
-        .tab-btn { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; border: 1px solid #ccc; background: #e0e0e0; color: #555; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: none; transition: 0.2s; }
-        .tab-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
-        #tab-A.active { background: #d32f2f; border-color: #d32f2f; }
-        #tab-B.active { background: #1976d2; border-color: #1976d2; }
-
-        .control-panel { background: white; padding: 15px; border-radius: 0 0 8px 8px; border: 2px solid #ddd; margin-bottom: 15px; }
-        #panel-A { border-color: #d32f2f; }
-        #panel-B { border-color: #1976d2; }
-
         .top-panel { background: #fff3e0; padding: 15px; border-radius: 8px; border: 2px solid #ff9800; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .score-row { display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ffb74d; }
-        .total-score-input { width: 100px; padding: 8px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
         .theme-input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: bold; }
 
-        .control-row { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
+        /* 🔴 左右2列に分割するレイアウト */
+        .flex-columns { display: flex; gap: 15px; align-items: flex-start; }
+        .team-col { flex: 1; background: white; padding: 15px; border-radius: 8px; border: 2px solid #ddd; display: flex; flex-direction: column; gap: 10px; }
+        #col-a { border-color: #d32f2f; }
+        #col-b { border-color: #1976d2; }
+
+        .score-row { display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
+        .total-score-input { width: 80px; padding: 8px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
+
+        .control-row { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
         .row-header { display: flex; justify-content: space-between; align-items: center; }
         .row-body { display: flex; gap: 8px; align-items: center; }
-        .row-actions { display: flex; gap: 6px; width: 45%; }
         
-        .correct-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: bold; color: #d32f2f; font-size: 13px; background: #ffebee; padding: 6px 10px; border-radius: 4px; border: 1px solid #ffcdd2; transition: 0.1s; }
+        .correct-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: bold; color: #d32f2f; font-size: 13px; background: #ffebee; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcdd2; transition: 0.1s; }
         .correct-label:hover { background: #ffcdd2; }
         .correct-check { width: 16px; height: 16px; cursor: pointer; margin: 0; }
 
@@ -41,19 +37,21 @@
         button { padding: 8px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 13px; transition: opacity 0.1s; }
         button:hover { opacity: 0.9; }
         
-        .btn-open { background: #2196f3; width: 110px; text-align: center; }
+        .btn-open { background: #2196f3; width: 90px; text-align: center; }
         .btn-open.is-open { background: #4caf50; }
         .btn-copy { background: #009688; flex: 1; }
         .btn-jump { background: #795548; flex: 1; }
         
-        .master-btns { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
-        .master-btns button { flex: 1; padding: 14px; font-size: 14px; min-width: 150px; }
-        
-        .btn-all-open { background: #ff9800; }
+        /* 各列下部の一括操作ボタン群 */
+        .team-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .team-btns button { padding: 10px; font-size: 13px; }
+        .btn-all-open { background: #ff9800; grid-column: span 2;}
         .btn-highlight { background: #d32f2f; }
         .btn-clear-highlights { background: #9e9e9e; }
-        .btn-reset-answers { background: #8bc34a; }
-        .btn-reset-full { background: #607d8b; }
+        .btn-reset-answers { background: #8bc34a; grid-column: span 2;}
+        
+        .global-btn-wrap { margin-top: 20px; text-align: center; }
+        .btn-reset-full { background: #607d8b; padding: 15px 40px; font-size: 16px; width: 100%; max-width: 600px; }
     </style>
 </head>
 <body>
@@ -66,78 +64,77 @@
         </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab-btn active" id="tab-A">🔴 チームA の回答を編集</button>
-        <button class="tab-btn" id="tab-B">🔵 チームB の回答を編集</button>
+    <div class="top-panel">
+        <div style="font-size: 12px; color: #e65100; margin-bottom: 5px; font-weight: bold;">📝 お題（配信画面の下部に表示されます・全チーム共通）</div>
+        <input type="text" class="theme-input" id="theme-input" placeholder="ここにお題を入力...">
     </div>
 
-    <div class="control-panel" id="main-panel">
-        <div class="top-panel">
+    <div class="flex-columns">
+        
+        <div class="team-col" id="col-a">
             <div class="score-row">
-                <div id="score-label">🏆 チームA 現在の総合点数</div>
-                <div><input type="number" class="total-score-input" id="total-score-input" value="0"> 点</div>
+                <div style="color: #d32f2f;">🏆 チームA 点数</div>
+                <div><input type="number" class="total-score-input" id="score-0" value="0"> 点</div>
             </div>
-            <div>
-                <div style="font-size: 12px; color: #e65100; margin-bottom: 5px; font-weight: bold;">📝 お題（配信画面の下部に表示されます・全チーム共通）</div>
-                <input type="text" class="theme-input" id="theme-input" placeholder="ここにお題を入力...">
+            <div id="controls-a" style="display:flex; flex-direction:column; gap:8px;"></div>
+            
+            <div class="team-btns">
+                <button class="btn-all-open" onclick="openTeam(0)">🎉 チームA 全員オープン</button>
+                <button class="btn-highlight" onclick="highlightTeam(0)">🔴 A 赤背景反映</button>
+                <button class="btn-clear-highlights" onclick="clearHighlightTeam(0)">⚪ A 赤背景クリア</button>
+                <button class="btn-reset-answers" onclick="resetTeamAnswers(0)">🧹 チームA 回答のみリセット</button>
             </div>
         </div>
 
-        <div style="font-size: 14px; font-weight: bold; color: #555; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 6px;">👥 参加者名簿 ＆ 個別回答制御</div>
-        <div id="player-controls"></div>
-        
-        <div class="master-btns" style="margin-bottom: 10px;">
-            <button class="btn-all-open" id="btn-all-open">🎉 編集中のチームを全員オープン</button>
-            <button class="btn-highlight" id="btn-highlight">🔴 赤背景を反映する (トリガー)</button>
-            <button class="btn-clear-highlights" id="btn-clear-highlights">⚪ 赤背景とチェックを消す</button>
+        <div class="team-col" id="col-b">
+            <div class="score-row">
+                <div style="color: #1976d2;">🏆 チームB 点数</div>
+                <div><input type="number" class="total-score-input" id="score-1" value="0"> 点</div>
+            </div>
+            <div id="controls-b" style="display:flex; flex-direction:column; gap:8px;"></div>
+            
+            <div class="team-btns">
+                <button class="btn-all-open" onclick="openTeam(1)">🎉 チームB 全員オープン</button>
+                <button class="btn-highlight" onclick="highlightTeam(1)">🔴 B 赤背景反映</button>
+                <button class="btn-clear-highlights" onclick="clearHighlightTeam(1)">⚪ B 赤背景クリア</button>
+                <button class="btn-reset-answers" onclick="resetTeamAnswers(1)">🧹 チームB 回答のみリセット</button>
+            </div>
         </div>
-        <div class="master-btns">
-            <button class="btn-reset-answers" id="btn-reset-answers">🧹 回答のみリセット</button>
-            <button class="btn-reset-full" id="btn-reset-full">🔄 全データリセット</button>
-        </div>
+
+    </div>
+
+    <div class="global-btn-wrap">
+        <button class="btn-reset-full" id="btn-reset-full">🔄 全データ完全リセット（A・B両チーム）</button>
     </div>
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { 
-                answers: Array(14).fill(''), 
-                isOpen: Array(14).fill(false), 
-                names: Array(14).fill(''), 
-                isCorrect: Array(14).fill(false),
-                activeTeam: 0, 
-                totalScores: [0, 0], 
-                theme: '' 
-            }
+            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }
         });
 
-        let editingTeam = 0; // 0: チームA, 1: チームB
-
-        const container = document.getElementById('player-controls');
-        const totalScoreInput = document.getElementById('total-score-input');
+        const containerA = document.getElementById('controls-a');
+        const containerB = document.getElementById('controls-b');
+        const scoreA = document.getElementById('score-0');
+        const scoreB = document.getElementById('score-1');
         const themeInput = document.getElementById('theme-input');
         const radioTeamA = document.getElementById('radio-teamA');
         const radioTeamB = document.getElementById('radio-teamB');
 
-        // 過去データから14人分への自動拡張（マイグレーション）
-        NodeCG.waitForReplicants(gameRep).then(() => {
-            let state = gameRep.value;
-            let modified = false;
-            if (state.answers.length < 14) {
-                state.answers = [...state.answers, ...Array(14 - state.answers.length).fill('')];
-                state.isOpen = [...state.isOpen, ...Array(14 - state.isOpen.length).fill(false)];
-                state.names = [...state.names, ...Array(14 - state.names.length).fill('')];
-                state.isCorrect = [...(state.isCorrect||Array(7).fill(false)), ...Array(7).fill(false)];
-                modified = true;
-            }
-            if (state.activeTeam === undefined) { state.activeTeam = 0; modified = true; }
-            if (!state.totalScores) { state.totalScores = [state.totalScore || 0, 0]; modified = true; }
-            if (modified) gameRep.value = state;
+        scoreA.addEventListener('input', (e) => updateScore(0, e.target.value));
+        scoreB.addEventListener('input', (e) => updateScore(1, e.target.value));
 
-            radioTeamA.checked = state.activeTeam === 0;
-            radioTeamB.checked = state.activeTeam === 1;
+        function updateScore(teamIdx, val) {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            state.totalScores[teamIdx] = parseInt(val, 10) || 0;
+            gameRep.value = state;
+        }
+
+        themeInput.addEventListener('input', (e) => {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            state.theme = e.target.value;
+            gameRep.value = state;
         });
 
-        // 配信チーム切替
         document.querySelectorAll('input[name="displayTeam"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
@@ -146,60 +143,14 @@
             });
         });
 
-        // タブ切替処理
-        document.getElementById('tab-A').addEventListener('click', () => {
-            editingTeam = 0;
-            document.getElementById('tab-A').classList.add('active');
-            document.getElementById('tab-B').classList.remove('active');
-            document.getElementById('main-panel').id = 'panel-A';
-            document.getElementById('score-label').innerText = '🏆 チームA 現在の総合点数';
-            updateView();
-        });
-
-        document.getElementById('tab-B').addEventListener('click', () => {
-            editingTeam = 1;
-            document.getElementById('tab-B').classList.add('active');
-            document.getElementById('tab-A').classList.remove('active');
-            document.getElementById('main-panel').id = 'panel-B';
-            document.getElementById('score-label').innerText = '🏆 チームB 現在の総合点数';
-            updateView();
-        });
-
-        function updateView() {
-            for (let i = 0; i < 14; i++) {
-                const row = document.getElementById(`row-${i}`);
-                if (row) {
-                    row.style.display = (i < 7 && editingTeam === 0) || (i >= 7 && editingTeam === 1) ? 'flex' : 'none';
-                }
-            }
-            if (gameRep.value && gameRep.value.totalScores) {
-                totalScoreInput.value = gameRep.value.totalScores[editingTeam];
-            }
-        }
-
-        totalScoreInput.addEventListener('input', (e) => {
-            const state = JSON.parse(JSON.stringify(gameRep.value));
-            state.totalScores[editingTeam] = parseInt(e.target.value, 10) || 0;
-            gameRep.value = state;
-        });
-
-        themeInput.addEventListener('input', (e) => {
-            const state = JSON.parse(JSON.stringify(gameRep.value));
-            state.theme = e.target.value;
-            gameRep.value = state;
-        });
-
-        // 14人分の行を生成
+        // 14人分の行をAとBに分けて生成
         for (let i = 0; i < 14; i++) {
             const isTeamB = i >= 7;
             const localIdx = i % 7;
-            // 🔴 枠1をリーダー、枠2～7を回答者に変更
             const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
-
+            
             const row = document.createElement('div');
             row.className = 'control-row';
-            row.id = `row-${i}`;
-            row.style.display = isTeamB ? 'none' : 'flex'; // 初期はチームAのみ表示
             row.innerHTML = `
                 <div class="row-header">
                     <div><strong style="color: ${isTeamB ? '#1976d2' : '#d32f2f'}">[${isTeamB ? 'B' : 'A'}] ${roleName}</strong> <span class="status-badge" id="badge-${i}">未提出</span></div>
@@ -211,24 +162,23 @@
                     </div>
                 </div>
                 <div class="row-body">
-                    <input type="text" class="name-input" id="name-input-${i}" placeholder="名前を入力">
+                    <input type="text" class="name-input" id="name-input-${i}" placeholder="名前">
                     <div class="row-actions">
-                        <button class="btn-copy" id="copy-btn-${i}">🔗 コピー</button>
-                        <button class="btn-jump" id="jump-btn-${i}">🚀 開く</button>
+                        <button class="btn-copy" id="copy-btn-${i}">🔗</button>
+                        <button class="btn-jump" id="jump-btn-${i}">🚀</button>
                     </div>
                 </div>
             `;
-            container.appendChild(row);
+            
+            if (isTeamB) containerB.appendChild(row);
+            else containerA.appendChild(row);
 
             document.getElementById(`toggle-btn-${i}`).addEventListener('click', () => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
                 if (!state.isOpen) state.isOpen = Array(14).fill(false);
                 state.isOpen[i] = !state.isOpen[i];
                 
-                // 🔴 オープンした瞬間にSE再生トリガーを送信
-                if (state.isOpen[i]) {
-                    nodecg.sendMessage('play_open_se');
-                }
+                if (state.isOpen[i]) nodecg.sendMessage('play_open_se');
                 gameRep.value = state;
             });
 
@@ -239,9 +189,7 @@
                 gameRep.value = state;
             });
 
-            const getPanelUrl = () => {
-                return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?player=${i}&standalone=true`;
-            };
+            const getPanelUrl = () => `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?player=${i}&standalone=true`;
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
                 navigator.clipboard.writeText(getPanelUrl()).then(() => alert(`コピー完了 (${roleName})`));
@@ -249,43 +197,55 @@
             document.getElementById(`jump-btn-${i}`).addEventListener('click', () => window.open(getPanelUrl(), '_blank'));
         }
 
-        // 赤背景反映
-        document.getElementById('btn-highlight').addEventListener('click', () => {
+        // チーム別のアクション関数
+        window.openTeam = function(teamIdx) {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            for (let i = 0; i < 7; i++) {
-                const target = editingTeam === 0 ? i : i + 7;
-                state.isCorrect[target] = document.getElementById(`check-${target}`).checked;
+            let openedAny = false;
+            const offset = teamIdx * 7;
+            for (let i = offset; i < offset + 7; i++) { 
+                if (state.answers[i] !== '' && !state.isOpen[i]) {
+                    state.isOpen[i] = true;
+                    openedAny = true;
+                }
+            }
+            if (openedAny) nodecg.sendMessage('play_open_se');
+            gameRep.value = state;
+        }
+
+        window.highlightTeam = function(teamIdx) {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            const offset = teamIdx * 7;
+            for (let i = offset; i < offset + 7; i++) {
+                state.isCorrect[i] = document.getElementById(`check-${i}`).checked;
             }
             gameRep.value = state;
-        });
+        }
 
-        // 赤背景クリア
-        document.getElementById('btn-clear-highlights').addEventListener('click', () => {
+        window.clearHighlightTeam = function(teamIdx) {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            for (let i = 0; i < 7; i++) {
-                const target = editingTeam === 0 ? i : i + 7;
-                state.isCorrect[target] = false;
-                document.getElementById(`check-${target}`).checked = false;
+            const offset = teamIdx * 7;
+            for (let i = offset; i < offset + 7; i++) {
+                state.isCorrect[i] = false;
+                document.getElementById(`check-${i}`).checked = false;
             }
             gameRep.value = state;
-        });
+        }
 
-        // 編集中のチームの回答リセット
-        document.getElementById('btn-reset-answers').addEventListener('click', () => {
-            if (confirm("編集中のチームの【回答のみ】を消去します。よろしいですか？")) {
+        window.resetTeamAnswers = function(teamIdx) {
+            const tName = teamIdx === 0 ? "A" : "B";
+            if (confirm(`チーム${tName}の【回答のみ】を消去します。よろしいですか？`)) {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
-                for (let i = 0; i < 7; i++) {
-                    const target = editingTeam === 0 ? i : i + 7;
-                    state.answers[target] = '';
-                    state.isOpen[target] = false;
-                    state.isCorrect[target] = false;
-                    document.getElementById(`check-${target}`).checked = false;
+                const offset = teamIdx * 7;
+                for (let i = offset; i < offset + 7; i++) {
+                    state.answers[i] = '';
+                    state.isOpen[i] = false;
+                    state.isCorrect[i] = false;
+                    document.getElementById(`check-${i}`).checked = false;
                 }
                 gameRep.value = state;
             }
-        });
+        }
 
-        // 全リセット（全チーム）
         document.getElementById('btn-reset-full').addEventListener('click', () => {
             if (confirm("名前を含め、A/B両チームの全データを完全に消去します。よろしいですか？")) {
                 gameRep.value = { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' };
@@ -295,27 +255,12 @@
             }
         });
 
-        // 編集中のチームを全員オープン
-        document.getElementById('btn-all-open').addEventListener('click', () => {
-            const state = JSON.parse(JSON.stringify(gameRep.value));
-            let openedAny = false;
-            for (let i = 0; i < 7; i++) { 
-                const target = editingTeam === 0 ? i : i + 7;
-                if (state.answers[target] !== '' && !state.isOpen[target]) {
-                    state.isOpen[target] = true;
-                    openedAny = true;
-                }
-            }
-            // 🔴 1つでも新しく開いた場合はSE再生トリガーを送信
-            if (openedAny) nodecg.sendMessage('play_open_se');
-            gameRep.value = state;
-        });
-
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            if (newVal.totalScores !== undefined && document.activeElement !== totalScoreInput) {
-                totalScoreInput.value = newVal.totalScores[editingTeam];
+            if (newVal.totalScores !== undefined) {
+                if (document.activeElement !== scoreA) scoreA.value = newVal.totalScores[0];
+                if (document.activeElement !== scoreB) scoreB.value = newVal.totalScores[1];
             }
 
             if (newVal.theme !== undefined && document.activeElement !== themeInput) {
