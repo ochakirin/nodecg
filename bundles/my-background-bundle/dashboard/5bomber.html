@@ -14,83 +14,125 @@
     </style>
 </head>
 <body>
-    <h3>▼ カテゴリ選択（選ぶと即タイトル反映）</h3>
+    <h3>▼ カテゴリ選択（選ぶと全員の画面に同期します）</h3>
     <select id="category-select"><option>読み込み中...</option></select>
 
-    <h3>▼ 項目リスト（チェックは累積されます）</h3>
+    <h3>▼ 項目リスト（チェックも全員の画面に同期します）</h3>
     <div class="list-container" id="item-list">カテゴリを選んでください。</div>
 
     <button id="reset-btn">回答のみ消去（リセット）</button>
 
     <script>
-        // 別々のReplicantで管理
         const activeTitle = nodecg.Replicant('activeTitle', { defaultValue: '' });
         const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
         const checkedItems = nodecg.Replicant('checkedItems', { defaultValue: [] });
 
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0zdAHgQVzMwzQ777JQmPT2U6ytGF6zT_lTQL_adj5c6pDGbdAM0pF05o1f8QCOAPRGdFNKpyS-n3I/pub?output=csv';
         let sheetData = {};
+        let isDataLoaded = false;
 
-        // スプレッドシート読み込み
         async function init() {
-            const res = await fetch(SHEET_URL + '&t=' + Date.now());
-            const text = await res.text();
-            const rows = text.split('\n').map(row => row.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
-            const titles = rows[0];
-            titles.forEach((t, i) => { if(t) sheetData[t] = rows.slice(1).map(r => r[i]).filter(c => c); });
+            try {
+                const res = await fetch(SHEET_URL + '&t=' + Date.now());
+                const text = await res.text();
+                const rows = text.split('\n').map(row => row.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+                const titles = rows[0];
+                titles.forEach((t, i) => { if(t) sheetData[t] = rows.slice(1).map(r => r[i]).filter(c => c); });
 
-            const select = document.getElementById('category-select');
-            select.innerHTML = '<option value="">選択してください</option>';
-            Object.keys(sheetData).forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t; opt.innerText = t;
-                select.appendChild(opt);
-            });
+                const select = document.getElementById('category-select');
+                select.innerHTML = '<option value="">選択してください</option>';
+                Object.keys(sheetData).forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t; opt.innerText = t;
+                    select.appendChild(opt);
+                });
+                
+                isDataLoaded = true;
+                
+                // 初回ロード時に他の人が既に選択していた場合はUIに反映
+                if (activeTitle.value) {
+                    select.value = activeTitle.value;
+                    renderList(activeTitle.value);
+                }
+            } catch (e) {
+                console.error("スプレッドシートの読み込みに失敗しました", e);
+            }
         }
 
-        // プルダウン選択時：タイトルだけを更新
+        // 🔴 1. 他の人がカテゴリを変更した時の同期処理
+        activeTitle.on('change', (newVal) => {
+            if (!isDataLoaded) return;
+            const select = document.getElementById('category-select');
+            if (select.value !== newVal) {
+                select.value = newVal || '';
+            }
+            renderList(newVal);
+        });
+
+        // 🔴 2. 他の人がチェックを入れた・外した時の同期処理
+        checkedItems.on('change', (newVal) => {
+            if (!isDataLoaded) return;
+            const container = document.getElementById('item-list');
+            const labels = container.querySelectorAll('.list-item');
+            
+            labels.forEach(label => {
+                const span = label.querySelector('span');
+                const checkbox = label.querySelector('input');
+                const itemText = span.innerText;
+                const isChecked = newVal && newVal.includes(itemText);
+                
+                checkbox.checked = isChecked;
+                if (isChecked) {
+                    label.classList.add('checked');
+                } else {
+                    label.classList.remove('checked');
+                }
+            });
+        });
+
+        // 自分がカテゴリを変更した時にシステム全体に通知
         document.getElementById('category-select').addEventListener('change', (e) => {
-            const title = e.target.value;
-            activeTitle.value = title; // 即座にReplicantへ
-            renderList(title);
+            activeTitle.value = e.target.value;
         });
 
         function renderList(title) {
             const container = document.getElementById('item-list');
             container.innerHTML = '';
-            if (!sheetData[title]) return;
+            if (!title || !sheetData[title]) {
+                container.innerHTML = 'カテゴリを選んでください。';
+                return;
+            }
 
             sheetData[title].forEach(item => {
                 const label = document.createElement('label');
                 label.className = 'list-item';
-                const isChecked = checkedItems.value.includes(item);
+                
+                const isChecked = checkedItems.value && checkedItems.value.includes(item);
                 if(isChecked) label.classList.add('checked');
 
                 label.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''}> <span>${item}</span>`;
                 
                 label.querySelector('input').addEventListener('change', (e) => {
+                    // チェック状態を安全にコピーして更新
+                    let currentChecked = checkedItems.value ? [...checkedItems.value] : [];
                     if (e.target.checked) {
-                        // チェックを入れた時：回答を更新（音が出る）
-                        activeAnswer.value = item;
-                        if (!checkedItems.value.includes(item)) {
-                            checkedItems.value.push(item);
+                        activeAnswer.value = item; // 正解音を鳴らすトリガー
+                        if (!currentChecked.includes(item)) {
+                            currentChecked.push(item);
                         }
-                        label.classList.add('checked');
                     } else {
-                        // チェックを外した時：リストから除外するだけ（回答は消さない）
-                        checkedItems.value = checkedItems.value.filter(i => i !== item);
-                        label.classList.remove('checked');
+                        currentChecked = currentChecked.filter(i => i !== item);
                     }
+                    checkedItems.value = currentChecked; // システム全体にチェック状態を共有
                 });
                 container.appendChild(label);
             });
         }
 
-        // リセットボタン：回答（文字）とチェック状態のみ消す
+        // リセットボタン：回答とチェック状態を全てクリア（全員に同期）
         document.getElementById('reset-btn').addEventListener('click', () => {
             activeAnswer.value = '';
             checkedItems.value = [];
-            renderList(document.getElementById('category-select').value);
         });
 
         init();
