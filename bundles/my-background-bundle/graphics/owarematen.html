@@ -8,6 +8,9 @@
         
         .title-area { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.85); color: white; padding: 15px 50px; border-radius: 12px; font-size: 40px; font-weight: bold; border: 4px solid #ff9800; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 100; }
 
+        /* 🔴 新設：チーム名表示エリア（左上） */
+        .team-name-area { position: absolute; top: 35px; left: 50px; background: #e3f2fd; color: #1565c0; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #2196f3; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; }
+
         .total-score-area { position: absolute; top: 35px; right: 50px; background: #fff3e0; color: #e65100; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #ff9800; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; display: flex; align-items: center; gap: 15px; }
         .score-val { font-size: 48px; color: #d84315; }
 
@@ -21,7 +24,6 @@
         
         .board-area { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; background: #111; position: relative; padding: 10px; box-sizing: border-box; min-height: 0; overflow: hidden; transition: all 0.3s ease; }
         
-        /* 画像（キャンバス）自体にデフォルトの青い背景色を持たせる */
         .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; position: relative; background-color: #1565c0; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 2px solid #ffffff; transition: background-color 0.1s; } 
 
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; text-align: center; padding: 10px; box-sizing: border-box; z-index: 10; border-radius: 6px; }
@@ -38,25 +40,15 @@
         .row-2 .player-name, .row-3 .player-name { font-size: 22px; }
         .row-2 .cover, .row-3 .cover { font-size: 22px; }
 
-        /* 正解時は外枠ではなく、回答ボードの背景色を赤に塗り替える */
-        .answer-slot.is-correct {
-            transform: scale(1.03); /* ちょっとだけ手前に浮き出す演出 */
-            z-index: 50;
-        }
-        .answer-slot.is-correct .answer-img {
-            background-color: #d32f2f !important; /* 背景を赤に！ */
-            border-color: #ffeb3b !important; /* 枠線を黄色にして豪華に */
-            box-shadow: 0 0 30px rgba(211, 47, 47, 0.9) !important;
-        }
+        .answer-slot.is-correct { transform: scale(1.03); z-index: 50; }
+        .answer-slot.is-correct .answer-img { background-color: #d32f2f !important; border-color: #ffeb3b !important; box-shadow: 0 0 30px rgba(211, 47, 47, 0.9) !important; }
 
-        @keyframes popIn {
-            0% { transform: scale(0.6); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
 
+    <div class="team-name-area" id="team-name-display">チーム準備中...</div>
     <div class="title-area">リーダー理解度王選手権</div>
 
     <div class="total-score-area">
@@ -72,29 +64,29 @@
     <div class="theme-area" id="theme-display">お題：未設定</div>
 
     <script>
+        // 🔴 変更：teamNamesとteamThemesをStateに追加
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }
+            defaultValue: { 
+                answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), 
+                isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], 
+                teamNames: ['チームA', 'チームB'], teamThemes: ['', ''] 
+            }
         });
         
-        // サウンド設定を監視するReplicant
-        const soundRep = nodecg.Replicant('soundSettings', {
-            defaultValue: { seVolume: 0.5, bgmVolume: 0.5 }
-        });
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
 
         const row1 = document.getElementById('row-1');
         const row2 = document.getElementById('row-2');
         const row3 = document.getElementById('row-3');
         const totalScoreDisplay = document.getElementById('total-score-display');
         const themeDisplay = document.getElementById('theme-display');
+        const teamNameDisplay = document.getElementById('team-name-display');
 
-        // SE再生リスナー
         let soundOpen;
-        try { soundOpen = new Audio('sounds/open.mp3'); } 
-        catch(e) { console.error("Audio Load Error:", e); }
+        try { soundOpen = new Audio('sounds/open.mp3'); } catch(e) {}
 
         nodecg.listenFor('play_open_se', () => {
             if (soundOpen) {
-                // 再生前にサウンド管理パネルで設定された音量を適用する
                 soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                 soundOpen.currentTime = 0;
                 soundOpen.play().catch(e => console.log('SE Play Error:', e));
@@ -122,17 +114,20 @@
 
             const activeTeam = newVal.activeTeam || 0;
             const offset = activeTeam === 1 ? 7 : 0;
+            const tNames = newVal.teamNames || ['チームA', 'チームB'];
+            const tThemes = newVal.teamThemes || ['', ''];
 
-            if (newVal.totalScores !== undefined) {
-                totalScoreDisplay.innerText = newVal.totalScores[activeTeam];
-            }
-
-            if (newVal.theme && newVal.theme.trim() !== '') {
-                themeDisplay.innerText = `お題：${newVal.theme}`;
+            // チーム名とお題の反映
+            teamNameDisplay.innerText = `${tNames[activeTeam]} の挑戦`;
+            
+            if (tThemes[activeTeam] && tThemes[activeTeam].trim() !== '') {
+                themeDisplay.innerText = `お題：${tThemes[activeTeam]}`;
                 themeDisplay.style.display = 'block';
             } else {
                 themeDisplay.style.display = 'none';
             }
+
+            if (newVal.totalScores !== undefined) totalScoreDisplay.innerText = newVal.totalScores[activeTeam];
 
             for (let i = 0; i < 7; i++) {
                 const pIdx = i + offset; 
