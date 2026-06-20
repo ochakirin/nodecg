@@ -6,17 +6,7 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         
-        .rating-table {
-            width: 1700px;
-            height: 950px;
-            border-collapse: collapse;
-            border: 6px solid #d32f2f; 
-            background-color: #ffff00; 
-            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
-            table-layout: fixed;
-            position: relative;
-        }
-
+        .rating-table { width: 1700px; height: 950px; border-collapse: collapse; border: 6px solid #d32f2f; background-color: #ffff00; box-shadow: 0 15px 30px rgba(0,0,0,0.5); table-layout: fixed; position: relative; }
         .rating-table th, .rating-table td { border: 2px solid #d32f2f; text-align: center; vertical-align: middle; }
         .rating-table th { height: 120px; font-size: 38px; font-weight: 900; line-height: 1.2; letter-spacing: 2px; }
 
@@ -30,8 +20,7 @@
         #players-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
         .nameplate-wrapper {
-            position: absolute; 
-            top: 0; left: 0; 
+            position: absolute; top: 0; left: 0; 
             display: flex; justify-content: center; align-items: center;
             transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
@@ -47,7 +36,6 @@
     </style>
 </head>
 <body>
-
     <div style="position: relative;">
         <table class="rating-table" id="bg-table">
             <thead>
@@ -63,18 +51,15 @@
     </div>
 
     <script>
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
         const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
-            defaultValue: { 
-                names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
-                ranks: [0, 0, 0, 0, 0, 0, 0] 
-            }
+            defaultValue: { names: [...defaultNames], ranks: [0, 0, 0, 0, 0, 0, 0] }
         });
 
         const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
 
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
-        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
 
         let soundMove;
         try { soundMove = new Audio('sounds/open.mp3'); } catch(e) {}
@@ -106,18 +91,18 @@
 
         function renderBoard() {
             if (!currentState) return;
+            
             const names = currentState.names || [];
             const ranks = currentState.ranks || [];
-
             let needsRetry = false;
 
             for (let i = 0; i < 7; i++) {
                 let rank = parseInt(ranks[i], 10);
                 if (isNaN(rank)) rank = 0;
 
-                // 🔴 修正：万が一名前データが空の場合は、デフォルトの名前で補完する
+                // 万が一データが空文字で保存されていても強制的にデフォルトを表示
                 let nameText = names[i];
-                if (!nameText || nameText.trim() === '') {
+                if (typeof nameText !== 'string' || nameText.trim() === '') {
                     nameText = defaultNames[i];
                 }
                 
@@ -132,7 +117,6 @@
                 const cellWidth = targetCell.offsetWidth;
                 const cellHeight = targetCell.offsetHeight;
 
-                // 画面描画前でサイズが取れない場合は後でまとめて再計算
                 if (cellWidth === 0 || cellHeight === 0) {
                     needsRetry = true;
                     continue; 
