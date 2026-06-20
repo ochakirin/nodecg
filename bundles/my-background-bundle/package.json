@@ -83,6 +83,14 @@
         "workspace": "4.ペイント"
       },
       {
+        "name": "sound-control",
+        "title": "🔊 サウンド音量管理",
+        "file": "sound_ctrl.html",
+        "headerColor": "#00BCD4",
+        "width": 3,
+        "workspace": "5.サウンド管理"
+      },
+      {
         "name": "owarema-pad",
         "title": "📱 出演者パッド (バックグラウンド)",
         "file": "owarema_pad.html",
