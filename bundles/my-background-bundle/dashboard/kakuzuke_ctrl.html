@@ -61,16 +61,28 @@
 
             document.getElementById(`up-${i}`).addEventListener('click', () => {
                 const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                if (!state.ranks) state.ranks = [0,0,0,0,0,0,0];
-                if (state.ranks[i] > 0) state.ranks[i]--;
+                if (!Array.isArray(state.ranks)) state.ranks = [0,0,0,0,0,0,0];
+                
+                // 強制的に数値化（エラー防止）
+                let currentRank = parseInt(state.ranks[i], 10);
+                if (isNaN(currentRank)) currentRank = 0;
+
+                if (currentRank > 0) {
+                    state.ranks[i] = currentRank - 1;
+                }
                 kakuzukeRep.value = state;
             });
 
             document.getElementById(`down-${i}`).addEventListener('click', () => {
                 const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                if (!state.ranks) state.ranks = [0,0,0,0,0,0,0];
-                if (state.ranks[i] < 5) {
-                    state.ranks[i]++;
+                if (!Array.isArray(state.ranks)) state.ranks = [0,0,0,0,0,0,0];
+                
+                // 強制的に数値化（エラー防止）
+                let currentRank = parseInt(state.ranks[i], 10);
+                if (isNaN(currentRank)) currentRank = 0;
+
+                if (currentRank < 5) {
+                    state.ranks[i] = currentRank + 1;
                     nodecg.sendMessage('play_open_se');
                 }
                 kakuzukeRep.value = state;
@@ -92,7 +104,9 @@
                     nameInput.value = names[i] || '';
                 }
                 
-                const rankVal = ranks[i] || 0;
+                let rankVal = parseInt(ranks[i], 10);
+                if (isNaN(rankVal)) rankVal = 0;
+
                 rankText.innerText = rankNames[rankVal];
                 rankText.className = `rank-display r-${rankVal}`;
                 
