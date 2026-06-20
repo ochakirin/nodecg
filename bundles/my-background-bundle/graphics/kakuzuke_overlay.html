@@ -2,36 +2,67 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <title>Kakuzuke Board</title>
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #fdfdfd; margin: 0; }
-        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .name-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
-        .rank-display { width: 100px; text-align: center; font-weight: bold; font-size: 14px; padding: 6px; border-radius: 4px; background: #eee; }
-        button { padding: 8px 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; transition: 0.1s; }
-        button:hover { opacity: 0.8; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn-up { background: #2196f3; }
-        .btn-down { background: #e91e63; }
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         
-        .r-0 { background: #ffff00; color: #000; } 
-        .r-1 { background: #ffffff; border: 1px solid #ccc; color: #000; } 
-        .r-2 { background: #00ffff; color: #000; } 
-        .r-3 { background: #ff00ff; color: #fff; } 
-        .r-4 { background: #b0bec5; color: #000; } 
-        .r-5 { background: #ffffff; border: 1px solid #ccc; color: #ccc; } 
+        .rating-table {
+            width: 1700px;
+            height: 950px;
+            border-collapse: collapse;
+            border: 6px solid #d32f2f; 
+            background-color: #ffff00; 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            table-layout: fixed;
+            position: relative;
+        }
+
+        .rating-table th, .rating-table td { border: 2px solid #d32f2f; text-align: center; vertical-align: middle; }
+        .rating-table th { height: 120px; font-size: 38px; font-weight: 900; line-height: 1.2; letter-spacing: 2px; }
+
+        .h-0 { background-color: #ffff00; color: #000; } 
+        .h-1 { background-color: #ffffff; color: #000; } 
+        .h-2 { background-color: #00ffff; color: #000; } 
+        .h-3 { background-color: #ff00ff; color: #000; } 
+        .h-4 { background-color: #b0bec5; color: #000; } 
+        .h-5 { background-color: #ffffff; color: #000; } 
+
+        #players-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+        .nameplate-wrapper {
+            position: absolute; 
+            top: 0; left: 0; 
+            display: flex; justify-content: center; align-items: center;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .nameplate {
+            background-color: #ffff00; border: 5px solid #1565c0; color: #000;
+            font-size: 34px; font-weight: bold; padding: 10px 15px; width: 80%;
+            box-sizing: border-box; box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+        }
+
+        .is-nifram .nameplate { opacity: 0.3; filter: grayscale(100%); box-shadow: none; }
     </style>
 </head>
 <body>
 
-    <h3 style="margin-top:0; color:#d32f2f;">▼ 格付けボード操作</h3>
-    <div id="controls-container"></div>
-
-    <div style="margin-top: 20px;">
-        <button style="background: #607d8b; width: 100%; padding: 12px;" onclick="resetRanks()">全員「一流」にリセット</button>
+    <div style="position: relative;">
+        <table class="rating-table" id="bg-table">
+            <thead>
+                <tr>
+                    <th class="h-0">一流<br>プレイヤー</th><th class="h-1">普通<br>プレイヤー</th>
+                    <th class="h-2">二流<br>プレイヤー</th><th class="h-3">三流<br>プレイヤー</th>
+                    <th class="h-4">マネマネ</th><th class="h-5">ニフラム</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+        <div id="players-layer"></div>
     </div>
 
     <script>
-        const rankNames = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
         const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
             defaultValue: { 
                 names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
@@ -39,79 +70,95 @@
             }
         });
 
-        // 🔴 NodeCG推奨の「データを直接書き換える方式」に変更してエラーを防止
-        window.changeName = function(index, newName) {
-            if (!kakuzukeRep.value) return;
-            if (!kakuzukeRep.value.names) kakuzukeRep.value.names = [];
-            kakuzukeRep.value.names[index] = newName;
-        };
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
 
-        window.changeRank = function(index, delta) {
-            if (!kakuzukeRep.value) return;
-            if (!kakuzukeRep.value.ranks) kakuzukeRep.value.ranks = [0,0,0,0,0,0,0];
-            
-            let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
-            if (isNaN(currentRank)) currentRank = 0;
-            
-            let newRank = currentRank + delta;
-            if (newRank >= 0 && newRank <= 5) {
-                kakuzukeRep.value.ranks[index] = newRank;
-                if (delta > 0) {
-                    nodecg.sendMessage('play_open_se');
-                }
-            }
-        };
+        const tbody = document.getElementById('table-body');
+        const playersLayer = document.getElementById('players-layer');
 
-        window.resetRanks = function() {
-            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
-                if (!kakuzukeRep.value) return;
-                kakuzukeRep.value.ranks = [0, 0, 0, 0, 0, 0, 0];
-            }
-        };
-
-        // UI（入力欄とボタン）を生成
-        const container = document.getElementById('controls-container');
-        for (let i = 0; i < 7; i++) {
-            const div = document.createElement('div');
-            div.className = 'row';
-            div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" oninput="changeName(${i}, this.value)">
-                <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
-                <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
-                <div class="rank-display" id="rank-text-${i}">一流</div>
-            `;
-            container.appendChild(div);
-        }
-
-        // データの変更を監視してパネルの表示を更新
-        kakuzukeRep.on('change', (newVal) => {
-            if (!newVal) return;
-            const names = newVal.names || [];
-            const ranks = newVal.ranks || [];
-
-            for (let i = 0; i < 7; i++) {
-                const nameInput = document.getElementById(`name-${i}`);
-                const rankText = document.getElementById(`rank-text-${i}`);
-                const btnUp = document.getElementById(`up-${i}`);
-                const btnDown = document.getElementById(`down-${i}`);
-                
-                // 自分が文字を入力中でなければ名前を更新
-                if (nameInput && document.activeElement !== nameInput) {
-                    nameInput.value = names[i] || '';
-                }
-                
-                let rankVal = parseInt(ranks[i], 10);
-                if (isNaN(rankVal)) rankVal = 0;
-
-                if (rankText) {
-                    rankText.innerText = rankNames[rankVal];
-                    rankText.className = `rank-display r-${rankVal}`;
-                }
-                
-                if (btnUp) btnUp.disabled = rankVal === 0;
-                if (btnDown) btnDown.disabled = rankVal === 5;
+        let soundMove;
+        try { soundMove = new Audio('sounds/open.mp3'); } catch(e) {}
+        nodecg.listenFor('play_open_se', () => {
+            if (soundMove) {
+                soundMove.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                soundMove.currentTime = 0;
+                soundMove.play().catch(e => console.log('SE Play Error:', e));
             }
         });
+
+        for (let i = 0; i < 7; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < 6; j++) {
+                const td = document.createElement('td');
+                td.id = `cell-${i}-${j}`; 
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'nameplate-wrapper';
+            wrapper.id = `player-wrapper-${i}`;
+            wrapper.innerHTML = `<div class="nameplate" id="player-name-${i}"></div>`;
+            playersLayer.appendChild(wrapper);
+        }
+
+        let currentState = null;
+
+        function renderBoard() {
+            if (!currentState) return;
+            const names = currentState.names || [];
+            const ranks = currentState.ranks || [];
+
+            let needsRetry = false;
+
+            for (let i = 0; i < 7; i++) {
+                let rank = parseInt(ranks[i], 10);
+                if (isNaN(rank)) rank = 0;
+
+                const nameText = names[i] || `プレイヤー${i+1}`;
+                
+                const wrapper = document.getElementById(`player-wrapper-${i}`);
+                const nameplate = document.getElementById(`player-name-${i}`);
+                const targetCell = document.getElementById(`cell-${i}-${rank}`);
+                
+                if (!targetCell || !wrapper || !nameplate) continue;
+
+                // 🔴 修正：画面レイアウトが完了する前であっても、名前テキストの同期は絶対に止めない
+                nameplate.innerText = nameText;
+
+                const cellWidth = targetCell.offsetWidth;
+                const cellHeight = targetCell.offsetHeight;
+
+                // 🔴 修正：計算待ちが発生した場合も「次以降のプレイヤーの処理」を中断せず、後でまとめて再計算する
+                if (cellWidth === 0 || cellHeight === 0) {
+                    needsRetry = true;
+                    continue; 
+                }
+
+                wrapper.style.width = `${cellWidth}px`;
+                wrapper.style.height = `${cellHeight}px`;
+                wrapper.style.transform = `translate(${targetCell.offsetLeft}px, ${targetCell.offsetTop}px)`;
+
+                if (rank === 5) {
+                    wrapper.classList.add('is-nifram');
+                } else {
+                    wrapper.classList.remove('is-nifram');
+                }
+            }
+
+            // サイズが0だったものがあれば、0.1秒後に再計算
+            if (needsRetry) {
+                setTimeout(renderBoard, 100);
+            }
+        }
+
+        kakuzukeRep.on('change', (newVal) => {
+            if (!newVal) return;
+            currentState = newVal;
+            requestAnimationFrame(renderBoard);
+        });
+
+        window.addEventListener('resize', renderBoard);
+        window.addEventListener('load', renderBoard);
     </script>
 </body>
 </html>
