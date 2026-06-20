@@ -34,13 +34,20 @@
     <div class="header-text" id="display-name">読み込み中...</div>
     
     <select id="player-select">
-        <option value="0">1人目 の回答枠</option>
-        <option value="1">2人目 の回答枠</option>
-        <option value="2">3人目 の回答枠</option>
-        <option value="3">4人目 の回答枠</option>
-        <option value="4">5人目 の回答枠</option>
-        <option value="5">6人目 の回答枠</option>
-        <option value="6">7人目 の回答枠</option>
+        <option value="0">[A] 👑 リーダー</option>
+        <option value="1">[A] 回答者1</option>
+        <option value="2">[A] 回答者2</option>
+        <option value="3">[A] 回答者3</option>
+        <option value="4">[A] 回答者4</option>
+        <option value="5">[A] 回答者5</option>
+        <option value="6">[A] 回答者6</option>
+        <option value="7">[B] 👑 リーダー</option>
+        <option value="8">[B] 回答者1</option>
+        <option value="9">[B] 回答者2</option>
+        <option value="10">[B] 回答者3</option>
+        <option value="11">[B] 回答者4</option>
+        <option value="12">[B] 回答者5</option>
+        <option value="13">[B] 回答者6</option>
     </select>
 
     <canvas id="draw-pad" width="600" height="300"></canvas>
@@ -51,13 +58,15 @@
     </div>
 
     <div class="preview-section" id="preview-section">
-        <div class="preview-title">📊 全員の回答状況（ダッシュボード確認用）</div>
-        <div class="preview-grid" id="preview-grid"></div>
+        <div class="preview-title">📊 チームA 回答状況</div>
+        <div class="preview-grid" id="preview-grid-a"></div>
+        <div class="preview-title" style="margin-top:10px;">📊 チームB 回答状況</div>
+        <div class="preview-grid" id="preview-grid-b"></div>
     </div>
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''] }
+            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill('') }
         });
 
         const canvas = document.getElementById('draw-pad');
@@ -65,15 +74,12 @@
         const playerSelect = document.getElementById('player-select');
         const displayName = document.getElementById('display-name');
         const previewSection = document.getElementById('preview-section');
-        const previewGrid = document.getElementById('preview-grid');
+        const previewGridA = document.getElementById('preview-grid-a');
+        const previewGridB = document.getElementById('preview-grid-b');
 
-        // 🔴 エラー回避：URLパラメータを安全に整数に変換する
         const urlParams = new URLSearchParams(window.location.search);
-        const playerParamStr = urlParams.get('player');
-        const playerId = parseInt(playerParamStr, 10);
-        
-        // パラメータが正常な数字（0〜6）の場合のみスタンドアローンと判定
-        const isStandalone = !isNaN(playerId) && playerId >= 0 && playerId <= 6;
+        const playerId = parseInt(urlParams.get('player'), 10);
+        const isStandalone = !isNaN(playerId) && playerId >= 0 && playerId <= 13;
 
         if (isStandalone) {
             playerSelect.style.display = 'none';
@@ -81,43 +87,48 @@
         } else {
             playerSelect.style.display = 'block'; 
             previewSection.style.display = 'block'; 
-            displayName.innerText = `手書き回答ボード (ダッシュボード用)`;
+            displayName.innerText = `手書きボード (ダッシュボード入力用)`;
         }
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            // 🔴 スタンドアローンの場合、確実にヘッダーに名前を反映
             if (isStandalone && newVal.names) {
                 const targetName = newVal.names[playerId];
-                if (targetName && typeof targetName === 'string' && targetName.trim() !== '') {
-                    displayName.innerText = `【 ${targetName} 】さんの回答ボード`;
+                const localIdx = playerId % 7;
+                const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
+
+                if (targetName && targetName.trim() !== '') {
+                    displayName.innerText = `【 ${targetName} 】さんのボード`;
                 } else {
-                    displayName.innerText = `【 ${playerId + 1}人目 】の回答ボード`;
+                    displayName.innerText = `【 ${roleName} 】のボード`;
                 }
             }
 
-            // ダッシュボード用プレビューの更新
             if (!isStandalone) {
-                previewGrid.innerHTML = '';
-                for (let i = 0; i < 7; i++) {
+                previewGridA.innerHTML = '';
+                previewGridB.innerHTML = '';
+                for (let i = 0; i < 14; i++) {
                     const box = document.createElement('div');
                     box.className = 'preview-box';
-                    const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : `${i + 1}人目`;
+                    const localIdx = i % 7;
+                    const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
+                    const pName = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i] : roleName;
                     
                     if (newVal.answers && newVal.answers[i] !== '') {
                         box.innerHTML = `<div class="p-name">${pName}</div><img src="${newVal.answers[i]}">`;
                     } else {
                         box.innerHTML = `<div class="p-name">${pName}</div><div class="p-status">考え中...</div>`;
                     }
-                    previewGrid.appendChild(box);
+                    if (i < 7) previewGridA.appendChild(box);
+                    else previewGridB.appendChild(box);
                 }
             }
         });
 
         function clearCanvas() {
-            ctx.fillStyle = "#1565c0"; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 🔴 背景を透明にする
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         clearCanvas();
 
@@ -132,7 +143,6 @@
             };
         }
 
-        // 🔴 描画開始時に「必ず白ペン・太さ8」になるように強制上書き設定
         function startDraw(e) { 
             e.preventDefault(); 
             isDrawing = true; 
@@ -170,11 +180,16 @@
         document.getElementById('btn-clear').addEventListener('click', clearCanvas);
 
         document.getElementById('btn-submit').addEventListener('click', () => {
-            // 🔴 スタンドアローン時はURLパラメータの数字を、ダッシュボード時はプルダウンの数字を採用
             const targetIndex = isStandalone ? playerId : parseInt(playerSelect.value, 10);
             const imageData = canvas.toDataURL('image/png');
             
-            const state = JSON.parse(JSON.stringify(gameRep.value));
+            let state = gameRep.value;
+            if (!state) { state = { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill('') }; }
+            else { state = JSON.parse(JSON.stringify(state)); }
+
+            if (!state.answers) state.answers = Array(14).fill('');
+            if (!state.isOpen) state.isOpen = Array(14).fill(false);
+
             state.answers[targetIndex] = imageData;
             state.isOpen[targetIndex] = false; 
             gameRep.value = state;
