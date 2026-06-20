@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 15px; margin: 0; background: #e3f2fd; }
+        .panel-container { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 6px solid #1e88e5; }
+        
+        .header-inputs { display: flex; gap: 15px; margin-bottom: 20px; }
+        .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-weight: bold; font-size: 13px; color: #1565c0; }
+        .input-group input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .score-group { flex: 0.5; }
+        
+        .player-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: #fafafa; border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px; }
+        .p-label { font-weight: bold; width: 60px; color: #555; }
+        .p-name { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .status { width: 80px; font-size: 12px; font-weight: bold; text-align: center; }
+        
+        .btn-sm { padding: 8px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.1s; }
+        .btn-sm:hover { opacity: 0.8; }
+        .btn-copy { background: #009688; }
+        .btn-jump { background: #795548; }
+        .btn-open { background: #00bcd4; width: 100px; }
+        .btn-clear { background: #9e9e9e; }
+        .correct-label { cursor: pointer; background: #ffebee; padding: 8px 12px; border-radius: 4px; border: 1px solid #ffcdd2; color: #d32f2f; font-weight: bold; }
+        
+        .master-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .master-actions button { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="panel-container">
+        <div class="header-inputs">
+            <div class="input-group">
+                <label>チーム名</label>
+                <input type="text" id="t-name" placeholder="挑戦チーム名" onchange="updateMeta('teamName', this.value)">
+            </div>
+            <div class="input-group score-group">
+                <label>得点</label>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-sm" style="background:#555;" onclick="addScore(-10)">-10</button>
+                    <input type="number" id="t-score" value="0" style="width:100%; text-align:center;" onchange="updateMeta('score', this.value)">
+                    <button class="btn-sm" style="background:#555;" onclick="addScore(10)">+10</button>
+                </div>
+            </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 20px;">
+            <label>問題文（5文字の答えになる問題）</label>
+            <input type="text" id="t-question" placeholder="例：日本で一番高い山は？" onchange="updateMeta('question', this.value)">
+        </div>
+
+        <div id="players-container"></div>
+
+        <div class="master-actions">
+            <button style="background: #ff9800;" onclick="bulkAction('open')">🎉 全員オープン</button>
+            <button style="background: #e91e63;" onclick="bulkAction('red')">🔴 全員 赤背景にする</button>
+            <button style="background: #8bc34a;" onclick="bulkAction('clearAns')">🧹 回答のみリセット</button>
+            <button style="background: #455a64;" onclick="bulkAction('resetAll')">🔄 全消去</button>
+        </div>
+    </div>
+
+    <script>
+        const stateRep = nodecg.Replicant('fiveLeagueState', {
+            defaultValue: { teamName: "チームA", score: 0, question: "", names: Array(5).fill(''), answers: Array(5).fill(''), isOpen: Array(5).fill(false), isCorrect: Array(5).fill(false) }
+        });
+
+        window.getPadUrl = function(idx) { return `${window.location.origin}/bundles/my-background-bundle/dashboard/fiveleague_pad.html?p=${idx}&standalone=true`; }
+        window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`${idx+1}文字目のURLをコピーしました`)); }
+        window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
+
+        const container = document.getElementById('players-container');
+        for (let i = 0; i < 5; i++) {
+            container.innerHTML += `
+                <div class="player-row">
+                    <span class="p-label">${i+1}文字目</span>
+                    <input type="text" class="p-name" id="p-name-${i}" placeholder="名前" onchange="updatePlayer(${i}, 'name', this.value)">
+                    <button class="btn-sm btn-copy" onclick="copyUrl(${i})">🔗</button>
+                    <button class="btn-sm btn-jump" onclick="openUrl(${i})">🚀</button>
+                    <span class="status" id="status-${i}" style="color:#999;">未提出</span>
+                    
+                    <label class="correct-label"><input type="checkbox" id="check-${i}" onchange="updatePlayer(${i}, 'correct', this.checked)"> 赤背景</label>
+                    <button class="btn-sm btn-open" id="btn-open-${i}" onclick="updatePlayer(${i}, 'open', null)">👁️ オープン</button>
+                    <button class="btn-sm btn-clear" onclick="updatePlayer(${i}, 'clear', null)">消去</button>
+                </div>
+            `;
+        }
+
+        window.updateMeta = function(key, val) {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (key === 'score') s[key] = parseInt(val, 10) || 0;
+            else s[key] = val;
+            stateRep.value = s;
+        }
+
+        window.addScore = function(amount) {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            s.score += amount;
+            stateRep.value = s;
+        }
+
+        window.updatePlayer = function(idx, action, val) {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (action === 'name') s.names[idx] = val;
+            if (action === 'correct') s.isCorrect[idx] = val;
+            if (action === 'open') { s.isOpen[idx] = !s.isOpen[idx]; if(s.isOpen[idx]) nodecg.sendMessage('play_open_se'); }
+            if (action === 'clear') { s.answers[idx] = ''; s.isOpen[idx] = false; s.isCorrect[idx] = false; document.getElementById(`check-${idx}`).checked = false; }
+            stateRep.value = s;
+        }
+
+        window.bulkAction = function(action) {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (action === 'open') { s.isOpen = Array(5).fill(true); nodecg.sendMessage('play_open_se'); }
+            if (action === 'red') { s.isCorrect = Array(5).fill(true); }
+            if (action === 'clearAns') { s.answers = Array(5).fill(''); s.isOpen = Array(5).fill(false); s.isCorrect = Array(5).fill(false); }
+            if (action === 'resetAll') {
+                if(!confirm("チーム名、問題、すべての回答をリセットしますか？")) return;
+                s.teamName = ''; s.score = 0; s.question = ''; s.names = Array(5).fill('');
+                s.answers = Array(5).fill(''); s.isOpen = Array(5).fill(false); s.isCorrect = Array(5).fill(false);
+            }
+            stateRep.value = s;
+        }
+
+        stateRep.on('change', (newVal) => {
+            if (!newVal) return;
+            if (document.activeElement.id !== 't-name') document.getElementById('t-name').value = newVal.teamName || '';
+            if (document.activeElement.id !== 't-score') document.getElementById('t-score').value = newVal.score || 0;
+            if (document.activeElement.id !== 't-question') document.getElementById('t-question').value = newVal.question || '';
+
+            for(let i=0; i<5; i++) {
+                const nameInp = document.getElementById(`p-name-${i}`);
+                if (nameInp && document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
+                
+                document.getElementById(`check-${i}`).checked = newVal.isCorrect[i];
+                
+                const btnOpen = document.getElementById(`btn-open-${i}`);
+                btnOpen.style.opacity = newVal.isOpen[i] ? '0.5' : '1';
+                btnOpen.innerText = newVal.isOpen[i] ? '👁️ 閉じる' : '👁️ オープン';
+
+                const status = document.getElementById(`status-${i}`);
+                if (newVal.answers[i] !== '') { status.innerText = '✅ 提出済'; status.style.color = '#e91e63'; }
+                else { status.innerText = '未提出'; status.style.color = '#999'; }
+            }
+        });
+    </script>
+</body>
+</html>
