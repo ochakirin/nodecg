@@ -74,6 +74,7 @@
 
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
 
         let soundMove;
         try { soundMove = new Audio('sounds/open.mp3'); } catch(e) {}
@@ -114,7 +115,11 @@
                 let rank = parseInt(ranks[i], 10);
                 if (isNaN(rank)) rank = 0;
 
-                const nameText = names[i] || `プレイヤー${i+1}`;
+                // 🔴 修正：万が一名前データが空の場合は、デフォルトの名前で補完する
+                let nameText = names[i];
+                if (!nameText || nameText.trim() === '') {
+                    nameText = defaultNames[i];
+                }
                 
                 const wrapper = document.getElementById(`player-wrapper-${i}`);
                 const nameplate = document.getElementById(`player-name-${i}`);
@@ -122,13 +127,12 @@
                 
                 if (!targetCell || !wrapper || !nameplate) continue;
 
-                // 🔴 修正：画面レイアウトが完了する前であっても、名前テキストの同期は絶対に止めない
                 nameplate.innerText = nameText;
 
                 const cellWidth = targetCell.offsetWidth;
                 const cellHeight = targetCell.offsetHeight;
 
-                // 🔴 修正：計算待ちが発生した場合も「次以降のプレイヤーの処理」を中断せず、後でまとめて再計算する
+                // 画面描画前でサイズが取れない場合は後でまとめて再計算
                 if (cellWidth === 0 || cellHeight === 0) {
                     needsRetry = true;
                     continue; 
@@ -145,7 +149,6 @@
                 }
             }
 
-            // サイズが0だったものがあれば、0.1秒後に再計算
             if (needsRetry) {
                 setTimeout(renderBoard, 100);
             }
