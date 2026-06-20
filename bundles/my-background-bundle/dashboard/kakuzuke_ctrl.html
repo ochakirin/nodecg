@@ -3,72 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: sans-serif; padding: 10px; background: #f5f5f5; }
-        .team-row { display: flex; align-items: center; gap: 10px; background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid #9c27b0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .team-row input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 120px; }
-        .rank-badge { font-weight: bold; width: 100px; text-align: center; padding: 4px; border-radius: 4px; background: #eee; }
-        .btn-down { background: #e91e63; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-up { background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-down:hover, .btn-up:hover { opacity: 0.8; }
-        .btn-down:disabled { background: #ccc; cursor: not-allowed; }
-        #reset-btn { width: 100%; padding: 10px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        body { font-family: sans-serif; padding: 15px; background: #fdfdfd; margin: 0; }
+        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .name-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+        .rank-display { width: 100px; text-align: center; font-weight: bold; font-size: 14px; padding: 6px; border-radius: 4px; background: #eee; }
+        button { padding: 8px 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; transition: 0.1s; }
+        button:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-up { background: #2196f3; }
+        .btn-down { background: #e91e63; }
+        
+        /* ランクの色（ダッシュボード用） */
+        .r-0 { background: #ffff00; color: #000; } /* 一流 */
+        .r-1 { background: #ffffff; border: 1px solid #ccc; color: #000; } /* 普通 */
+        .r-2 { background: #00ffff; color: #000; } /* 二流 */
+        .r-3 { background: #ff00ff; color: #fff; } /* 三流 */
+        .r-4 { background: #b0bec5; color: #000; } /* マネマネ */
+        .r-5 { background: #ffffff; border: 1px solid #ccc; color: #ccc; } /* ニフラム */
     </style>
 </head>
 <body>
 
-    <h3 style="margin-top:0;">▼ チーム一覧とランク操作</h3>
-    <div id="teams-container"></div>
-    <button id="reset-btn">🔄 全チームを「一流」にリセット</button>
+    <h3 style="margin-top:0; color:#d32f2f;">▼ 格付けボード操作</h3>
+    <div id="controls-container"></div>
+
+    <div style="margin-top: 20px;">
+        <button style="background: #607d8b; width: 100%; padding: 12px;" id="btn-reset">全員「一流」にリセット</button>
+    </div>
 
     <script>
-        const ranks = ["一流", "普通", "二流", "三流", "そっくりさん", "映す価値なし"];
-        // デフォルトは6チーム想定（必要に応じて増減可能）
-        const defaultState = Array(6).fill().map((_, i) => ({ name: `チーム${i+1}`, rank: 0 }));
-        const kakuzukeRep = nodecg.Replicant('kakuzukeState', { defaultValue: defaultState });
+        const rankNames = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
+        const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
+            defaultValue: { 
+                names: ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"], 
+                ranks: [0, 0, 0, 0, 0, 0, 0] 
+            }
+        });
 
-        function render() {
-            const container = document.getElementById('teams-container');
-            container.innerHTML = '';
-            const state = kakuzukeRep.value || defaultState;
+        const container = document.getElementById('controls-container');
 
-            state.forEach((team, idx) => {
-                const isWorst = team.rank >= ranks.length - 1;
-                const isBest = team.rank <= 0;
-                
-                container.innerHTML += `
-                    <div class="team-row">
-                        <span style="font-size:12px; color:#666;">${idx+1}</span>
-                        <input type="text" value="${team.name}" onchange="updateName(${idx}, this.value)" placeholder="チーム名">
-                        <div class="rank-badge">${ranks[team.rank]}</div>
-                        <button class="btn-down" onclick="changeRank(${idx}, 1)" ${isWorst ? 'disabled' : ''}>⬇ 降格</button>
-                        <button class="btn-up" onclick="changeRank(${idx}, -1)" ${isBest ? 'disabled' : ''}>⬆ 昇格</button>
-                    </div>
-                `;
+        for (let i = 0; i < 7; i++) {
+            const div = document.createElement('div');
+            div.className = 'row';
+            div.innerHTML = `
+                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名">
+                <button class="btn-up" id="up-${i}">◀ 昇格</button>
+                <button class="btn-down" id="down-${i}">降格 ▶</button>
+                <div class="rank-display" id="rank-text-${i}">一流</div>
+            `;
+            container.appendChild(div);
+
+            document.getElementById(`name-${i}`).addEventListener('change', (e) => {
+                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+                state.names[i] = e.target.value;
+                kakuzukeRep.value = state;
+            });
+
+            document.getElementById(`up-${i}`).addEventListener('click', () => {
+                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+                if (state.ranks[i] > 0) state.ranks[i]--;
+                kakuzukeRep.value = state;
+            });
+
+            document.getElementById(`down-${i}`).addEventListener('click', () => {
+                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+                if (state.ranks[i] < 5) {
+                    state.ranks[i]++;
+                    nodecg.sendMessage('play_open_se'); // 降格時にSEを鳴らす
+                }
+                kakuzukeRep.value = state;
             });
         }
 
-        window.updateName = function(idx, newName) {
-            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-            state[idx].name = newName;
-            kakuzukeRep.value = state;
-        };
-
-        window.changeRank = function(idx, diff) {
-            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-            state[idx].rank += diff;
-            // 降格時にSEを鳴らす連動
-            if (diff > 0) nodecg.sendMessage('play_se'); 
-            kakuzukeRep.value = state;
-        };
-
-        document.getElementById('reset-btn').addEventListener('click', () => {
-            if(!confirm('全チームのランクを「一流」に戻しますか？')) return;
-            const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-            state.forEach(t => t.rank = 0);
-            kakuzukeRep.value = state;
+        kakuzukeRep.on('change', (newVal) => {
+            if (!newVal) return;
+            for (let i = 0; i < 7; i++) {
+                const nameInput = document.getElementById(`name-${i}`);
+                const rankText = document.getElementById(`rank-text-${i}`);
+                const btnUp = document.getElementById(`up-${i}`);
+                const btnDown = document.getElementById(`down-${i}`);
+                
+                if (document.activeElement !== nameInput) {
+                    nameInput.value = newVal.names[i] || '';
+                }
+                
+                const rankVal = newVal.ranks[i];
+                rankText.innerText = rankNames[rankVal];
+                rankText.className = `rank-display r-${rankVal}`;
+                
+                btnUp.disabled = rankVal === 0;
+                btnDown.disabled = rankVal === 5;
+            }
         });
 
-        kakuzukeRep.on('change', render);
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
+                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
+                state.ranks = [0, 0, 0, 0, 0, 0, 0];
+                kakuzukeRep.value = state;
+            }
+        });
     </script>
 </body>
 </html>
