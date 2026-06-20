@@ -3,190 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 10px; background: #eceff1; color: #333; }
-        .container { display: flex; gap: 20px; width: 100%; }
-        .team-col { flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .team-A { border-top: 5px solid #d32f2f; }
-        .team-B { border-top: 5px solid #1976d2; }
+        body { font-family: sans-serif; padding: 10px; margin: 0; background: #f5f5f5; min-width: 960px; }
+        .wrapper { display: flex; gap: 15px; width: 100%; }
+        .col { flex: 1; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .col-a { border-top: 5px solid #ff9800; }
+        .col-b { border-top: 5px solid #2196f3; }
         
-        h3 { margin-top: 0; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        .form-group input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .team-title { font-size: 18px; font-weight: bold; }
+        .active-btn { background: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .active-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .active-btn:hover:not(:disabled) { opacity: 0.8; }
+        .is-active-badge { display: inline-block; padding: 2px 6px; background: #ff0000; color: white; border-radius: 10px; font-size: 12px; margin-left: 10px; }
         
-        /* 得点エリアのスタイル */
-        .score-area { display: flex; align-items: center; justify-content: center; gap: 10px; background: #f5f5f5; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
+        .input-group { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .input-group label { width: 70px; font-size: 13px; font-weight: bold; }
+        .input-group input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
+        /* 得点エリア */
+        .score-area { display: flex; align-items: center; justify-content: center; gap: 10px; background: #f5f5f5; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
         .score-area input[type="number"] { width: 80px; font-size: 24px; font-weight: bold; text-align: center; padding: 5px; border: 2px solid #ccc; border-radius: 4px; }
         .score-btn { font-size: 16px; padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; background: #e0e0e0; font-weight: bold; }
         .score-btn:hover { background: #bdbdbd; }
 
-        .bulk-actions { display: flex; gap: 10px; margin-bottom: 20px; }
-        .bulk-actions button { flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; color: white; }
-        .btn-open { background: #4caf50; }
-        .btn-red { background: #e91e63; }
-        .btn-reset { background: #607d8b; }
+        /* チーム一括操作ボタン */
+        .team-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .action-btn { padding: 10px; font-size: 13px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; transition: 0.1s; }
+        .action-btn:hover { opacity: 0.8; }
+        .bg-orange { background: #ff9800; }
+        .bg-red { background: #e91e63; }
+        .bg-green { background: #8bc34a; }
+        .bg-dark { background: #455a64; }
+
+        /* プレイヤー個別のカードUI */
+        .player-card { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .pc-header { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
+        .pc-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+        .pc-row:last-child { margin-bottom: 0; }
         
-        .player-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #eee; }
-        .player-name { font-weight: bold; width: 80px; font-size: 14px; }
-        .url-btn { padding: 4px 8px; font-size: 12px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer; }
-        .url-btn.jump { background: #ff9800; }
+        .pc-name-input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.1s; }
+        .btn-sm:hover { opacity: 0.8; }
+        .btn-copy { background: #009688; }
+        .btn-jump { background: #795548; }
+        .btn-open { background: #00bcd4; flex: 1; } 
+        .btn-clear { background: #9e9e9e; }
+        
+        .correct-label { font-size: 12px; cursor: pointer; background: #ffebee; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcdd2; color: #d32f2f; font-weight: bold; display: flex; align-items: center; gap: 4px; margin-right: 5px; }
+        .correct-label:hover { background: #ffcdd2; }
+        .correct-label input { transform: scale(1.2); margin: 0; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- 🟥 チームA カラム -->
-    <div class="team-col team-A">
-        <h3 id="name-display-0">チームA</h3>
-        <div class="form-group">
-            <label>チーム名</label>
-            <input type="text" id="team-name-0" onchange="updateTeamData(0, 'name', this.value)">
-        </div>
-        <div class="form-group">
-            <label>お題</label>
-            <input type="text" id="team-theme-0" onchange="updateTeamData(0, 'theme', this.value)">
-        </div>
-        
-        <!-- 🔴 得点入力エリア -->
-        <div class="score-area">
-            <button class="score-btn" onclick="addScore(0, -10)">-10</button>
-            <input type="number" id="team-score-0" value="0" onchange="updateTeamData(0, 'score', this.value)">
-            <button class="score-btn" onclick="addScore(0, 10)">+10</button>
-        </div>
-
-        <div class="bulk-actions">
-            <button class="btn-open" onclick="bulkAction(0, 'open')">一斉オープン</button>
-            <button class="btn-red" onclick="bulkAction(0, 'red')">赤背景にする</button>
-            <button class="btn-reset" onclick="bulkAction(0, 'reset')">回答リセット</button>
-        </div>
-        <div id="players-0"></div>
-    </div>
-
-    <!-- 🟦 チームB カラム -->
-    <div class="team-col team-B">
-        <h3 id="name-display-1">チームB</h3>
-        <div class="form-group">
-            <label>チーム名</label>
-            <input type="text" id="team-name-1" onchange="updateTeamData(1, 'name', this.value)">
-        </div>
-        <div class="form-group">
-            <label>お題</label>
-            <input type="text" id="team-theme-1" onchange="updateTeamData(1, 'theme', this.value)">
-        </div>
-        
-        <!-- 🔴 得点入力エリア -->
-        <div class="score-area">
-            <button class="score-btn" onclick="addScore(1, -10)">-10</button>
-            <input type="number" id="team-score-1" value="0" onchange="updateTeamData(1, 'score', this.value)">
-            <button class="score-btn" onclick="addScore(1, 10)">+10</button>
-        </div>
-
-        <div class="bulk-actions">
-            <button class="btn-open" onclick="bulkAction(1, 'open')">一斉オープン</button>
-            <button class="btn-red" onclick="bulkAction(1, 'red')">赤背景にする</button>
-            <button class="btn-reset" onclick="bulkAction(1, 'reset')">回答リセット</button>
-        </div>
-        <div id="players-1"></div>
-    </div>
-</div>
-
-<script>
-    const defaultState = {
-        teamNames: ["チームA", "チームB"],
-        teamThemes: ["", ""],
-        teamScores: [0, 0], // 得点データを追加
-        answers: Array(14).fill(''),
-        isOpen: Array(14).fill(false),
-        isRed: Array(14).fill(false)
-    };
-
-    const gameRep = nodecg.Replicant('owarematenState', { defaultValue: defaultState });
-    const baseUrl = window.location.origin + "/bundles/my-background-bundle/graphics/owarema_pad.html";
-
-    function renderPlayers() {
-        for (let team = 0; team <= 1; team++) {
-            const container = document.getElementById(`players-${team}`);
-            container.innerHTML = '';
-            const offset = team * 7;
-            for (let i = 0; i < 7; i++) {
-                const globalIdx = offset + i;
-                const role = i === 0 ? "👑" : `P${i}`;
-                container.innerHTML += `
-                    <div class="player-row">
-                        <span class="player-name">${role}</span>
-                        <button class="url-btn" onclick="copyUrl(${globalIdx})">URLコピー</button>
-                        <button class="url-btn jump" onclick="window.open('${baseUrl}?p=${globalIdx}', '_blank')">開く</button>
-                        <span id="status-${globalIdx}" style="font-size:12px; color:#888; margin-left:auto;">未提出</span>
-                    </div>
-                `;
-            }
-        }
-    }
-
-    gameRep.on('change', (newVal) => {
-        if (!newVal) return;
-        
-        // チーム情報と得点の反映
-        for (let i = 0; i <= 1; i++) {
-            document.getElementById(`name-display-${i}`).innerText = newVal.teamNames[i] || `チーム${i==0?'A':'B'}`;
-            document.getElementById(`team-name-${i}`).value = newVal.teamNames[i] || '';
-            document.getElementById(`team-theme-${i}`).value = newVal.teamThemes[i] || '';
+    <div class="wrapper">
+        <div class="col col-a">
+            <div class="header-row">
+                <div class="team-title">🟥 チームA <span id="badge-0" class="is-active-badge" style="display:none;">📺 配信中</span></div>
+                <button class="active-btn" id="btn-active-0" onclick="setActiveTeam(0)">このチームを配信に映す</button>
+            </div>
+            <div class="input-group">
+                <label>チーム名</label><input type="text" id="t-name-0" placeholder="チームA" onchange="updateTeamData(0, 'name', this.value)">
+            </div>
+            <div class="input-group">
+                <label>お題</label><input type="text" id="t-theme-0" placeholder="チームAのお題" onchange="updateTeamData(0, 'theme', this.value)">
+            </div>
             
-            // 得点が未定義の場合は0をセット
-            if (!newVal.teamScores) newVal.teamScores = [0, 0];
-            document.getElementById(`team-score-${i}`).value = newVal.teamScores[i];
-        }
+            <div class="score-area">
+                <button class="score-btn" onclick="addScore(0, -10)">-10</button>
+                <input type="number" id="team-score-0" value="0" onchange="updateTeamData(0, 'score', this.value)">
+                <button class="score-btn" onclick="addScore(0, 10)">+10</button>
+            </div>
+            
+            <div class="team-actions">
+                <button class="action-btn bg-orange" onclick="openTeam(0)">🎉 回答全部オープン</button>
+                <button class="action-btn bg-red" onclick="highlightTeam(0)">🔴 赤背景を反映</button>
+                <button class="action-btn bg-green" style="grid-column: span 2;" onclick="resetAnswersTeam(0)">🧹 回答 ＋ 背景赤チェック のみ消去</button>
+                <button class="action-btn bg-dark" style="grid-column: span 2;" onclick="resetAllTeam(0)">🔄 全データ消去 (このチームのみ)</button>
+            </div>
+            
+            <hr style="border:none; border-top:2px dashed #eee; margin-bottom: 15px;">
+            <div id="players-0"></div>
+        </div>
 
-        // 回答状況の反映
-        newVal.answers.forEach((ans, idx) => {
-            const statusEl = document.getElementById(`status-${idx}`);
-            if (statusEl) {
-                statusEl.innerText = ans ? "✅ 提出済" : "未提出";
-                statusEl.style.color = ans ? "#4caf50" : "#888";
+        <div class="col col-b">
+            <div class="header-row">
+                <div class="team-title">🟦 チームB <span id="badge-1" class="is-active-badge" style="display:none;">📺 配信中</span></div>
+                <button class="active-btn" id="btn-active-1" onclick="setActiveTeam(1)">このチームを配信に映す</button>
+            </div>
+            <div class="input-group">
+                <label>チーム名</label><input type="text" id="t-name-1" placeholder="チームB" onchange="updateTeamData(1, 'name', this.value)">
+            </div>
+            <div class="input-group">
+                <label>お題</label><input type="text" id="t-theme-1" placeholder="チームBのお題" onchange="updateTeamData(1, 'theme', this.value)">
+            </div>
+            
+            <div class="score-area">
+                <button class="score-btn" onclick="addScore(1, -10)">-10</button>
+                <input type="number" id="team-score-1" value="0" onchange="updateTeamData(1, 'score', this.value)">
+                <button class="score-btn" onclick="addScore(1, 10)">+10</button>
+            </div>
+            
+            <div class="team-actions">
+                <button class="action-btn bg-orange" onclick="openTeam(1)">🎉 回答全部オープン</button>
+                <button class="action-btn bg-red" onclick="highlightTeam(1)">🔴 赤背景を反映</button>
+                <button class="action-btn bg-green" style="grid-column: span 2;" onclick="resetAnswersTeam(1)">🧹 回答 ＋ 背景赤チェック のみ消去</button>
+                <button class="action-btn bg-dark" style="grid-column: span 2;" onclick="resetAllTeam(1)">🔄 全データ消去 (このチームのみ)</button>
+            </div>
+            
+            <hr style="border:none; border-top:2px dashed #eee; margin-bottom: 15px;">
+            <div id="players-1"></div>
+        </div>
+    </div>
+
+    <script>
+        const gameRep = nodecg.Replicant('owarematenState', {
+            defaultValue: {
+                teamNames: ["チームA", "チームB"],
+                teamThemes: ["", ""],
+                teamScores: [0, 0],
+                answers: Array(14).fill(''),
+                isOpen: Array(14).fill(false),
+                isCorrect: Array(14).fill(false),
+                names: Array(14).fill(''),
+                activeTeam: 0
             }
         });
-    });
+        
+        window.setActiveTeam = function(teamIdx) {
+            const s = JSON.parse(JSON.stringify(gameRep.value));
+            s.activeTeam = teamIdx;
+            gameRep.value = s;
+        }
 
-    window.updateTeamData = function(teamIdx, type, value) {
-        const state = JSON.parse(JSON.stringify(gameRep.value));
-        if (type === 'name') state.teamNames[teamIdx] = value;
-        if (type === 'theme') state.teamThemes[teamIdx] = value;
-        if (type === 'score') {
+        window.updateTeamData = function(teamIdx, type, value) {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.teamNames) state.teamNames = ['チームA', 'チームB'];
+            if (!state.teamThemes) state.teamThemes = ['', ''];
             if (!state.teamScores) state.teamScores = [0, 0];
-            state.teamScores[teamIdx] = parseInt(value, 10) || 0;
+            
+            if (type === 'name') state.teamNames[teamIdx] = value;
+            if (type === 'theme') state.teamThemes[teamIdx] = value;
+            if (type === 'score') state.teamScores[teamIdx] = parseInt(value, 10) || 0;
+            
+            gameRep.value = state;
+        };
+
+        window.addScore = function(teamIdx, amount) {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.teamScores) state.teamScores = [0, 0];
+            state.teamScores[teamIdx] += amount;
+            gameRep.value = state;
+        };
+
+        // 🔴 修正：URLをdashboardフォルダ内のパッドに正しくルーティング
+        window.getPadUrl = function(idx) { 
+            return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?p=${idx}&standalone=true`; 
         }
-        gameRep.value = state;
-    };
+        window.copyUrl = function(idx, role) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`${role} のURLをコピーしました`)); }
+        window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
 
-    window.addScore = function(teamIdx, amount) {
-        const state = JSON.parse(JSON.stringify(gameRep.value));
-        if (!state.teamScores) state.teamScores = [0, 0];
-        state.teamScores[teamIdx] += amount;
-        gameRep.value = state;
-    };
+        // プレイヤーのHTML枠を自動生成
+        function renderPlayers() {
+            [0, 1].forEach(teamIdx => {
+                const container = document.getElementById(`players-${teamIdx}`);
+                container.innerHTML = '';
+                const offset = teamIdx === 1 ? 7 : 0;
+                const colorCode = teamIdx === 0 ? '#d32f2f' : '#1976d2';
+                
+                for (let i = 0; i < 7; i++) {
+                    const pIdx = i + offset;
+                    const role = i === 0 ? "👑 リーダー" : `回答者${i}`;
+                    container.innerHTML += `
+                        <div class="player-card">
+                            <div class="pc-header">
+                                <strong style="font-size:14px; color:${colorCode};">[${teamIdx===0 ? 'A' : 'B'}] ${role}</strong>
+                                <span id="status-${pIdx}" style="font-size:12px; font-weight:bold; color:#999;">未提出</span>
+                            </div>
+                            <div class="pc-row">
+                                <input type="text" id="p-name-${pIdx}" class="pc-name-input" placeholder="名前" onchange="updateName(${pIdx}, this.value)">
+                                <button class="btn-sm btn-copy" onclick="copyUrl(${pIdx}, '${role}')">🔗 URL</button>
+                                <button class="btn-sm btn-jump" onclick="openUrl(${pIdx})">🚀 開く</button>
+                            </div>
+                            <div class="pc-row">
+                                <label class="correct-label">
+                                    <input type="checkbox" id="check-${pIdx}"> 赤背景
+                                </label>
+                                <button class="btn-sm btn-open" id="btn-open-${pIdx}" onclick="toggleOpen(${pIdx})">👁️ 個別オープン</button>
+                                <button class="btn-sm btn-clear" onclick="clearAnswer(${pIdx})">消去</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        renderPlayers();
 
-    window.bulkAction = function(teamIdx, action) {
-        const state = JSON.parse(JSON.stringify(gameRep.value));
-        const offset = teamIdx * 7;
-        for (let i = 0; i < 7; i++) {
-            const idx = offset + i;
-            if (action === 'open') state.isOpen[idx] = true;
-            if (action === 'red') state.isRed[idx] = true;
-            if (action === 'reset') {
-                state.answers[idx] = '';
-                state.isOpen[idx] = false;
-                state.isRed[idx] = false;
+        // 個別操作系
+        window.updateName = function(idx, val) { const s = JSON.parse(JSON.stringify(gameRep.value)); s.names[idx] = val; gameRep.value = s; }
+        window.toggleOpen = function(idx) { 
+            const s = JSON.parse(JSON.stringify(gameRep.value)); 
+            s.isOpen[idx] = !s.isOpen[idx]; 
+            gameRep.value = s; 
+            if(s.isOpen[idx]) nodecg.sendMessage('play_open_se'); 
+        }
+        window.clearAnswer = function(idx) { 
+            const s = JSON.parse(JSON.stringify(gameRep.value)); 
+            s.answers[idx] = ''; s.isOpen[idx] = false; s.isCorrect[idx] = false; 
+            document.getElementById(`check-${idx}`).checked = false; 
+            gameRep.value = s; 
+        }
+
+        // チーム一括操作系
+        window.openTeam = function(teamIdx) {
+            const s = JSON.parse(JSON.stringify(gameRep.value));
+            const offset = teamIdx * 7;
+            let openedAny = false;
+            for(let i=0; i<7; i++) {
+                const pIdx = offset + i;
+                if(s.answers[pIdx] !== '' && !s.isOpen[pIdx]) {
+                    s.isOpen[pIdx] = true;
+                    openedAny = true;
+                }
             }
+            if(openedAny) nodecg.sendMessage('play_open_se');
+            gameRep.value = s;
         }
-        gameRep.value = state;
-    };
 
-    window.copyUrl = function(idx) {
-        const url = `${baseUrl}?p=${idx}`;
-        navigator.clipboard.writeText(url).then(() => alert(`プレイヤー${idx}のURLをコピーしました！`));
-    };
+        window.highlightTeam = function(teamIdx) {
+            const s = JSON.parse(JSON.stringify(gameRep.value));
+            const offset = teamIdx * 7;
+            for(let i=0; i<7; i++) {
+                const pIdx = offset + i;
+                s.isCorrect[pIdx] = document.getElementById(`check-${pIdx}`).checked;
+            }
+            gameRep.value = s;
+        }
 
-    renderPlayers();
-</script>
+        window.resetAnswersTeam = function(teamIdx) {
+            const tName = teamIdx === 0 ? "A" : "B";
+            if(!confirm(`チーム${tName} の【回答と赤背景】を消去します。よろしいですか？`)) return;
+            const s = JSON.parse(JSON.stringify(gameRep.value));
+            const offset = teamIdx * 7;
+            for(let i=0; i<7; i++) {
+                const pIdx = offset + i;
+                s.answers[pIdx] = '';
+                s.isOpen[pIdx] = false;
+                s.isCorrect[pIdx] = false;
+                document.getElementById(`check-${pIdx}`).checked = false;
+            }
+            gameRep.value = s;
+        }
+
+        window.resetAllTeam = function(teamIdx) {
+            const tName = teamIdx === 0 ? "A" : "B";
+            if(!confirm(`名前・お題・得点を含め、チーム${tName} のデータを【全て】消去します。本当によろしいですか？`)) return;
+            const s = JSON.parse(JSON.stringify(gameRep.value));
+            const offset = teamIdx * 7;
+            for(let i=0; i<7; i++) {
+                const pIdx = offset + i;
+                s.names[pIdx] = '';
+                s.answers[pIdx] = '';
+                s.isOpen[pIdx] = false;
+                s.isCorrect[pIdx] = false;
+                document.getElementById(`check-${pIdx}`).checked = false;
+                const nameInp = document.getElementById(`p-name-${pIdx}`);
+                if(nameInp) nameInp.value = '';
+            }
+            s.teamNames[teamIdx] = '';
+            s.teamThemes[teamIdx] = '';
+            s.teamScores[teamIdx] = 0;
+            gameRep.value = s;
+        }
+
+        // Replicantの変更を受信して画面に反映
+        gameRep.on('change', (newVal) => {
+            if(!newVal) return;
+            
+            document.getElementById('badge-0').style.display = newVal.activeTeam === 0 ? 'inline-block' : 'none';
+            document.getElementById('btn-active-0').disabled = newVal.activeTeam === 0;
+            document.getElementById('badge-1').style.display = newVal.activeTeam === 1 ? 'inline-block' : 'none';
+            document.getElementById('btn-active-1').disabled = newVal.activeTeam === 1;
+
+            if(newVal.teamNames) {
+                if(document.activeElement.id !== 't-name-0') document.getElementById('t-name-0').value = newVal.teamNames[0] || '';
+                if(document.activeElement.id !== 't-name-1') document.getElementById('t-name-1').value = newVal.teamNames[1] || '';
+            }
+            if(newVal.teamThemes) {
+                if(document.activeElement.id !== 't-theme-0') document.getElementById('t-theme-0').value = newVal.teamThemes[0] || '';
+                if(document.activeElement.id !== 't-theme-1') document.getElementById('t-theme-1').value = newVal.teamThemes[1] || '';
+            }
+            if(newVal.teamScores) {
+                if(document.activeElement.id !== 'team-score-0') document.getElementById('team-score-0').value = newVal.teamScores[0] || 0;
+                if(document.activeElement.id !== 'team-score-1') document.getElementById('team-score-1').value = newVal.teamScores[1] || 0;
+            }
+
+            for(let i=0; i<14; i++) {
+                const nameInp = document.getElementById(`p-name-${i}`);
+                if(nameInp && document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
+                
+                const btnOpen = document.getElementById(`btn-open-${i}`);
+                if(btnOpen) {
+                    btnOpen.style.opacity = newVal.isOpen[i] ? '0.5' : '1';
+                    btnOpen.innerText = newVal.isOpen[i] ? '👁️ 閉じる' : '👁️ 個別オープン';
+                }
+
+                // 初期化時・他PCからの同期時に赤背景フラグを反映
+                const checkEl = document.getElementById(`check-${i}`);
+                if (checkEl) {
+                    checkEl.checked = newVal.isCorrect ? newVal.isCorrect[i] : false;
+                }
+
+                const status = document.getElementById(`status-${i}`);
+                if(status) {
+                    if(newVal.answers[i] !== '') { 
+                        status.innerText = '✅ 提出完了'; 
+                        status.style.color = '#e91e63'; 
+                    } else { 
+                        status.innerText = '未提出'; 
+                        status.style.color = '#999'; 
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
