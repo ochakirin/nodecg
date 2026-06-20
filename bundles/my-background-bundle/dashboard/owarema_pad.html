@@ -9,10 +9,7 @@
         body { font-family: sans-serif; padding: 20px 15px; background: linear-gradient(135deg, #0d47a1 0%, #0a2540 100%); color: #ffffff; text-align: center; margin: 0 auto; max-width: 600px; touch-action: none; box-sizing: border-box; }
         
         .header-text { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 15px; background: rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        /* 🔴 新設：お題を表示する目立つボックス */
-        .theme-box { background: rgba(255, 152, 0, 0.2); border: 2px dashed #ff9800; color: #fff3e0; font-size: 18px; font-weight: bold; padding: 12px; margin-bottom: 15px; border-radius: 6px; display: none; /* 初期は非表示 */ }
-
+        .theme-box { background: rgba(255, 152, 0, 0.2); border: 2px dashed #ff9800; color: #fff3e0; font-size: 18px; font-weight: bold; padding: 12px; margin-bottom: 15px; border-radius: 6px; display: none; }
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
         
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 20px; width: 100%; }
@@ -26,9 +23,7 @@
 <body>
 
     <div class="header-text" id="display-name">システム接続中...</div>
-    
     <div class="theme-box" id="theme-display"></div>
-    
     <canvas id="draw-pad" width="600" height="300"></canvas>
 
     <div class="btn-group">
@@ -38,7 +33,7 @@
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], theme: '' }
+            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }
         });
 
         const canvas = document.getElementById('draw-pad');
@@ -52,18 +47,20 @@
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            // 名前の反映
-            if (!isNaN(playerId) && playerId >= 0 && playerId <= 6) {
+            if (!isNaN(playerId) && playerId >= 0 && playerId <= 13) {
+                // 🔴 役割名（リーダー or 回答者）を計算
+                const localIdx = playerId % 7;
+                const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
+
                 if (newVal.names && newVal.names[playerId] && newVal.names[playerId].trim() !== '') {
-                    displayName.innerText = `【 ${newVal.names[playerId]} 】さんの回答ボード`;
+                    displayName.innerText = `【 ${newVal.names[playerId]} 】さんのボード`;
                 } else {
-                    displayName.innerText = `【 ${playerId + 1}人目 】の回答ボード`;
+                    displayName.innerText = `【 ${roleName} 】のボード`;
                 }
             } else {
                 displayName.innerText = `プレイヤーIDが不正です`;
             }
 
-            // 🔴 お題の反映：文字が入力されていれば表示、空なら隠す
             if (newVal.theme && newVal.theme.trim() !== '') {
                 themeDisplay.innerText = `📝 お題：${newVal.theme}`;
                 themeDisplay.style.display = 'block';
@@ -82,62 +79,35 @@
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX, clientY;
-
             if (e.type.includes('touch')) {
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else if (e.changedTouches && e.changedTouches.length > 0) {
-                    clientX = e.changedTouches[0].clientX;
-                    clientY = e.changedTouches[0].clientY;
-                } else {
-                    clientX = 0; clientY = 0;
-                }
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
+                if (e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
+                else if (e.changedTouches && e.changedTouches.length > 0) { clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY; } 
+                else { clientX = 0; clientY = 0; }
+            } else { clientX = e.clientX; clientY = e.clientY; }
+            return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
         }
 
         function startDraw(e) { 
             if (e.cancelable) e.preventDefault(); 
             isDrawing = true; 
             const pos = getPos(e); 
-            ctx.beginPath(); 
-            ctx.strokeStyle = "#ffffff"; 
-            ctx.lineWidth = 8; 
-            ctx.lineCap = "round"; 
-            ctx.lineJoin = "round"; 
-            ctx.moveTo(pos.x, pos.y); 
-            
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+            ctx.beginPath(); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round"; 
+            ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
         }
-
         function draw(e) { 
             if (!isDrawing) return; 
             if (e.cancelable) e.preventDefault(); 
-            const pos = getPos(e); 
-            ctx.lineTo(pos.x, pos.y); 
-            ctx.stroke(); 
+            const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); 
         }
-
         function stopDraw(e) { 
             if (e.type !== 'mouseleave' && e.cancelable) e.preventDefault(); 
-            isDrawing = false; 
-            ctx.closePath(); 
+            isDrawing = false; ctx.closePath(); 
         }
 
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDraw);
         canvas.addEventListener('mouseleave', stopDraw);
-        
         canvas.addEventListener('touchstart', startDraw, {passive: false});
         canvas.addEventListener('touchmove', draw, {passive: false});
         canvas.addEventListener('touchend', stopDraw, {passive: false});
@@ -149,14 +119,11 @@
             const imageData = canvas.toDataURL('image/png');
             
             let state = gameRep.value;
-            if (!state) {
-                state = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], theme: '' };
-            } else {
-                state = JSON.parse(JSON.stringify(state)); 
-            }
+            if (!state) { state = { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' }; } 
+            else { state = JSON.parse(JSON.stringify(state)); }
             
-            if (!state.answers) state.answers = ['', '', '', '', '', '', ''];
-            if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
+            if (!state.answers) state.answers = Array(14).fill('');
+            if (!state.isOpen) state.isOpen = Array(14).fill(false);
             
             state.answers[playerId] = imageData;
             state.isOpen[playerId] = false; 
