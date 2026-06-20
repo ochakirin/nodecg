@@ -5,19 +5,31 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; background: #f0f2f5; margin: 0; }
         
+        /* 📺 配信スイッチとタブ */
+        .team-switch-container { background: #e3f2fd; padding: 15px; border-radius: 8px; border: 2px solid #2196f3; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .radio-group { display: flex; gap: 20px; font-weight: bold; font-size: 16px; justify-content: center; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .radio-group label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
+
+        .tabs { display: flex; gap: 5px; }
+        .tab-btn { flex: 1; padding: 12px; font-size: 16px; font-weight: bold; border: 1px solid #ccc; background: #e0e0e0; color: #555; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: none; transition: 0.2s; }
+        .tab-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
+        #tab-A.active { background: #d32f2f; border-color: #d32f2f; }
+        #tab-B.active { background: #1976d2; border-color: #1976d2; }
+
+        .control-panel { background: white; padding: 15px; border-radius: 0 0 8px 8px; border: 2px solid #ddd; margin-bottom: 15px; }
+        #panel-A { border-color: #d32f2f; }
+        #panel-B { border-color: #1976d2; }
+
         .top-panel { background: #fff3e0; padding: 15px; border-radius: 8px; border: 2px solid #ff9800; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .score-row { display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ffb74d; }
         .total-score-input { width: 100px; padding: 8px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
         .theme-input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-weight: bold; }
 
-        .control-panel { background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; }
-        .panel-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
         .control-row { display: flex; flex-direction: column; gap: 8px; background: #fdfdfd; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
         .row-header { display: flex; justify-content: space-between; align-items: center; }
         .row-body { display: flex; gap: 8px; align-items: center; }
         .row-actions { display: flex; gap: 6px; width: 45%; }
         
-        /* 🔴 新設：チェックボックスの装飾 */
         .correct-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: bold; color: #d32f2f; font-size: 13px; background: #ffebee; padding: 6px 10px; border-radius: 4px; border: 1px solid #ffcdd2; transition: 0.1s; }
         .correct-label:hover { background: #ffcdd2; }
         .correct-check { width: 16px; height: 16px; cursor: pointer; margin: 0; }
@@ -46,45 +58,128 @@
 </head>
 <body>
 
-    <div class="top-panel">
-        <div class="score-row">
-            <div>🏆 現在の総合点数</div>
-            <div><input type="number" class="total-score-input" id="total-score-input" value="0"> 点</div>
-        </div>
-        <div>
-            <div style="font-size: 12px; color: #e65100; margin-bottom: 5px; font-weight: bold;">📝 お題（配信画面の下部に表示されます）</div>
-            <input type="text" class="theme-input" id="theme-input" placeholder="ここにお題を入力...">
+    <div class="team-switch-container">
+        <div style="text-align:center; font-size:14px; font-weight:bold; color:#1976d2;">📺 配信画面に映すチームを選択（即時反映）</div>
+        <div class="radio-group">
+            <label><input type="radio" name="displayTeam" value="0" id="radio-teamA"> 🔴 チームA を映す</label>
+            <label><input type="radio" name="displayTeam" value="1" id="radio-teamB"> 🔵 チームB を映す</label>
         </div>
     </div>
 
-    <div class="control-panel">
-        <div class="panel-title">👥 参加者名簿 ＆ 個別回答制御</div>
+    <div class="tabs">
+        <button class="tab-btn active" id="tab-A">🔴 チームA の回答を編集</button>
+        <button class="tab-btn" id="tab-B">🔵 チームB の回答を編集</button>
+    </div>
+
+    <div class="control-panel" id="main-panel">
+        <div class="top-panel">
+            <div class="score-row">
+                <div id="score-label">🏆 チームA 現在の総合点数</div>
+                <div><input type="number" class="total-score-input" id="total-score-input" value="0"> 点</div>
+            </div>
+            <div>
+                <div style="font-size: 12px; color: #e65100; margin-bottom: 5px; font-weight: bold;">📝 お題（配信画面の下部に表示されます・全チーム共通）</div>
+                <input type="text" class="theme-input" id="theme-input" placeholder="ここにお題を入力...">
+            </div>
+        </div>
+
+        <div style="font-size: 14px; font-weight: bold; color: #555; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 6px;">👥 参加者名簿 ＆ 個別回答制御</div>
         <div id="player-controls"></div>
-    </div>
-
-    <div class="master-btns" style="margin-bottom: 10px;">
-        <button class="btn-all-open" id="btn-all-open">🎉 全員一斉オープン</button>
-        <button class="btn-highlight" id="btn-highlight">🔴 赤背景を反映する (トリガー)</button>
-        <button class="btn-clear-highlights" id="btn-clear-highlights">⚪ 赤背景とチェックを消す</button>
-    </div>
-    <div class="master-btns">
-        <button class="btn-reset-answers" id="btn-reset-answers">🧹 回答のみリセット</button>
-        <button class="btn-reset-full" id="btn-reset-full">🔄 全データリセット</button>
+        
+        <div class="master-btns" style="margin-bottom: 10px;">
+            <button class="btn-all-open" id="btn-all-open">🎉 編集中のチームを全員オープン</button>
+            <button class="btn-highlight" id="btn-highlight">🔴 赤背景を反映する (トリガー)</button>
+            <button class="btn-clear-highlights" id="btn-clear-highlights">⚪ 赤背景とチェックを消す</button>
+        </div>
+        <div class="master-btns">
+            <button class="btn-reset-answers" id="btn-reset-answers">🧹 回答のみリセット</button>
+            <button class="btn-reset-full" id="btn-reset-full">🔄 全データリセット</button>
+        </div>
     </div>
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            // isCorrect という配列（赤背景フラグ）を追加
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '', isCorrect: [false, false, false, false, false, false, false] }
+            defaultValue: { 
+                answers: Array(14).fill(''), 
+                isOpen: Array(14).fill(false), 
+                names: Array(14).fill(''), 
+                isCorrect: Array(14).fill(false),
+                activeTeam: 0, 
+                totalScores: [0, 0], 
+                theme: '' 
+            }
         });
+
+        let editingTeam = 0; // 0: チームA, 1: チームB
 
         const container = document.getElementById('player-controls');
         const totalScoreInput = document.getElementById('total-score-input');
         const themeInput = document.getElementById('theme-input');
+        const radioTeamA = document.getElementById('radio-teamA');
+        const radioTeamB = document.getElementById('radio-teamB');
+
+        // 過去データから14人分への自動拡張（マイグレーション）
+        NodeCG.waitForReplicants(gameRep).then(() => {
+            let state = gameRep.value;
+            let modified = false;
+            if (state.answers.length < 14) {
+                state.answers = [...state.answers, ...Array(14 - state.answers.length).fill('')];
+                state.isOpen = [...state.isOpen, ...Array(14 - state.isOpen.length).fill(false)];
+                state.names = [...state.names, ...Array(14 - state.names.length).fill('')];
+                state.isCorrect = [...(state.isCorrect||Array(7).fill(false)), ...Array(7).fill(false)];
+                modified = true;
+            }
+            if (state.activeTeam === undefined) { state.activeTeam = 0; modified = true; }
+            if (!state.totalScores) { state.totalScores = [state.totalScore || 0, 0]; modified = true; }
+            if (modified) gameRep.value = state;
+
+            radioTeamA.checked = state.activeTeam === 0;
+            radioTeamB.checked = state.activeTeam === 1;
+        });
+
+        // 配信チーム切替
+        document.querySelectorAll('input[name="displayTeam"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const state = JSON.parse(JSON.stringify(gameRep.value));
+                state.activeTeam = parseInt(e.target.value, 10);
+                gameRep.value = state;
+            });
+        });
+
+        // タブ切替処理
+        document.getElementById('tab-A').addEventListener('click', () => {
+            editingTeam = 0;
+            document.getElementById('tab-A').classList.add('active');
+            document.getElementById('tab-B').classList.remove('active');
+            document.getElementById('main-panel').id = 'panel-A';
+            document.getElementById('score-label').innerText = '🏆 チームA 現在の総合点数';
+            updateView();
+        });
+
+        document.getElementById('tab-B').addEventListener('click', () => {
+            editingTeam = 1;
+            document.getElementById('tab-B').classList.add('active');
+            document.getElementById('tab-A').classList.remove('active');
+            document.getElementById('main-panel').id = 'panel-B';
+            document.getElementById('score-label').innerText = '🏆 チームB 現在の総合点数';
+            updateView();
+        });
+
+        function updateView() {
+            for (let i = 0; i < 14; i++) {
+                const row = document.getElementById(`row-${i}`);
+                if (row) {
+                    row.style.display = (i < 7 && editingTeam === 0) || (i >= 7 && editingTeam === 1) ? 'flex' : 'none';
+                }
+            }
+            if (gameRep.value && gameRep.value.totalScores) {
+                totalScoreInput.value = gameRep.value.totalScores[editingTeam];
+            }
+        }
 
         totalScoreInput.addEventListener('input', (e) => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            state.totalScore = e.target.value;
+            state.totalScores[editingTeam] = parseInt(e.target.value, 10) || 0;
             gameRep.value = state;
         });
 
@@ -94,12 +189,20 @@
             gameRep.value = state;
         });
 
-        for (let i = 0; i < 7; i++) {
+        // 14人分の行を生成
+        for (let i = 0; i < 14; i++) {
+            const isTeamB = i >= 7;
+            const localIdx = i % 7;
+            // 🔴 枠1をリーダー、枠2～7を回答者に変更
+            const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
+
             const row = document.createElement('div');
             row.className = 'control-row';
+            row.id = `row-${i}`;
+            row.style.display = isTeamB ? 'none' : 'flex'; // 初期はチームAのみ表示
             row.innerHTML = `
                 <div class="row-header">
-                    <div><strong>枠 ${i + 1}</strong> <span class="status-badge" id="badge-${i}">未提出</span></div>
+                    <div><strong style="color: ${isTeamB ? '#1976d2' : '#d32f2f'}">[${isTeamB ? 'B' : 'A'}] ${roleName}</strong> <span class="status-badge" id="badge-${i}">未提出</span></div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <label class="correct-label">
                             <input type="checkbox" class="correct-check" id="check-${i}"> 正解
@@ -119,14 +222,19 @@
 
             document.getElementById(`toggle-btn-${i}`).addEventListener('click', () => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
-                if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
+                if (!state.isOpen) state.isOpen = Array(14).fill(false);
                 state.isOpen[i] = !state.isOpen[i];
+                
+                // 🔴 オープンした瞬間にSE再生トリガーを送信
+                if (state.isOpen[i]) {
+                    nodecg.sendMessage('play_open_se');
+                }
                 gameRep.value = state;
             });
 
             document.getElementById(`name-input-${i}`).addEventListener('input', (e) => {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
-                if (!state.names) state.names = ['', '', '', '', '', '', ''];
+                if (!state.names) state.names = Array(14).fill('');
                 state.names[i] = e.target.value;
                 gameRep.value = state;
             });
@@ -136,82 +244,90 @@
             };
 
             document.getElementById(`copy-btn-${i}`).addEventListener('click', () => {
-                const url = getPanelUrl();
-                navigator.clipboard.writeText(url).then(() => {
-                    const btn = document.getElementById(`copy-btn-${i}`);
-                    btn.innerText = "✅ 完了";
-                    setTimeout(() => { btn.innerText = "🔗 コピー"; }, 1500);
-                }).catch(err => alert("コピー失敗: " + url));
+                navigator.clipboard.writeText(getPanelUrl()).then(() => alert(`コピー完了 (${roleName})`));
             });
-
-            document.getElementById(`jump-btn-${i}`).addEventListener('click', () => {
-                window.open(getPanelUrl(), '_blank');
-            });
+            document.getElementById(`jump-btn-${i}`).addEventListener('click', () => window.open(getPanelUrl(), '_blank'));
         }
 
-        // 🔴 新設：赤背景を反映するトリガーボタン
+        // 赤背景反映
         document.getElementById('btn-highlight').addEventListener('click', () => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.isCorrect) state.isCorrect = [false, false, false, false, false, false, false];
             for (let i = 0; i < 7; i++) {
-                state.isCorrect[i] = document.getElementById(`check-${i}`).checked;
+                const target = editingTeam === 0 ? i : i + 7;
+                state.isCorrect[target] = document.getElementById(`check-${target}`).checked;
             }
             gameRep.value = state;
         });
 
-        // 🔴 新設：赤背景とチェックをすべて消すボタン
+        // 赤背景クリア
         document.getElementById('btn-clear-highlights').addEventListener('click', () => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            state.isCorrect = [false, false, false, false, false, false, false];
-            gameRep.value = state;
             for (let i = 0; i < 7; i++) {
-                document.getElementById(`check-${i}`).checked = false;
+                const target = editingTeam === 0 ? i : i + 7;
+                state.isCorrect[target] = false;
+                document.getElementById(`check-${target}`).checked = false;
             }
+            gameRep.value = state;
         });
 
-        // 🔴 修正：回答リセット時にも赤背景とチェックをリセットする
+        // 編集中のチームの回答リセット
         document.getElementById('btn-reset-answers').addEventListener('click', () => {
-            if (confirm("【回答のみ】を消去し、名前・総合点数・お題は残します。よろしいですか？")) {
+            if (confirm("編集中のチームの【回答のみ】を消去します。よろしいですか？")) {
                 const state = JSON.parse(JSON.stringify(gameRep.value));
-                state.answers = ['', '', '', '', '', '', ''];
-                state.isOpen = [false, false, false, false, false, false, false];
-                state.isCorrect = [false, false, false, false, false, false, false];
+                for (let i = 0; i < 7; i++) {
+                    const target = editingTeam === 0 ? i : i + 7;
+                    state.answers[target] = '';
+                    state.isOpen[target] = false;
+                    state.isCorrect[target] = false;
+                    document.getElementById(`check-${target}`).checked = false;
+                }
                 gameRep.value = state;
-                for (let i = 0; i < 7; i++) {
-                    document.getElementById(`check-${i}`).checked = false;
-                }
             }
         });
 
-        // 🔴 修正：全リセット時にも赤背景とチェックをリセットする
+        // 全リセット（全チーム）
         document.getElementById('btn-reset-full').addEventListener('click', () => {
-            if (confirm("名前・総合点数・お題を含め、全員の全データを完全に消去します。よろしいですか？")) {
-                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '', isCorrect: [false, false, false, false, false, false, false] };
-                for (let i = 0; i < 7; i++) {
+            if (confirm("名前を含め、A/B両チームの全データを完全に消去します。よろしいですか？")) {
+                gameRep.value = { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill(''), isCorrect: Array(14).fill(false), activeTeam: 0, totalScores: [0, 0], theme: '' };
+                for (let i = 0; i < 14; i++) {
                     document.getElementById(`check-${i}`).checked = false;
                 }
             }
         });
 
+        // 編集中のチームを全員オープン
         document.getElementById('btn-all-open').addEventListener('click', () => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
-            for (let i = 0; i < 7; i++) { if (state.answers && state.answers[i] !== '') state.isOpen[i] = true; }
+            let openedAny = false;
+            for (let i = 0; i < 7; i++) { 
+                const target = editingTeam === 0 ? i : i + 7;
+                if (state.answers[target] !== '' && !state.isOpen[target]) {
+                    state.isOpen[target] = true;
+                    openedAny = true;
+                }
+            }
+            // 🔴 1つでも新しく開いた場合はSE再生トリガーを送信
+            if (openedAny) nodecg.sendMessage('play_open_se');
             gameRep.value = state;
         });
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            if (newVal.totalScore !== undefined && document.activeElement !== totalScoreInput) {
-                totalScoreInput.value = newVal.totalScore;
+            if (newVal.totalScores !== undefined && document.activeElement !== totalScoreInput) {
+                totalScoreInput.value = newVal.totalScores[editingTeam];
             }
 
             if (newVal.theme !== undefined && document.activeElement !== themeInput) {
                 themeInput.value = newVal.theme;
             }
 
-            for (let i = 0; i < 7; i++) {
+            if (newVal.activeTeam !== undefined) {
+                radioTeamA.checked = newVal.activeTeam === 0;
+                radioTeamB.checked = newVal.activeTeam === 1;
+            }
+
+            for (let i = 0; i < 14; i++) {
                 const badge = document.getElementById(`badge-${i}`);
                 const btn = document.getElementById(`toggle-btn-${i}`);
                 const nameInput = document.getElementById(`name-input-${i}`);
