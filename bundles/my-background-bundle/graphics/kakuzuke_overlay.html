@@ -6,80 +6,42 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         
-        /* 表全体の設定（赤枠・黄色背景） */
         .rating-table {
             width: 1700px;
             height: 950px;
             border-collapse: collapse;
-            border: 6px solid #d32f2f; /* 外枠の赤色 */
-            background-color: #ffff00; /* 全体の黄色背景 */
+            border: 6px solid #d32f2f; 
+            background-color: #ffff00; 
             box-shadow: 0 15px 30px rgba(0,0,0,0.5);
             table-layout: fixed;
             position: relative;
         }
 
-        /* セルの枠線 */
-        .rating-table th, .rating-table td {
-            border: 2px solid #d32f2f;
-            text-align: center;
-            vertical-align: middle;
-        }
+        .rating-table th, .rating-table td { border: 2px solid #d32f2f; text-align: center; vertical-align: middle; }
+        .rating-table th { height: 120px; font-size: 38px; font-weight: 900; line-height: 1.2; letter-spacing: 2px; }
 
-        /* ヘッダー行（階級名）の設定 */
-        .rating-table th {
-            height: 120px;
-            font-size: 38px;
-            font-weight: 900;
-            line-height: 1.2;
-            letter-spacing: 2px;
-        }
+        .h-0 { background-color: #ffff00; color: #000; } 
+        .h-1 { background-color: #ffffff; color: #000; } 
+        .h-2 { background-color: #00ffff; color: #000; } 
+        .h-3 { background-color: #ff00ff; color: #000; } 
+        .h-4 { background-color: #b0bec5; color: #000; } 
+        .h-5 { background-color: #ffffff; color: #000; } 
 
-        /* 画像に合わせた階級ごとのヘッダーカラー */
-        .h-0 { background-color: #ffff00; color: #000; } /* 一流 */
-        .h-1 { background-color: #ffffff; color: #000; } /* 普通 */
-        .h-2 { background-color: #00ffff; color: #000; } /* 二流 */
-        .h-3 { background-color: #ff00ff; color: #000; } /* 三流 */
-        .h-4 { background-color: #b0bec5; color: #000; } /* マネマネ */
-        .h-5 { background-color: #ffffff; color: #000; } /* ニフラム */
+        #players-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
-        /* 🔴 滑らかに移動する名前プレートの土台 */
-        #players-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        /* プレイヤーの名前札（青枠・黄色背景） */
         .nameplate-wrapper {
-            position: absolute;
-            display: flex; justify-content: center; align-items: center;
-            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); /* ここで移動アニメーション！ */
+            position: absolute; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .nameplate {
-            background-color: #ffff00; /* 札自体の背景も黄色 */
-            border: 5px solid #1565c0; /* 札の青枠 */
-            color: #000;
-            font-size: 34px;
-            font-weight: bold;
-            padding: 10px 15px;
-            width: 80%;
-            box-sizing: border-box;
-            box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-align: center;
-            transition: all 0.5s ease;
+            background-color: #ffff00; border: 5px solid #1565c0; color: #000;
+            font-size: 34px; font-weight: bold; padding: 10px 15px; width: 80%;
+            box-sizing: border-box; box-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
         }
 
-        /* ニフラム（ランク5）の時の演出：半透明になって消えかける */
-        .is-nifram .nameplate {
-            opacity: 0.3;
-            filter: grayscale(100%);
-            box-shadow: none;
-        }
+        .is-nifram .nameplate { opacity: 0.3; filter: grayscale(100%); box-shadow: none; }
     </style>
 </head>
 <body>
@@ -88,18 +50,13 @@
         <table class="rating-table" id="bg-table">
             <thead>
                 <tr>
-                    <th class="h-0">一流<br>プレイヤー</th>
-                    <th class="h-1">普通<br>プレイヤー</th>
-                    <th class="h-2">二流<br>プレイヤー</th>
-                    <th class="h-3">三流<br>プレイヤー</th>
-                    <th class="h-4">マネマネ</th>
-                    <th class="h-5">ニフラム</th>
+                    <th class="h-0">一流<br>プレイヤー</th><th class="h-1">普通<br>プレイヤー</th>
+                    <th class="h-2">二流<br>プレイヤー</th><th class="h-3">三流<br>プレイヤー</th>
+                    <th class="h-4">マネマネ</th><th class="h-5">ニフラム</th>
                 </tr>
             </thead>
-            <tbody id="table-body">
-                </tbody>
+            <tbody id="table-body"></tbody>
         </table>
-
         <div id="players-layer"></div>
     </div>
 
@@ -116,7 +73,6 @@
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        // 音の準備（降格時などに鳴らす）
         let soundMove;
         try { soundMove = new Audio('sounds/open.mp3'); } catch(e) {}
         nodecg.listenFor('play_open_se', () => {
@@ -127,9 +83,8 @@
             }
         });
 
-        // 背景テーブル（7行6列）と名前プレート（7つ）を初期生成
+        // テーブルとプレートの枠組みを生成
         for (let i = 0; i < 7; i++) {
-            // テーブル行生成
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
                 const td = document.createElement('td');
@@ -138,7 +93,6 @@
             }
             tbody.appendChild(tr);
 
-            // 名前プレート生成
             const wrapper = document.createElement('div');
             wrapper.className = 'nameplate-wrapper';
             wrapper.id = `player-wrapper-${i}`;
@@ -146,45 +100,56 @@
             playersLayer.appendChild(wrapper);
         }
 
+        let currentState = null;
+
+        function renderBoard() {
+            if (!currentState) return;
+            // データが存在しない場合の安全策
+            const names = currentState.names || ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
+            const ranks = currentState.ranks || [0, 0, 0, 0, 0, 0, 0];
+
+            for (let i = 0; i < 7; i++) {
+                const rank = ranks[i] || 0;
+                const nameText = names[i] || `プレイヤー${i+1}`;
+                
+                const wrapper = document.getElementById(`player-wrapper-${i}`);
+                const nameplate = document.getElementById(`player-name-${i}`);
+                const targetCell = document.getElementById(`cell-${i}-${rank}`);
+                
+                if (!targetCell || !wrapper || !nameplate) continue;
+
+                nameplate.innerText = nameText;
+
+                const cellWidth = targetCell.offsetWidth;
+                const cellHeight = targetCell.offsetHeight;
+
+                // 画面描画前でサイズが取れない場合は、少し待ってから再実行（これが見えなくなる原因対策）
+                if (cellWidth === 0) {
+                    setTimeout(renderBoard, 50);
+                    return;
+                }
+
+                wrapper.style.width = `${cellWidth}px`;
+                wrapper.style.height = `${cellHeight}px`;
+                wrapper.style.transform = `translate(${targetCell.offsetLeft}px, ${targetCell.offsetTop}px)`;
+
+                if (rank === 5) {
+                    wrapper.classList.add('is-nifram');
+                } else {
+                    wrapper.classList.remove('is-nifram');
+                }
+            }
+        }
+
         kakuzukeRep.on('change', (newVal) => {
             if (!newVal) return;
-
-            // DOMの描画が完了してから座標を計算するために少し遅延させる（またはrequestAnimationFrame）
-            requestAnimationFrame(() => {
-                for (let i = 0; i < 7; i++) {
-                    const rank = newVal.ranks[i];
-                    const nameText = newVal.names[i] || `プレイヤー${i+1}`;
-                    
-                    const wrapper = document.getElementById(`player-wrapper-${i}`);
-                    const nameplate = document.getElementById(`player-name-${i}`);
-                    const targetCell = document.getElementById(`cell-${i}-${rank}`);
-                    
-                    // 🔴 魔法の座標計算：目的のセルの位置（left, top）とサイズを取得
-                    // ※ テーブル自体が親要素(relative)内にあるため、そのままの座標を使えます
-                    const cellTop = targetCell.offsetTop;
-                    const cellLeft = targetCell.offsetLeft;
-                    const cellWidth = targetCell.offsetWidth;
-                    const cellHeight = targetCell.offsetHeight;
-
-                    // 名前プレートの文字更新
-                    nameplate.innerText = nameText;
-
-                    // wrapperのサイズをセルと全く同じにして、その中をFlexboxで中央揃えにする
-                    wrapper.style.width = `${cellWidth}px`;
-                    wrapper.style.height = `${cellHeight}px`;
-                    
-                    // X座標・Y座標を移動させる（CSSのtransitionで滑らかに動く！）
-                    wrapper.style.transform = `translate(${cellLeft}px, ${cellTop}px)`;
-
-                    // ニフラム（ランク5）の時は透明にする演出
-                    if (rank === 5) {
-                        wrapper.classList.add('is-nifram');
-                    } else {
-                        wrapper.classList.remove('is-nifram');
-                    }
-                }
-            });
+            currentState = newVal;
+            requestAnimationFrame(renderBoard);
         });
+
+        // 画面リサイズ時などにも念のため再計算
+        window.addEventListener('resize', renderBoard);
+        window.addEventListener('load', renderBoard);
     </script>
 </body>
 </html>
