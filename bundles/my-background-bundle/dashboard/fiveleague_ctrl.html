@@ -13,17 +13,22 @@
         .score-group { flex: 0.5; }
         
         .player-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: #fafafa; border: 1px solid #eee; margin-bottom: 8px; border-radius: 6px; }
-        .p-label { font-weight: bold; width: 60px; color: #555; }
-        .p-name { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .status { width: 80px; font-size: 12px; font-weight: bold; text-align: center; }
+        .p-label { font-weight: bold; width: 60px; color: #555; flex-shrink: 0; }
         
-        .btn-sm { padding: 8px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.1s; }
+        /* 🔴 プレビュー枠のデザイン */
+        .preview-box { width: 50px; height: 50px; background: #eceff1; border-radius: 4px; display: flex; justify-content: center; align-items: center; border: 1px solid #cfd8dc; overflow: hidden; flex-shrink: 0; }
+        .preview-box img { width: 100%; height: 100%; object-fit: contain; background: #1565c0; display: none; }
+        .status { font-size: 11px; font-weight: bold; color: #90a4ae; text-align: center; }
+
+        .p-name { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 80px; }
+        
+        .btn-sm { padding: 8px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; transition: 0.1s; white-space: nowrap; }
         .btn-sm:hover { opacity: 0.8; }
         .btn-copy { background: #009688; }
         .btn-jump { background: #795548; }
-        .btn-open { background: #00bcd4; width: 100px; }
+        .btn-open { background: #00bcd4; width: 95px; }
         .btn-clear { background: #9e9e9e; }
-        .correct-label { cursor: pointer; background: #ffebee; padding: 8px 12px; border-radius: 4px; border: 1px solid #ffcdd2; color: #d32f2f; font-weight: bold; }
+        .correct-label { cursor: pointer; background: #ffebee; padding: 8px; 10px; border-radius: 4px; border: 1px solid #ffcdd2; color: #d32f2f; font-weight: bold; font-size: 12px; white-space: nowrap; }
         
         .master-actions { display: flex; gap: 10px; margin-top: 20px; }
         .master-actions button { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
@@ -75,10 +80,16 @@
             container.innerHTML += `
                 <div class="player-row">
                     <span class="p-label">${i+1}文字目</span>
+                    
+                    <!-- 🔴 プレビュー画像枠を追加 -->
+                    <div class="preview-box">
+                        <span class="status" id="status-${i}">未提出</span>
+                        <img id="preview-${i}" src="">
+                    </div>
+
                     <input type="text" class="p-name" id="p-name-${i}" placeholder="名前" onchange="updatePlayer(${i}, 'name', this.value)">
                     <button class="btn-sm btn-copy" onclick="copyUrl(${i})">🔗</button>
                     <button class="btn-sm btn-jump" onclick="openUrl(${i})">🚀</button>
-                    <span class="status" id="status-${i}" style="color:#999;">未提出</span>
                     
                     <label class="correct-label"><input type="checkbox" id="check-${i}" onchange="updatePlayer(${i}, 'correct', this.checked)"> 赤背景</label>
                     <button class="btn-sm btn-open" id="btn-open-${i}" onclick="updatePlayer(${i}, 'open', null)">👁️ オープン</button>
@@ -138,9 +149,21 @@
                 btnOpen.style.opacity = newVal.isOpen[i] ? '0.5' : '1';
                 btnOpen.innerText = newVal.isOpen[i] ? '👁️ 閉じる' : '👁️ オープン';
 
+                // 🔴 画像プレビューとステータスの切り替え処理
                 const status = document.getElementById(`status-${i}`);
-                if (newVal.answers[i] !== '') { status.innerText = '✅ 提出済'; status.style.color = '#e91e63'; }
-                else { status.innerText = '未提出'; status.style.color = '#999'; }
+                const previewImg = document.getElementById(`preview-${i}`);
+                
+                if (newVal.answers[i] !== '') { 
+                    // 回答が提出されている場合：画像を表示
+                    status.style.display = 'none';
+                    previewImg.src = newVal.answers[i];
+                    previewImg.style.display = 'block';
+                } else { 
+                    // 未提出の場合：「未提出」の文字を表示
+                    status.style.display = 'block';
+                    previewImg.style.display = 'none';
+                    previewImg.src = '';
+                }
             }
         });
     </script>
