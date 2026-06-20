@@ -292,12 +292,16 @@
         const activeTitle = nodecg.Replicant('activeTitle', { defaultValue: '' });
         const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
         
+        // 🔴 追加：サウンド設定を監視するReplicant
+        const soundRep = nodecg.Replicant('soundSettings', {
+            defaultValue: { seVolume: 0.5, bgmVolume: 0.5 }
+        });
+
         const bombActor = document.getElementById('bomb-actor');
         const textTopContainer = document.getElementById('text-top-container');
         const textTopItem = document.getElementById('text-top-item');
         const textBottomCategory = document.getElementById('text-bottom-category');
 
-        // 新設の演出用要素
         const countdown3 = document.getElementById('countdown-3');
         const countdown2 = document.getElementById('countdown-2');
         const countdown1 = document.getElementById('countdown-1');
@@ -325,7 +329,6 @@
         let bomberCurrentStatus = 'idle';
         let localBuzzerCount = 0;
 
-        // カウントダウンの発動フラグ
         let count3Shown = false;
         let count2Shown = false;
         let count1Shown = false;
@@ -349,7 +352,6 @@
             const elapsed = timestamp - bomberStartTime;
             const progress = Math.min(elapsed / TOTAL_DURATION, 1);
             
-            // 🔴 27, 28, 29秒のカウントダウン演出
             if (elapsed >= 27000 && !count3Shown) {
                 countdown3.classList.add('show');
                 count3Shown = true;
@@ -370,7 +372,6 @@
                 bomberAnimationFrameToken = requestAnimationFrame(tickDropHelper);
             } else {
                 bomberCurrentStatus = 'timeup';
-                // 🔴 30秒経過でゲームオーバー演出（背景赤＋テキスト画像）
                 gameoverOverlay.classList.add('show');
                 gameoverText.classList.add('show');
             }
@@ -401,6 +402,8 @@
                 }
 
                 if (bomberCurrentStatus === 'playing' && soundCorrect) {
+                    // 🔴 変更：正解音にSE音量を適用
+                    soundCorrect.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                     soundCorrect.currentTime = 0;
                     soundCorrect.play().catch(e => console.log("Audio play blocked:", e));
                 }
@@ -415,6 +418,8 @@
             if (newVal.buzzerTrigger !== undefined && newVal.buzzerTrigger > localBuzzerCount) {
                 localBuzzerCount = newVal.buzzerTrigger;
                 if (soundBuzzer) {
+                    // 🔴 変更：ブザー音にSE音量を適用
+                    soundBuzzer.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                     soundBuzzer.currentTime = 0;
                     soundBuzzer.play().catch(e => console.log("Buzzer play blocked:", e));
                 }
@@ -439,10 +444,12 @@
                 bomberStartTime = null; 
                 localBuzzerCount = newVal.buzzerTrigger || 0;
                 
-                resetEffects(); // プレイ開始時に演出をリセット
+                resetEffects(); 
 
                 if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
                 if (soundBgm) {
+                    // 🔴 変更：BGMに「BGM音量」を適用
+                    soundBgm.volume = soundRep.value ? soundRep.value.bgmVolume : 0.5;
                     soundBgm.currentTime = 0;
                     soundBgm.play().catch(e => console.log("BGM Play Blocked:", e));
                 }
@@ -457,11 +464,12 @@
 
                 if (soundBgm) soundBgm.pause(); 
                 if (soundClear) {
+                    // 🔴 変更：クリア音にSE音量を適用
+                    soundClear.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                     soundClear.currentTime = 0;
                     soundClear.play().catch(e => console.log("Clear Sound Blocked:", e));
                 }
                 
-                // 🔴 クリアテキスト画像を大きく表示
                 gameclearText.classList.add('show');
             }
 
@@ -471,7 +479,7 @@
                 bomberStartTime = null;
                 localBuzzerCount = 0;
                 
-                resetEffects(); // アイドルに戻った時も演出をリセット
+                resetEffects(); 
 
                 if (soundBgm) { soundBgm.pause(); soundBgm.currentTime = 0; }
                 if (soundClear) { soundClear.pause(); soundClear.currentTime = 0; }
