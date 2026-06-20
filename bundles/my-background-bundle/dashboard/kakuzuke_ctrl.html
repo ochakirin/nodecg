@@ -27,7 +27,7 @@
     <div id="controls-container"></div>
 
     <div style="margin-top: 20px;">
-        <button style="background: #607d8b; width: 100%; padding: 12px;" id="btn-reset">全員「一流」にリセット</button>
+        <button style="background: #607d8b; width: 100%; padding: 12px;" onclick="resetRanks()">全員「一流」にリセット</button>
     </div>
 
     <script>
@@ -39,60 +39,55 @@
             }
         });
 
-        const container = document.getElementById('controls-container');
+        // 🔴 NodeCG推奨の「データを直接書き換える方式」に変更してエラーを防止
+        window.changeName = function(index, newName) {
+            if (!kakuzukeRep.value) return;
+            if (!kakuzukeRep.value.names) kakuzukeRep.value.names = [];
+            kakuzukeRep.value.names[index] = newName;
+        };
 
+        window.changeRank = function(index, delta) {
+            if (!kakuzukeRep.value) return;
+            if (!kakuzukeRep.value.ranks) kakuzukeRep.value.ranks = [0,0,0,0,0,0,0];
+            
+            let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
+            if (isNaN(currentRank)) currentRank = 0;
+            
+            let newRank = currentRank + delta;
+            if (newRank >= 0 && newRank <= 5) {
+                kakuzukeRep.value.ranks[index] = newRank;
+                if (delta > 0) {
+                    nodecg.sendMessage('play_open_se');
+                }
+            }
+        };
+
+        window.resetRanks = function() {
+            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
+                if (!kakuzukeRep.value) return;
+                kakuzukeRep.value.ranks = [0, 0, 0, 0, 0, 0, 0];
+            }
+        };
+
+        // UI（入力欄とボタン）を生成
+        const container = document.getElementById('controls-container');
         for (let i = 0; i < 7; i++) {
             const div = document.createElement('div');
             div.className = 'row';
             div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名">
-                <button class="btn-up" id="up-${i}">◀ 昇格</button>
-                <button class="btn-down" id="down-${i}">降格 ▶</button>
+                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名" oninput="changeName(${i}, this.value)">
+                <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
+                <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
                 <div class="rank-display" id="rank-text-${i}">一流</div>
             `;
             container.appendChild(div);
-
-            document.getElementById(`name-${i}`).addEventListener('change', (e) => {
-                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                if (!state.names) state.names = [];
-                state.names[i] = e.target.value;
-                kakuzukeRep.value = state;
-            });
-
-            document.getElementById(`up-${i}`).addEventListener('click', () => {
-                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                if (!Array.isArray(state.ranks)) state.ranks = [0,0,0,0,0,0,0];
-                
-                // 強制的に数値化（エラー防止）
-                let currentRank = parseInt(state.ranks[i], 10);
-                if (isNaN(currentRank)) currentRank = 0;
-
-                if (currentRank > 0) {
-                    state.ranks[i] = currentRank - 1;
-                }
-                kakuzukeRep.value = state;
-            });
-
-            document.getElementById(`down-${i}`).addEventListener('click', () => {
-                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                if (!Array.isArray(state.ranks)) state.ranks = [0,0,0,0,0,0,0];
-                
-                // 強制的に数値化（エラー防止）
-                let currentRank = parseInt(state.ranks[i], 10);
-                if (isNaN(currentRank)) currentRank = 0;
-
-                if (currentRank < 5) {
-                    state.ranks[i] = currentRank + 1;
-                    nodecg.sendMessage('play_open_se');
-                }
-                kakuzukeRep.value = state;
-            });
         }
 
+        // データの変更を監視してパネルの表示を更新
         kakuzukeRep.on('change', (newVal) => {
             if (!newVal) return;
-            const names = newVal.names || ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
-            const ranks = newVal.ranks || [0, 0, 0, 0, 0, 0, 0];
+            const names = newVal.names || [];
+            const ranks = newVal.ranks || [];
 
             for (let i = 0; i < 7; i++) {
                 const nameInput = document.getElementById(`name-${i}`);
@@ -100,26 +95,21 @@
                 const btnUp = document.getElementById(`up-${i}`);
                 const btnDown = document.getElementById(`down-${i}`);
                 
-                if (document.activeElement !== nameInput) {
+                // 自分が文字を入力中でなければ名前を更新
+                if (nameInput && document.activeElement !== nameInput) {
                     nameInput.value = names[i] || '';
                 }
                 
                 let rankVal = parseInt(ranks[i], 10);
                 if (isNaN(rankVal)) rankVal = 0;
 
-                rankText.innerText = rankNames[rankVal];
-                rankText.className = `rank-display r-${rankVal}`;
+                if (rankText) {
+                    rankText.innerText = rankNames[rankVal];
+                    rankText.className = `rank-display r-${rankVal}`;
+                }
                 
-                btnUp.disabled = rankVal === 0;
-                btnDown.disabled = rankVal === 5;
-            }
-        });
-
-        document.getElementById('btn-reset').addEventListener('click', () => {
-            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
-                const state = JSON.parse(JSON.stringify(kakuzukeRep.value));
-                state.ranks = [0, 0, 0, 0, 0, 0, 0];
-                kakuzukeRep.value = state;
+                if (btnUp) btnUp.disabled = rankVal === 0;
+                if (btnDown) btnDown.disabled = rankVal === 5;
             }
         });
     </script>
