@@ -5,7 +5,6 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; background: #f0f2f5; margin: 0; }
         
-        /* 総合点数＆お題パネル */
         .top-panel { background: #fff3e0; padding: 15px; border-radius: 8px; border: 2px solid #ff9800; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .score-row { display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ffb74d; }
         .total-score-input { width: 100px; padding: 8px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
@@ -18,6 +17,11 @@
         .row-body { display: flex; gap: 8px; align-items: center; }
         .row-actions { display: flex; gap: 6px; width: 45%; }
         
+        /* 🔴 新設：チェックボックスの装飾 */
+        .correct-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: bold; color: #d32f2f; font-size: 13px; background: #ffebee; padding: 6px 10px; border-radius: 4px; border: 1px solid #ffcdd2; transition: 0.1s; }
+        .correct-label:hover { background: #ffcdd2; }
+        .correct-check { width: 16px; height: 16px; cursor: pointer; margin: 0; }
+
         .name-input { flex: 1; padding: 7px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; background: #9e9e9e; white-space: nowrap; }
         .status-badge.submitted { background: #e91e63; }
@@ -32,7 +36,10 @@
         
         .master-btns { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .master-btns button { flex: 1; padding: 14px; font-size: 14px; min-width: 150px; }
+        
         .btn-all-open { background: #ff9800; }
+        .btn-highlight { background: #d32f2f; }
+        .btn-clear-highlights { background: #9e9e9e; }
         .btn-reset-answers { background: #8bc34a; }
         .btn-reset-full { background: #607d8b; }
     </style>
@@ -55,15 +62,20 @@
         <div id="player-controls"></div>
     </div>
 
-    <div class="master-btns">
+    <div class="master-btns" style="margin-bottom: 10px;">
         <button class="btn-all-open" id="btn-all-open">🎉 全員一斉オープン</button>
+        <button class="btn-highlight" id="btn-highlight">🔴 赤背景を反映する (トリガー)</button>
+        <button class="btn-clear-highlights" id="btn-clear-highlights">⚪ 赤背景とチェックを消す</button>
+    </div>
+    <div class="master-btns">
         <button class="btn-reset-answers" id="btn-reset-answers">🧹 回答のみリセット</button>
         <button class="btn-reset-full" id="btn-reset-full">🔄 全データリセット</button>
     </div>
 
     <script>
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '' }
+            // isCorrect という配列（赤背景フラグ）を追加
+            defaultValue: { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '', isCorrect: [false, false, false, false, false, false, false] }
         });
 
         const container = document.getElementById('player-controls');
@@ -88,7 +100,12 @@
             row.innerHTML = `
                 <div class="row-header">
                     <div><strong>枠 ${i + 1}</strong> <span class="status-badge" id="badge-${i}">未提出</span></div>
-                    <button class="btn-open" id="toggle-btn-${i}">👁️ オープン</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label class="correct-label">
+                            <input type="checkbox" class="correct-check" id="check-${i}"> 正解
+                        </label>
+                        <button class="btn-open" id="toggle-btn-${i}">👁️ オープン</button>
+                    </div>
                 </div>
                 <div class="row-body">
                     <input type="text" class="name-input" id="name-input-${i}" placeholder="名前を入力">
@@ -114,7 +131,6 @@
                 gameRep.value = state;
             });
 
-            // 🔴 修正：dashboard内のファイルに向けた正しいURL生成（standalone=true で上部バーを非表示化）
             const getPanelUrl = () => {
                 return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?player=${i}&standalone=true`;
             };
@@ -132,6 +148,57 @@
                 window.open(getPanelUrl(), '_blank');
             });
         }
+
+        // 🔴 新設：赤背景を反映するトリガーボタン
+        document.getElementById('btn-highlight').addEventListener('click', () => {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.isCorrect) state.isCorrect = [false, false, false, false, false, false, false];
+            for (let i = 0; i < 7; i++) {
+                state.isCorrect[i] = document.getElementById(`check-${i}`).checked;
+            }
+            gameRep.value = state;
+        });
+
+        // 🔴 新設：赤背景とチェックをすべて消すボタン
+        document.getElementById('btn-clear-highlights').addEventListener('click', () => {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            state.isCorrect = [false, false, false, false, false, false, false];
+            gameRep.value = state;
+            for (let i = 0; i < 7; i++) {
+                document.getElementById(`check-${i}`).checked = false;
+            }
+        });
+
+        // 🔴 修正：回答リセット時にも赤背景とチェックをリセットする
+        document.getElementById('btn-reset-answers').addEventListener('click', () => {
+            if (confirm("【回答のみ】を消去し、名前・総合点数・お題は残します。よろしいですか？")) {
+                const state = JSON.parse(JSON.stringify(gameRep.value));
+                state.answers = ['', '', '', '', '', '', ''];
+                state.isOpen = [false, false, false, false, false, false, false];
+                state.isCorrect = [false, false, false, false, false, false, false];
+                gameRep.value = state;
+                for (let i = 0; i < 7; i++) {
+                    document.getElementById(`check-${i}`).checked = false;
+                }
+            }
+        });
+
+        // 🔴 修正：全リセット時にも赤背景とチェックをリセットする
+        document.getElementById('btn-reset-full').addEventListener('click', () => {
+            if (confirm("名前・総合点数・お題を含め、全員の全データを完全に消去します。よろしいですか？")) {
+                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '', isCorrect: [false, false, false, false, false, false, false] };
+                for (let i = 0; i < 7; i++) {
+                    document.getElementById(`check-${i}`).checked = false;
+                }
+            }
+        });
+
+        document.getElementById('btn-all-open').addEventListener('click', () => {
+            const state = JSON.parse(JSON.stringify(gameRep.value));
+            if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
+            for (let i = 0; i < 7; i++) { if (state.answers && state.answers[i] !== '') state.isOpen[i] = true; }
+            gameRep.value = state;
+        });
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
@@ -168,28 +235,6 @@
                 if (newVal.names && document.activeElement !== nameInput) {
                     nameInput.value = newVal.names[i] || '';
                 }
-            }
-        });
-
-        document.getElementById('btn-all-open').addEventListener('click', () => {
-            const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.isOpen) state.isOpen = [false, false, false, false, false, false, false];
-            for (let i = 0; i < 7; i++) { if (state.answers && state.answers[i] !== '') state.isOpen[i] = true; }
-            gameRep.value = state;
-        });
-
-        document.getElementById('btn-reset-answers').addEventListener('click', () => {
-            if (confirm("【回答のみ】を消去し、名前・総合点数・お題は残します。よろしいですか？")) {
-                const state = JSON.parse(JSON.stringify(gameRep.value));
-                state.answers = ['', '', '', '', '', '', ''];
-                state.isOpen = [false, false, false, false, false, false, false];
-                gameRep.value = state;
-            }
-        });
-
-        document.getElementById('btn-reset-full').addEventListener('click', () => {
-            if (confirm("名前・総合点数・お題を含め、全員の全データを完全に消去します。よろしいですか？")) {
-                gameRep.value = { answers: ['', '', '', '', '', '', ''], isOpen: [false, false, false, false, false, false, false], names: ['', '', '', '', '', '', ''], totalScore: 0, theme: '' };
             }
         });
     </script>
