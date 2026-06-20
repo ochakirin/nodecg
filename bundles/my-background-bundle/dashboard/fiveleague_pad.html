@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ファイブリーグ 回答パッド</title>
+    <style>
+        body { margin: 0; padding: 0; background: #eceff1; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: none; }
+        .header { padding: 12px; background: #1e88e5; color: white; text-align: center; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .team-badge { padding: 4px 10px; border-radius: 4px; font-size: 14px; background: #1565c0; }
+        #theme-display { background: #ffeb3b; color: #212121; padding: 10px; text-align: center; font-weight: 900; font-size: 18px; border-bottom: 2px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
+        .canvas-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; }
+        
+        canvas { background-color: #1565c0; border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%; }
+        
+        .controls { padding: 10px 15px 20px; display: flex; gap: 15px; background: #ffffff; border-top: 1px solid #cfd8dc; }
+        button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
+        #btn-clear { background: #78909c; }
+        #btn-submit { background: #e91e63; }
+        
+        #status-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:none; justify-content:center; align-items:center; font-size:28px; font-weight:bold; color:#e91e63; z-index: 100; flex-direction: column; text-align: center; }
+        .status-sub { font-size: 16px; color: #546e7a; margin-top: 15px; font-weight: normal; }
+        #btn-edit { margin-top: 30px; background: #2196f3; padding: 12px 30px; font-size: 16px; width: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="team-badge" id="team-badge">読み込み中...</span>
+        <span id="player-label">プレイヤー</span>
+        <span style="width: 60px;"></span>
+    </div>
+    
+    <div id="theme-display">問題: 取得中...</div>
+    
+    <div class="canvas-container">
+        <canvas id="draw-canvas" width="600" height="600"></canvas>
+        <div id="status-overlay">
+            <div>回答を送信しました！</div>
+            <div class="status-sub">進行の指示があるまで、<br>そのままお待ちください。</div>
+            <button id="btn-edit">書き直す</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="btn-clear">🗑️ 全消去</button>
+        <button id="btn-submit">🚀 送信</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const playerId = parseInt(urlParams.get('p') || '0', 10);
+        
+        document.getElementById('player-label').innerText = `${playerId + 1}文字目`;
+
+        const stateRep = nodecg.Replicant('fiveLeagueState');
+        const themeDisplay = document.getElementById('theme-display');
+        const overlay = document.getElementById('status-overlay');
+        const badgeEl = document.getElementById('team-badge');
+
+        stateRep.on('change', (newVal) => {
+            if (!newVal) return;
+            
+            badgeEl.innerText = newVal.teamName || "チーム名未設定";
+            themeDisplay.innerText = `問題: ${newVal.question || "未設定"}`;
+
+            if (newVal.answers && newVal.answers[playerId] !== '') {
+                overlay.style.display = 'flex';
+            } else {
+                overlay.style.display = 'none';
+            }
+        });
+
+        const canvas = document.getElementById('draw-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#ffffff'; // 白ペン
+        ctx.lineWidth = 14; // 1文字用なので少し太め
+        ctx.lineCap = 'round';       
+        ctx.lineJoin = 'round';      
+
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function startDrawing(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); lastX = pos.x; lastY = pos.y; }
+        function draw(e) { e.preventDefault(); if (!isDrawing) return; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke(); lastX = pos.x; lastY = pos.y; }
+        function stopDrawing(e) { e.preventDefault(); isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing, { passive: false }); canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
+        
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            if (confirm('描いた内容をすべて消去しますか？')) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            const dataUrl = canvas.toDataURL('image/png');
+            const state = JSON.parse(JSON.stringify(stateRep.value));
+            if (!state.answers) state.answers = Array(5).fill('');
+            state.answers[playerId] = dataUrl;
+            stateRep.value = state;
+        });
+
+        document.getElementById('btn-edit').addEventListener('click', () => {
+            const state = JSON.parse(JSON.stringify(stateRep.value));
+            if (!state.answers) state.answers = Array(5).fill('');
+            state.answers[playerId] = ''; 
+            stateRep.value = state;
+        });
+    </script>
+</body>
+</html>
