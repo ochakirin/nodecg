@@ -10,6 +10,8 @@
         
         .header-text { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 15px; background: rgba(255, 255, 255, 0.15); padding: 12px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .theme-box { background: rgba(255, 152, 0, 0.2); border: 2px dashed #ff9800; color: #fff3e0; font-size: 18px; font-weight: bold; padding: 12px; margin-bottom: 15px; border-radius: 6px; display: none; }
+        
+        /* スマホ上では青く見えます */
         canvas { display: block; background: #1565c0; border: 4px solid #ffffff; border-radius: 12px; width: 100%; height: 260px; cursor: crosshair; touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); margin: 0 auto; }
         
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 20px; width: 100%; }
@@ -48,7 +50,6 @@
             if (!newVal) return;
             
             if (!isNaN(playerId) && playerId >= 0 && playerId <= 13) {
-                // 🔴 役割名（リーダー or 回答者）を計算
                 const localIdx = playerId % 7;
                 const roleName = localIdx === 0 ? "👑 リーダー" : `回答者${localIdx}`;
 
@@ -70,8 +71,8 @@
         });
 
         function clearCanvas() {
-            ctx.fillStyle = "#1565c0"; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 🔴 変更：背景色を塗りつぶさず、「透明」にしてクリアする
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         clearCanvas();
 
