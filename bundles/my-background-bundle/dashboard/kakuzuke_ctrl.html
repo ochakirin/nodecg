@@ -35,9 +35,10 @@
         const stateRep = nodecg.Replicant('kakuzukeState', {
             defaultValue: { 
                 names: [...defaultNames], 
-                ranks: Array(7).fill(0),       
-                nextRanks: Array(7).fill(0)    
-            }
+                ranks: [0, 0, 0, 0, 0, 0, 0],       
+                nextRanks: [0, 0, 0, 0, 0, 0, 0]    
+            },
+            persistent: true
         });
 
         const container = document.getElementById('teams-container');
@@ -61,41 +62,38 @@
         }
 
         window.updateData = function(idx, key, val) {
-            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (!stateRep.value) return;
             
-            if (!s.names || s.names.length < 7) {
-                const oldNames = s.names || [];
-                s.names = [...defaultNames];
-                for(let i=0; i<oldNames.length; i++) s.names[i] = oldNames[i];
-            }
-            if (!s.ranks || s.ranks.length < 7) s.ranks = Array(7).fill(0);
-            if (!s.nextRanks || s.nextRanks.length < 7) s.nextRanks = Array(7).fill(0);
+            // 過去のデータ構造が不足している場合の安全補完
+            if (!stateRep.value.names || stateRep.value.names.length < 7) stateRep.value.names = [...defaultNames];
+            if (!stateRep.value.ranks || stateRep.value.ranks.length < 7) stateRep.value.ranks = [0, 0, 0, 0, 0, 0, 0];
+            if (!stateRep.value.nextRanks || stateRep.value.nextRanks.length < 7) stateRep.value.nextRanks = [0, 0, 0, 0, 0, 0, 0];
 
-            if (key === 'name') s.names[idx] = val;
-            if (key === 'nextRank') s.nextRanks[idx] = parseInt(val, 10);
-            
-            stateRep.value = s;
+            // 🔴 直接値を書き換える（フリーズ回避）
+            if (key === 'name') stateRep.value.names[idx] = val;
+            if (key === 'nextRank') stateRep.value.nextRanks[idx] = parseInt(val, 10);
         }
 
         window.applyRanks = function() {
-            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (!stateRep.value) return;
             let isChanged = false;
             
             for(let i=0; i<7; i++) {
-                if(s.ranks[i] !== s.nextRanks[i]) {
+                if(stateRep.value.ranks[i] !== stateRep.value.nextRanks[i]) {
                     isChanged = true;
-                    s.ranks[i] = s.nextRanks[i]; 
+                    // 🔴 配列を直接書き換えて確実に移動の通信を発生させる
+                    stateRep.value.ranks[i] = stateRep.value.nextRanks[i]; 
                 }
                 
-                // 🔴 移動ボタンを押したときに、空欄ならデフォルト名で確実に埋める
+                // 空欄ならデフォルト名で確実に埋める
                 const nameInp = document.getElementById(`name-${i}`);
                 if(nameInp) {
-                    s.names[i] = nameInp.value.trim() !== '' ? nameInp.value : defaultNames[i];
+                    const textVal = nameInp.value.trim();
+                    stateRep.value.names[i] = textVal !== '' ? textVal : defaultNames[i];
                 }
             }
 
             if(isChanged) {
-                stateRep.value = s;
                 // データ更新後に効果音トリガーを送信
                 nodecg.sendMessage('trigger_kakuzuke_move');
             } else {
