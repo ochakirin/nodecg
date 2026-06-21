@@ -3,136 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #fdfdfd; margin: 0; }
-        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .name-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
-        .rank-display { width: 100px; text-align: center; font-weight: bold; font-size: 14px; padding: 6px; border-radius: 4px; background: #eee; }
-        button { padding: 8px 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; transition: 0.1s; }
-        button:hover { opacity: 0.8; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn-up { background: #2196f3; }
-        .btn-down { background: #e91e63; }
+        body { font-family: sans-serif; padding: 15px; background: #ffebee; margin: 0; color: #333; }
+        .panel-title { font-size: 16px; font-weight: bold; color: #b71c1c; margin-bottom: 15px; border-bottom: 2px solid #d32f2f; padding-bottom: 5px; }
         
-        .r-0 { background: #ffff00; color: #000; } 
-        .r-1 { background: #ffffff; border: 1px solid #ccc; color: #000; } 
-        .r-2 { background: #00ffff; color: #000; } 
-        .r-3 { background: #ff00ff; color: #fff; } 
-        .r-4 { background: #b0bec5; color: #000; } 
-        .r-5 { background: #ffffff; border: 1px solid #ccc; color: #ccc; } 
+        .team-row { display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #ffcdd2; }
+        .t-label { font-weight: bold; width: 50px; color: #d32f2f; flex-shrink: 0; }
+        .t-name { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
+        .rank-info { display: flex; align-items: center; gap: 8px; flex: 1.5; background: #fff8f8; padding: 5px 10px; border-radius: 4px; border: 1px dashed #ef9a9a; }
+        .current-rank { font-weight: bold; color: #1976d2; width: 70px; text-align: center; }
+        .arrow { color: #d32f2f; font-weight: bold; }
+        .rank-select { padding: 6px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; flex: 1; cursor: pointer; }
+
+        .master-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; color: white; background: #d32f2f; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: 0.2s; }
+        .master-btn:hover { background: #b71c1c; }
+        .master-btn:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
-    <h3 style="margin-top:0; color:#d32f2f;">▼ 格付けボード操作</h3>
-    <div id="controls-container"></div>
+    <div class="panel-title">👑 格付けチェック 進行管理</div>
 
-    <div style="margin-top: 20px;">
-        <button style="background: #607d8b; width: 100%; padding: 12px;" onclick="resetRanks()">全員「一流」にリセット</button>
-    </div>
+    <div id="teams-container"></div>
+
+    <button class="master-btn" id="btn-apply" onclick="applyRanks()">🚀 設定したランクへ一斉移動</button>
 
     <script>
-        const rankNames = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
-        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
+        const RANK_NAMES = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
         
-        const kakuzukeRep = nodecg.Replicant('kakuzukeState', {
+        const stateRep = nodecg.Replicant('kakuzukeState', {
             defaultValue: { 
-                names: [...defaultNames], 
-                ranks: [0, 0, 0, 0, 0, 0, 0] 
-            },
-            persistent: true 
+                names: Array(6).fill(''), 
+                ranks: Array(6).fill(0),       // 現在の表示ランク
+                nextRanks: Array(6).fill(0)    // 次の移動先（事前設定）
+            }
         });
 
-        // 1. UIの生成
-        const container = document.getElementById('controls-container');
-        for (let i = 0; i < 7; i++) {
-            const div = document.createElement('div');
-            div.className = 'row';
-            div.innerHTML = `
-                <input type="text" class="name-input" id="name-${i}" placeholder="プレイヤー名">
-                <button class="btn-up" id="up-${i}" onclick="changeRank(${i}, -1)">◀ 昇格</button>
-                <button class="btn-down" id="down-${i}" onclick="changeRank(${i}, 1)">降格 ▶</button>
-                <div class="rank-display" id="rank-text-${i}">一流</div>
+        const container = document.getElementById('teams-container');
+        for (let i = 0; i < 6; i++) {
+            let options = RANK_NAMES.map((r, idx) => `<option value="${idx}">${r}</option>`).join('');
+            container.innerHTML += `
+                <div class="team-row">
+                    <span class="t-label">チーム${i+1}</span>
+                    <input type="text" class="t-name" id="name-${i}" placeholder="チーム名" onchange="updateData(${i}, 'name', this.value)">
+                    <div class="rank-info">
+                        <span style="font-size:11px; color:#777;">現在:</span>
+                        <span class="current-rank" id="current-${i}">一流</span>
+                        <span class="arrow">➡️</span>
+                        <span style="font-size:11px; color:#777;">移動先:</span>
+                        <select class="rank-select" id="next-${i}" onchange="updateData(${i}, 'nextRank', this.value)">
+                            ${options}
+                        </select>
+                    </div>
+                </div>
             `;
-            container.appendChild(div);
-
-            // 文字が入力されたら「配列の該当箇所だけ」をピンポイントで保存する
-            document.getElementById(`name-${i}`).addEventListener('change', function(e) {
-                if (kakuzukeRep.value && kakuzukeRep.value.names) {
-                    kakuzukeRep.value.names[i] = e.target.value;
-                }
-            });
         }
 
-        // 2. ランクの変更処理（絶対にフリーズさせないピンポイント書き換え方式）
-        window.changeRank = function(index, delta) {
-            if (!kakuzukeRep.value) return;
+        window.updateData = function(idx, key, val) {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            if (key === 'name') s.names[idx] = val;
+            if (key === 'nextRank') s.nextRanks[idx] = parseInt(val, 10);
+            stateRep.value = s;
+        }
 
-            // 【重要防衛線】ボタンを押した瞬間に、入力途中の文字を強制的に確定させて保存する（名前消失を防止）
-            const input = document.getElementById(`name-${index}`);
-            if (input && kakuzukeRep.value.names) {
-                kakuzukeRep.value.names[index] = input.value;
-            }
-
-            if (kakuzukeRep.value.ranks) {
-                let currentRank = parseInt(kakuzukeRep.value.ranks[index], 10);
-                if (isNaN(currentRank)) currentRank = 0;
-
-                let newRank = currentRank + delta;
-                if (newRank >= 0 && newRank <= 5) {
-                    // 🔴 ここで配列の数字だけを直接書き換えます（これで確実にボタンが反応します）
-                    kakuzukeRep.value.ranks[index] = newRank;
-                    
-                    if (delta > 0) {
-                        nodecg.sendMessage('play_open_se');
-                    }
-                }
-            }
-        };
-
-        // 全員リセット処理
-        window.resetRanks = function() {
-            if (confirm("全員の階級を「一流」に戻しますか？（名前は保持されます）")) {
-                if (kakuzukeRep.value && kakuzukeRep.value.ranks) {
-                    for (let i = 0; i < 7; i++) {
-                        kakuzukeRep.value.ranks[i] = 0;
-                    }
-                }
-            }
-        };
-
-        // 3. データ変更を監視して画面に反映
-        kakuzukeRep.on('change', (newVal) => {
-            if (!newVal) return;
+        // 一斉反映処理
+        window.applyRanks = function() {
+            const s = JSON.parse(JSON.stringify(stateRep.value));
+            let isChanged = false;
             
-            // 過去のエラーデータが残っていた場合の自動修復
-            if (!newVal.names || !Array.isArray(newVal.names)) newVal.names = [...defaultNames];
-            if (!newVal.ranks || !Array.isArray(newVal.ranks)) newVal.ranks = [0,0,0,0,0,0,0];
-
-            for (let i = 0; i < 7; i++) {
-                const input = document.getElementById(`name-${i}`);
-                const rankText = document.getElementById(`rank-text-${i}`);
-                const btnUp = document.getElementById(`up-${i}`);
-                const btnDown = document.getElementById(`down-${i}`);
-                
-                // 名前テキストの反映（ユーザーが現在入力中の場合は上書きしない）
-                if (input && document.activeElement !== input) {
-                    const newName = newVal.names[i];
-                    if (input.value !== newName && newName !== undefined) {
-                        input.value = newName;
-                    }
+            for(let i=0; i<6; i++) {
+                if(s.ranks[i] !== s.nextRanks[i]) {
+                    isChanged = true;
+                    s.ranks[i] = s.nextRanks[i]; // nextRankを現在のrankに反映
                 }
-                
-                // ランクとボタン状態の反映
-                let rankVal = parseInt(newVal.ranks[i], 10);
-                if (isNaN(rankVal)) rankVal = 0;
+            }
 
-                if (rankText) {
-                    rankText.innerText = rankNames[rankVal];
-                    rankText.className = `rank-display r-${rankVal}`;
-                }
+            if(isChanged) {
+                stateRep.value = s;
+                // 効果音を鳴らすためのメッセージを送信
+                nodecg.sendMessage('trigger_kakuzuke_move');
+            } else {
+                alert("移動先が変更されているチームがありません。");
+            }
+        }
+
+        stateRep.on('change', (newVal) => {
+            if (!newVal) return;
+            for(let i=0; i<6; i++) {
+                const nameInp = document.getElementById(`name-${i}`);
+                if (document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
+
+                document.getElementById(`current-${i}`).innerText = RANK_NAMES[newVal.ranks[i]];
                 
-                if (btnUp) btnUp.disabled = rankVal === 0;
-                if (btnDown) btnDown.disabled = rankVal === 5;
+                const nextSel = document.getElementById(`next-${i}`);
+                if (document.activeElement !== nextSel) nextSel.value = newVal.nextRanks[i];
             }
         });
     </script>
