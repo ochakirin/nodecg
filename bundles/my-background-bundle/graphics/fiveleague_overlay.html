@@ -59,13 +59,15 @@
             `;
         }
 
+        // 🔴 指定された音声ファイルパスに変更
         let soundOpen;
-        try { soundOpen = new Audio('sounds/open.mp3'); } catch(e) {}
+        try { soundOpen = new Audio('sounds/fiveleaguopen.mp3'); } catch(e) {}
+        
         nodecg.listenFor('play_open_se', () => {
             if (soundOpen) {
                 soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                 soundOpen.currentTime = 0;
-                soundOpen.play().catch(e => {});
+                soundOpen.play().catch(e => console.log('SE Play Error:', e));
             }
         });
 
