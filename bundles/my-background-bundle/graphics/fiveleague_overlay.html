@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>Five League Overlay</title>
     <style>
+        :root {
+            /* 🔴 JavaScriptで音声の長さを取得してここに代入されます（取得できない場合の予備として1.5秒を設定） */
+            --open-delay: 1.5s; 
+        }
+
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
         .team-area { position: absolute; top: 35px; left: 50px; background: #e3f2fd; color: #1565c0; padding: 12px 30px; border-radius: 12px; font-size: 32px; font-weight: 900; border: 4px solid #2196f3; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 100; }
@@ -19,18 +24,43 @@
         
         .board-area { width: 100%; height: 320px; position: relative; background: #111; padding: 10px; box-sizing: border-box; }
         
-        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; position: relative; background-color: #1565c0; border-radius: 8px; border: 3px solid #ffffff; transition: background-color 0.1s; } 
+        .answer-img { 
+            width: 100%; height: 100%; object-fit: contain; 
+            display: none; z-index: 5; position: relative; 
+            background-color: #1565c0; border-radius: 8px; border: 3px solid #ffffff; 
+            transition: background-color 0.1s; 
+            /* 🔴 オープン前は透明にしておく */
+            opacity: 0; transform: scale(0.6);
+        } 
 
-        .cover { position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; transition: all 0.3s ease; font-size: 32px; border-radius: 8px; z-index: 10; }
+        .cover { 
+            position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: #cfd8dc; 
+            display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; 
+            font-size: 32px; border-radius: 8px; z-index: 10; 
+            /* 🔴 閉じる時は即座にフェードアウト */
+            opacity: 1; transition: opacity 0.2s ease; 
+        }
         .cover.submitted { background: #e91e63; color: white; }
         
-        .is-open .cover { opacity: 0; pointer-events: none; }
-        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
+        /* 🔴 SEが鳴り終わるまで待機してからカバーを消す */
+        .is-open .cover { 
+            opacity: 0; pointer-events: none; 
+            transition: opacity 0.1s var(--open-delay) ease; 
+        }
+
+        /* 🔴 SEが鳴り終わるまで待機してから画像をポップイン */
+        .is-open .answer-img { 
+            display: block; 
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) var(--open-delay) forwards; 
+        }
+
+        @keyframes popIn { 
+            0% { transform: scale(0.6); opacity: 0; } 
+            100% { transform: scale(1); opacity: 1; } 
+        }
 
         .slot.is-correct { transform: scale(1.05) translateY(-10px); z-index: 50; border-color: #ffeb3b; }
         .slot.is-correct .answer-img { background-color: #d32f2f !important; border-color: #ffeb3b !important; box-shadow: 0 0 40px rgba(211, 47, 47, 0.9) !important; }
-
-        @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -59,9 +89,18 @@
             `;
         }
 
-        // 🔴 指定された音声ファイルパスに変更
+        // 🔴 音源の読み込みと長さに合わせたディレイ計算
         let soundOpen;
-        try { soundOpen = new Audio('sounds/fiveleaguopen.mp3'); } catch(e) {}
+        try { 
+            soundOpen = new Audio('sounds/fiveleaguopen.mp3'); 
+            
+            // 音声ファイルの読み込みが完了したら、その「長さ（秒数）」をCSSに自動設定する
+            soundOpen.addEventListener('loadedmetadata', () => {
+                // 安全のため、最大でも3秒で強制オープンするように制限
+                const duration = Math.min(soundOpen.duration, 3.0);
+                document.documentElement.style.setProperty('--open-delay', `${duration}s`);
+            });
+        } catch(e) {}
         
         nodecg.listenFor('play_open_se', () => {
             if (soundOpen) {
@@ -103,6 +142,7 @@
                     cover.classList.remove('submitted');
                 }
 
+                // クラスの着脱（CSSのディレイによって自動的に待機が行われます）
                 if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') slot.classList.add('is-open');
                 else slot.classList.remove('is-open');
 
