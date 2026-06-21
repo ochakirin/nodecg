@@ -54,7 +54,7 @@
         .nameplate-wrapper {
             position: absolute; top: 0; left: 0; 
             display: flex; justify-content: center; align-items: center;
-            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s; /* 🔴 透明度も滑らかに変更 */
+            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1); /* 🔴 不安定になる透明度アニメーションを削除 */
         }
 
         .nameplate {
@@ -92,14 +92,20 @@
 
     <script>
         const stateRep = nodecg.Replicant('kakuzukeState');
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
+        
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
+        // 🔴 相対パスに修正し、確実に読み込めるようにしました
         let slideSound;
-        try { slideSound = new Audio('/bundles/my-background-bundle/graphics/sounds/slide.mp3'); } catch(e) { console.error("音源エラー", e); }
+        try { slideSound = new Audio('sounds/slide.mp3'); } catch(e) { console.error("音源エラー", e); }
 
         nodecg.listenFor('trigger_kakuzuke_move', () => {
             if (slideSound) {
+                // サウンド管理パネルの音量を適用
+                slideSound.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                 slideSound.currentTime = 0;
                 slideSound.play().catch(e => console.log('SE Play Error:', e));
             }
@@ -133,7 +139,12 @@
 
             for (let i = 0; i < 7; i++) {
                 const rank = (state.ranks && state.ranks[i] !== undefined) ? parseInt(state.ranks[i], 10) : 0;
-                const nameText = (state.names && state.names[i] !== undefined) ? state.names[i] : '';
+                let nameText = (state.names && state.names[i] !== undefined) ? state.names[i] : '';
+
+                // 🔴 空欄の場合は絶対にデフォルト名で補完し、札が消滅するのを防ぐ
+                if (nameText.trim() === '') {
+                    nameText = defaultNames[i] || `プレイヤー${i+1}`;
+                }
 
                 const wrapper = document.getElementById(`wrapper-${i}`);
                 const nameplate = document.getElementById(`name-${i}`);
@@ -142,13 +153,7 @@
                 if (!wrapper || !nameplate || !targetCell) continue;
 
                 nameplate.innerText = nameText;
-                
-                // 🔴 display:none にすると座標計算がバグるので、透明度（opacity）で制御する
-                if (nameText.trim() === '') {
-                    wrapper.style.opacity = '0';
-                } else {
-                    wrapper.style.opacity = '1';
-                }
+                wrapper.style.opacity = '1'; // 常に確実に表示する
 
                 const cellRect = targetCell.getBoundingClientRect();
                 
