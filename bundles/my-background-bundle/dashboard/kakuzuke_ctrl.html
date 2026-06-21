@@ -41,7 +41,6 @@
         });
 
         const container = document.getElementById('teams-container');
-        // 🔴 7人分に変更
         for (let i = 0; i < 7; i++) {
             let options = RANK_NAMES.map((r, idx) => `<option value="${idx}">${r}</option>`).join('');
             container.innerHTML += `
@@ -64,7 +63,6 @@
         window.updateData = function(idx, key, val) {
             const s = JSON.parse(JSON.stringify(stateRep.value));
             
-            // 過去の6人データが残っていた場合の7人への拡張補正
             if (!s.names || s.names.length < 7) {
                 const oldNames = s.names || [];
                 s.names = [...defaultNames];
@@ -88,15 +86,17 @@
                     isChanged = true;
                     s.ranks[i] = s.nextRanks[i]; 
                 }
+                
+                // 🔴 移動ボタンを押したときに、空欄ならデフォルト名で確実に埋める
+                const nameInp = document.getElementById(`name-${i}`);
+                if(nameInp) {
+                    s.names[i] = nameInp.value.trim() !== '' ? nameInp.value : defaultNames[i];
+                }
             }
 
             if(isChanged) {
-                // 移動ボタンを押したときに、入力途中の名前も一気に保存する
-                for(let i=0; i<7; i++) {
-                    const nameInp = document.getElementById(`name-${i}`);
-                    if(nameInp) s.names[i] = nameInp.value;
-                }
                 stateRep.value = s;
+                // データ更新後に効果音トリガーを送信
                 nodecg.sendMessage('trigger_kakuzuke_move');
             } else {
                 alert("移動先が変更されているプレイヤーがいません。");
