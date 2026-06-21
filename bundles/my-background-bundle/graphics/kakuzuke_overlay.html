@@ -11,7 +11,6 @@
             overflow: hidden; display: flex; justify-content: center; align-items: center; 
         }
         
-        /* 🔴 画像に寄せたテーブル全体の設定（赤枠・黄色背景） */
         #table-container {
             position: relative;
             background-color: #ffff00;
@@ -21,14 +20,14 @@
 
         .rating-table {
             border-collapse: collapse;
-            border: 6px solid #ff0000; /* 外側の太い赤枠 */
+            border: 6px solid #ff0000; 
             width: 1700px;
             height: 950px;
             table-layout: fixed;
         }
 
         .rating-table th, .rating-table td {
-            border: 3px solid #ff0000; /* 内側の赤枠 */
+            border: 3px solid #ff0000; 
             text-align: center;
             vertical-align: middle;
             padding: 0;
@@ -41,55 +40,32 @@
             line-height: 1.2;
         }
 
-        /* ヘッダーの色（画像に準拠） */
-        .h-0 { background-color: #ffff00; color: #000; } /* 一流 (黄色) */
-        .h-1 { background-color: #ffffff; color: #000; } /* 普通 (白) */
-        .h-2 { background-color: #00ffff; color: #000; } /* 二流 (水色) */
-        .h-3 { background-color: #ff00ff; color: #000; } /* 三流 (マゼンタ) */
-        .h-4 { background-color: #b0bec5; color: #000; } /* マネマネ (グレー) */
-        .h-5 { background-color: #ffffff; color: #000; } /* ニフラム (白) */
+        .h-0 { background-color: #ffff00; color: #000; } 
+        .h-1 { background-color: #ffffff; color: #000; } 
+        .h-2 { background-color: #00ffff; color: #000; } 
+        .h-3 { background-color: #ff00ff; color: #000; } 
+        .h-4 { background-color: #b0bec5; color: #000; } 
+        .h-5 { background-color: #ffffff; color: #000; } 
 
-        /* 名前札が動くための絶対座標レイヤー */
         #players-layer {
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            pointer-events: none; 
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
         }
 
-        /* 移動する名前札の枠 */
         .nameplate-wrapper {
-            position: absolute; 
-            top: 0; left: 0; 
+            position: absolute; top: 0; left: 0; 
             display: flex; justify-content: center; align-items: center;
-            /* 🔴 ここでゆっくり（1.5秒）スライド移動させる */
-            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s; /* 🔴 透明度も滑らかに変更 */
         }
 
-        /* 🔴 画像に寄せた名前札のデザイン（白背景・青枠・黒文字） */
         .nameplate {
-            background-color: #ffffff; 
-            border: 4px solid #0000ff; 
-            color: #000000;
-            font-size: 32px; 
-            font-weight: bold; 
-            padding: 10px 15px; 
-            width: 85%;
-            box-sizing: border-box; 
-            box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            text-align: center;
+            background-color: #ffffff; border: 4px solid #0000ff; color: #000000;
+            font-size: 32px; font-weight: bold; padding: 10px 15px; width: 85%;
+            box-sizing: border-box; box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
         }
 
-        /* ニフラム（消滅）時の見た目 */
         .is-nifram .nameplate {
-            opacity: 0.4;
-            filter: grayscale(100%);
-            box-shadow: none;
-            border-color: #999;
+            opacity: 0.4; filter: grayscale(100%); box-shadow: none; border-color: #999;
         }
     </style>
 </head>
@@ -119,7 +95,6 @@
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        // 🔴 指定されたスライド音の読み込み
         let slideSound;
         try { slideSound = new Audio('/bundles/my-background-bundle/graphics/sounds/slide.mp3'); } catch(e) { console.error("音源エラー", e); }
 
@@ -130,7 +105,7 @@
             }
         });
 
-        // 7人分のテーブルの行（7行 × 6列）と名前札を生成
+        // 7人分の枠を生成
         for (let i = 0; i < 7; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
@@ -157,7 +132,6 @@
             const parentRect = document.getElementById('table-container').getBoundingClientRect();
 
             for (let i = 0; i < 7; i++) {
-                // 安全なデータ取得
                 const rank = (state.ranks && state.ranks[i] !== undefined) ? parseInt(state.ranks[i], 10) : 0;
                 const nameText = (state.names && state.names[i] !== undefined) ? state.names[i] : '';
 
@@ -167,31 +141,27 @@
                 
                 if (!wrapper || !nameplate || !targetCell) continue;
 
-                // 名前の反映（空なら非表示）
                 nameplate.innerText = nameText;
+                
+                // 🔴 display:none にすると座標計算がバグるので、透明度（opacity）で制御する
                 if (nameText.trim() === '') {
-                    wrapper.style.display = 'none';
+                    wrapper.style.opacity = '0';
                 } else {
-                    wrapper.style.display = 'flex';
+                    wrapper.style.opacity = '1';
                 }
 
-                // 座標計算
                 const cellRect = targetCell.getBoundingClientRect();
                 
-                // 画面読み込み直後などでサイズが取れない場合は後で再計算
                 if (cellRect.width === 0 || cellRect.height === 0) {
                     needsRetry = true;
                     continue;
                 }
 
-                // テーブル内での相対座標を算出
                 const x = cellRect.left - parentRect.left;
                 const y = cellRect.top - parentRect.top;
 
                 wrapper.style.width = `${cellRect.width}px`;
                 wrapper.style.height = `${cellRect.height}px`;
-                
-                // 🔴 CSSのtransitionを利用して滑らかに移動！
                 wrapper.style.transform = `translate(${x}px, ${y}px)`;
 
                 if (rank === 5) {
@@ -212,7 +182,6 @@
             requestAnimationFrame(updatePositions);
         });
 
-        // 画面リサイズ時などにもズレないよう再計算
         window.addEventListener('resize', updatePositions);
         window.addEventListener('load', updatePositions);
     </script>
