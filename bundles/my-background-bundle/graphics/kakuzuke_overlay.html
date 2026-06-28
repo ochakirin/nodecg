@@ -11,34 +11,10 @@
             overflow: hidden; display: flex; justify-content: center; align-items: center; 
         }
         
-        #table-container {
-            position: relative;
-            background-color: #ffff00;
-            padding: 0;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
-        }
-
-        .rating-table {
-            border-collapse: collapse;
-            border: 6px solid #ff0000; 
-            width: 1700px;
-            height: 950px;
-            table-layout: fixed;
-        }
-
-        .rating-table th, .rating-table td {
-            border: 3px solid #ff0000; 
-            text-align: center;
-            vertical-align: middle;
-            padding: 0;
-        }
-
-        .rating-table th {
-            height: 120px;
-            font-size: 38px;
-            font-weight: 900;
-            line-height: 1.2;
-        }
+        #table-container { position: relative; background-color: #ffff00; padding: 0; box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
+        .rating-table { border-collapse: collapse; border: 6px solid #ff0000; width: 1700px; height: 950px; table-layout: fixed; }
+        .rating-table th, .rating-table td { border: 3px solid #ff0000; text-align: center; vertical-align: middle; padding: 0; }
+        .rating-table th { height: 120px; font-size: 38px; font-weight: 900; line-height: 1.2; }
 
         .h-0 { background-color: #ffff00; color: #000; } 
         .h-1 { background-color: #ffffff; color: #000; } 
@@ -47,14 +23,12 @@
         .h-4 { background-color: #b0bec5; color: #000; } 
         .h-5 { background-color: #ffffff; color: #000; } 
 
-        #players-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
-        }
+        #players-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
         .nameplate-wrapper {
-            position: absolute; top: 0; left: 0; 
-            display: flex; justify-content: center; align-items: center;
-            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1); /* 🔴 不安定になる透明度アニメーションを削除 */
+            position: absolute; top: 0; left: 0; display: flex; justify-content: center; align-items: center;
+            /* 初回ロード時はJS側でこれを無効化し、瞬間移動させます */
+            transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1); 
         }
 
         .nameplate {
@@ -64,12 +38,12 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
         }
 
-        .is-nifram .nameplate {
-            opacity: 0.4; filter: grayscale(100%); box-shadow: none; border-color: #999;
-        }
+        .is-nifram .nameplate { opacity: 0.4; filter: grayscale(100%); box-shadow: none; border-color: #999; }
     </style>
 </head>
 <body>
+
+    <audio id="slide-se" src="sounds/slide.mp3" preload="auto"></audio>
 
     <div id="table-container">
         <table class="rating-table" id="bg-table">
@@ -83,10 +57,8 @@
                     <th class="h-5">ニフラム</th>
                 </tr>
             </thead>
-            <tbody id="table-body">
-                </tbody>
+            <tbody id="table-body"></tbody>
         </table>
-        
         <div id="players-layer"></div>
     </div>
 
@@ -98,20 +70,16 @@
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        // 🔴 相対パスに修正し、確実に読み込めるようにしました
-        let slideSound;
-        try { slideSound = new Audio('sounds/slide.mp3'); } catch(e) { console.error("音源エラー", e); }
-
+        // 🔴 音声再生の指示が来たら、HTML上のAudio要素を再生する
         nodecg.listenFor('trigger_kakuzuke_move', () => {
-            if (slideSound) {
-                // サウンド管理パネルの音量を適用
-                slideSound.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
-                slideSound.currentTime = 0;
-                slideSound.play().catch(e => console.log('SE Play Error:', e));
+            const seElement = document.getElementById('slide-se');
+            if (seElement) {
+                seElement.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                seElement.currentTime = 0;
+                seElement.play().catch(e => console.error('音声の再生に失敗しました:', e));
             }
         });
 
-        // 7人分の枠を生成
         for (let i = 0; i < 7; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
@@ -129,6 +97,7 @@
         }
 
         let currentState = null;
+        let isFirstLoad = true; // 🔴 初回ロード判定フラグ
 
         function updatePositions() {
             if (!currentState) return;
@@ -141,7 +110,6 @@
                 const rank = (state.ranks && state.ranks[i] !== undefined) ? parseInt(state.ranks[i], 10) : 0;
                 let nameText = (state.names && state.names[i] !== undefined) ? state.names[i] : '';
 
-                // 🔴 空欄の場合は絶対にデフォルト名で補完し、札が消滅するのを防ぐ
                 if (nameText.trim() === '') {
                     nameText = defaultNames[i] || `プレイヤー${i+1}`;
                 }
@@ -153,10 +121,9 @@
                 if (!wrapper || !nameplate || !targetCell) continue;
 
                 nameplate.innerText = nameText;
-                wrapper.style.opacity = '1'; // 常に確実に表示する
+                wrapper.style.opacity = '1'; 
 
                 const cellRect = targetCell.getBoundingClientRect();
-                
                 if (cellRect.width === 0 || cellRect.height === 0) {
                     needsRetry = true;
                     continue;
@@ -167,6 +134,14 @@
 
                 wrapper.style.width = `${cellRect.width}px`;
                 wrapper.style.height = `${cellRect.height}px`;
+
+                // 🔴 初回ロード時（リロード直後）はアニメーションを無効にして現在位置へ瞬間移動させる
+                if (isFirstLoad) {
+                    wrapper.style.transition = 'none';
+                } else {
+                    wrapper.style.transition = 'transform 1.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                }
+
                 wrapper.style.transform = `translate(${x}px, ${y}px)`;
 
                 if (rank === 5) {
@@ -177,7 +152,13 @@
             }
 
             if (needsRetry) {
-                setTimeout(updatePositions, 100);
+                // 枠の準備がまだ出来ていなければ少し待ってから再挑戦
+                setTimeout(updatePositions, 50);
+            } else if (isFirstLoad) {
+                // 全員の配置が完了したら、次回以降はアニメーションを有効にするためフラグを折る
+                setTimeout(() => {
+                    isFirstLoad = false;
+                }, 100);
             }
         }
 
