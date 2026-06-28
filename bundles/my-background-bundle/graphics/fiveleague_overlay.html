@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <title>Five League Overlay</title>
     <style>
-        :root {
-            /* 🔴 JavaScriptで音声の長さを取得してここに代入されます（取得できない場合の予備として1.5秒を設定） */
-            --open-delay: 1.5s; 
-        }
+        :root { --open-delay: 1.5s; }
 
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
@@ -20,44 +17,24 @@
         .slots-container { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: flex; gap: 30px; width: 1800px; justify-content: center; }
 
         .slot { width: 320px; background: #1e1e1e; border: 6px solid #424242; border-radius: 16px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.6); overflow: hidden; transition: all 0.3s ease; }
-        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 4px solid #424242; font-size: 26px; padding: 12px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 20; }
+        
+        .player-name { background: #333333; color: white; width: 100%; text-align: center; font-weight: bold; border-bottom: 4px solid #424242; font-size: 26px; padding: 12px 0; white-space: nowrap; overflow: hidden; z-index: 20; box-sizing: border-box; }
         
         .board-area { width: 100%; height: 320px; position: relative; background: #111; padding: 10px; box-sizing: border-box; }
         
         .answer-img { 
-            width: 100%; height: 100%; object-fit: contain; 
-            display: none; z-index: 5; position: relative; 
-            background-color: #1565c0; border-radius: 8px; border: 3px solid #ffffff; 
-            transition: background-color 0.1s; 
-            /* 🔴 オープン前は透明にしておく */
-            opacity: 0; transform: scale(0.6);
+            width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; position: relative; background-color: #1565c0; border-radius: 8px; border: 3px solid #ffffff; transition: background-color 0.1s; opacity: 0; transform: scale(0.6);
         } 
 
         .cover { 
-            position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: #cfd8dc; 
-            display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; 
-            font-size: 32px; border-radius: 8px; z-index: 10; 
-            /* 🔴 閉じる時は即座にフェードアウト */
-            opacity: 1; transition: opacity 0.2s ease; 
+            position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: #cfd8dc; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #78909c; font-size: 32px; border-radius: 8px; z-index: 10; opacity: 1; transition: opacity 0.2s ease; 
         }
         .cover.submitted { background: #e91e63; color: white; }
         
-        /* 🔴 SEが鳴り終わるまで待機してからカバーを消す */
-        .is-open .cover { 
-            opacity: 0; pointer-events: none; 
-            transition: opacity 0.1s var(--open-delay) ease; 
-        }
+        .is-open .cover { opacity: 0; pointer-events: none; transition: opacity 0.1s var(--open-delay) ease; }
+        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) var(--open-delay) forwards; }
 
-        /* 🔴 SEが鳴り終わるまで待機してから画像をポップイン */
-        .is-open .answer-img { 
-            display: block; 
-            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2) var(--open-delay) forwards; 
-        }
-
-        @keyframes popIn { 
-            0% { transform: scale(0.6); opacity: 0; } 
-            100% { transform: scale(1); opacity: 1; } 
-        }
+        @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
         .slot.is-correct { transform: scale(1.05) translateY(-10px); z-index: 50; border-color: #ffeb3b; }
         .slot.is-correct .answer-img { background-color: #d32f2f !important; border-color: #ffeb3b !important; box-shadow: 0 0 40px rgba(211, 47, 47, 0.9) !important; }
@@ -89,14 +66,10 @@
             `;
         }
 
-        // 🔴 音源の読み込みと長さに合わせたディレイ計算
         let soundOpen;
         try { 
             soundOpen = new Audio('sounds/fiveleaguopen.mp3'); 
-            
-            // 音声ファイルの読み込みが完了したら、その「長さ（秒数）」をCSSに自動設定する
             soundOpen.addEventListener('loadedmetadata', () => {
-                // 安全のため、最大でも3秒で強制オープンするように制限
                 const duration = Math.min(soundOpen.duration, 3.0);
                 document.documentElement.style.setProperty('--open-delay', `${duration}s`);
             });
@@ -106,7 +79,7 @@
             if (soundOpen) {
                 soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
                 soundOpen.currentTime = 0;
-                soundOpen.play().catch(e => console.log('SE Play Error:', e));
+                soundOpen.play().catch(e => {});
             }
         });
 
@@ -130,7 +103,14 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-${i}`);
 
+                // 🔴 文字が枠に収まるように自動リサイズする処理
                 nameTag.innerText = newVal.names[i] || `回答者 ${i+1}`;
+                nameTag.style.fontSize = '26px'; // まず最大サイズに戻す
+                let fontSize = 26;
+                while (nameTag.scrollWidth > nameTag.clientWidth && fontSize > 10) {
+                    fontSize -= 1;
+                    nameTag.style.fontSize = fontSize + 'px';
+                }
 
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
@@ -142,7 +122,6 @@
                     cover.classList.remove('submitted');
                 }
 
-                // クラスの着脱（CSSのディレイによって自動的に待機が行われます）
                 if (newVal.isOpen && newVal.isOpen[i] && newVal.answers[i] !== '') slot.classList.add('is-open');
                 else slot.classList.remove('is-open');
 
