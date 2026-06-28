@@ -32,14 +32,8 @@
         const RANK_NAMES = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
         const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
         
-        const stateRep = nodecg.Replicant('kakuzukeState', {
-            defaultValue: { 
-                names: [...defaultNames], 
-                ranks: [0, 0, 0, 0, 0, 0, 0],       
-                nextRanks: [0, 0, 0, 0, 0, 0, 0]    
-            },
-            persistent: true
-        });
+        // 🔴 defaultValueを削除。過去の保存データを無条件で最優先で読み込む
+        const stateRep = nodecg.Replicant('kakuzukeState', { persistent: true });
 
         const container = document.getElementById('teams-container');
         for (let i = 0; i < 7; i++) {
@@ -63,13 +57,6 @@
 
         window.updateData = function(idx, key, val) {
             if (!stateRep.value) return;
-            
-            // 過去のデータ構造が不足している場合の安全補完
-            if (!stateRep.value.names || stateRep.value.names.length < 7) stateRep.value.names = [...defaultNames];
-            if (!stateRep.value.ranks || stateRep.value.ranks.length < 7) stateRep.value.ranks = [0, 0, 0, 0, 0, 0, 0];
-            if (!stateRep.value.nextRanks || stateRep.value.nextRanks.length < 7) stateRep.value.nextRanks = [0, 0, 0, 0, 0, 0, 0];
-
-            // 🔴 直接値を書き換える（フリーズ回避）
             if (key === 'name') stateRep.value.names[idx] = val;
             if (key === 'nextRank') stateRep.value.nextRanks[idx] = parseInt(val, 10);
         }
@@ -81,11 +68,9 @@
             for(let i=0; i<7; i++) {
                 if(stateRep.value.ranks[i] !== stateRep.value.nextRanks[i]) {
                     isChanged = true;
-                    // 🔴 配列を直接書き換えて確実に移動の通信を発生させる
                     stateRep.value.ranks[i] = stateRep.value.nextRanks[i]; 
                 }
                 
-                // 空欄ならデフォルト名で確実に埋める
                 const nameInp = document.getElementById(`name-${i}`);
                 if(nameInp) {
                     const textVal = nameInp.value.trim();
@@ -94,7 +79,6 @@
             }
 
             if(isChanged) {
-                // データ更新後に効果音トリガーを送信
                 nodecg.sendMessage('trigger_kakuzuke_move');
             } else {
                 alert("移動先が変更されているプレイヤーがいません。");
@@ -102,7 +86,16 @@
         }
 
         stateRep.on('change', (newVal) => {
-            if (!newVal) return;
+            // 🔴 サーバーに完全にデータが存在しない（初回起動など）場合のみ、初期化を行う
+            if (!newVal || !newVal.names) {
+                stateRep.value = { 
+                    names: [...defaultNames], 
+                    ranks: [0, 0, 0, 0, 0, 0, 0],       
+                    nextRanks: [0, 0, 0, 0, 0, 0, 0]    
+                };
+                return; 
+            }
+
             for(let i=0; i<7; i++) {
                 const nameInp = document.getElementById(`name-${i}`);
                 if (nameInp && document.activeElement !== nameInp) {
