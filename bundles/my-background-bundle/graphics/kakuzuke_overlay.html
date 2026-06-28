@@ -43,6 +43,7 @@
 <body>
 
     <audio id="slide-se" src="sounds/slide.mp3" preload="auto"></audio>
+    <audio id="rankdown-bgm" src="sounds/rankdown.mp3" preload="auto"></audio>
 
     <div id="table-container">
         <table class="rating-table" id="bg-table">
@@ -69,15 +70,6 @@
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        nodecg.listenFor('trigger_kakuzuke_move', () => {
-            const seElement = document.getElementById('slide-se');
-            if (seElement) {
-                seElement.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
-                seElement.currentTime = 0;
-                seElement.play().catch(e => console.error('音声の再生に失敗しました:', e));
-            }
-        });
-
         for (let i = 0; i < 7; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
@@ -96,37 +88,79 @@
 
         let currentState = null;
         let isFirstLoad = true;
+        let displayRanks = Array(7).fill(0); // 実際に画面に表示するランクを管理
+        let pendingRanks = null;
+        let isAnimatingDelay = false;
+        let delayTimer = null;
 
-        function updatePositions() {
-            if (!currentState) return;
-            const state = currentState;
-            let needsRetry = false;
-            const parentRect = document.getElementById('table-container').getBoundingClientRect();
+        // 🔴 コントローラーから一斉移動の合図が来た時
+        nodecg.listenFor('trigger_kakuzuke_move', () => {
+            isAnimatingDelay = true;
 
-            for (let i = 0; i < 7; i++) {
-                const rank = (state.ranks && state.ranks[i] !== undefined) ? parseInt(state.ranks[i], 10) : 0;
-                let nameText = (state.names && state.names[i] !== undefined) ? state.names[i] : '';
+            // 1. まずBGM（rankdown.mp3）を再生
+            const bgmElement = document.getElementById('rankdown-bgm');
+            if (bgmElement) {
+                bgmElement.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                bgmElement.currentTime = 0;
+                bgmElement.play().catch(e => console.error(e));
+            }
 
-                if (nameText.trim() === '') {
-                    nameText = defaultNames[i] || `プレイヤー${i+1}`;
+            if (delayTimer) clearTimeout(delayTimer);
+
+            // 2. 1.8秒後に移動SE再生 ＆ 移動アニメーション開始
+            delayTimer = setTimeout(() => {
+                isAnimatingDelay = false;
+                delayTimer = null;
+
+                const seElement = document.getElementById('slide-se');
+                if (seElement) {
+                    seElement.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                    seElement.currentTime = 0;
+                    seElement.play().catch(e => console.error(e));
                 }
 
+                // 待機させていた新しいランクを反映して移動させる
+                if (pendingRanks || (currentState && currentState.ranks)) {
+                    displayRanks = pendingRanks ? [...pendingRanks] : [...currentState.ranks];
+                    pendingRanks = null;
+                    updatePositions();
+                }
+            }, 1800);
+        });
+
+        // 🔴 名前を更新し、長ければリサイズする処理
+        function updateNames() {
+            if (!currentState) return;
+            for (let i = 0; i < 7; i++) {
                 const wrapper = document.getElementById(`wrapper-${i}`);
                 const nameplate = document.getElementById(`name-${i}`);
-                const targetCell = document.getElementById(`cell-${i}-${rank}`);
                 
-                if (!wrapper || !nameplate || !targetCell) continue;
-
-                // 🔴 文字が枠に収まるように自動リサイズする処理
+                let nameText = (currentState.names && currentState.names[i] !== undefined) ? currentState.names[i] : '';
+                if (nameText.trim() === '') nameText = defaultNames[i] || `プレイヤー${i+1}`;
+                
                 nameplate.innerText = nameText;
-                nameplate.style.fontSize = '32px'; // まず最大サイズに戻す
+                nameplate.style.fontSize = '32px';
                 let fontSize = 32;
                 while (nameplate.scrollWidth > nameplate.clientWidth && fontSize > 12) {
                     fontSize -= 1;
                     nameplate.style.fontSize = fontSize + 'px';
                 }
+                wrapper.style.opacity = '1';
+            }
+        }
 
-                wrapper.style.opacity = '1'; 
+        // 🔴 指定されたランク(displayRanks)に合わせて座標を計算し移動する処理
+        function updatePositions() {
+            if (!currentState) return;
+            let needsRetry = false;
+            const parentRect = document.getElementById('table-container').getBoundingClientRect();
+
+            for (let i = 0; i < 7; i++) {
+                const rank = displayRanks[i] !== undefined ? parseInt(displayRanks[i], 10) : 0;
+                const wrapper = document.getElementById(`wrapper-${i}`);
+                const targetCell = document.getElementById(`cell-${i}-${rank}`);
+                
+                if (!wrapper || !targetCell) continue;
 
                 const cellRect = targetCell.getBoundingClientRect();
                 if (cellRect.width === 0 || cellRect.height === 0) {
@@ -165,7 +199,31 @@
         stateRep.on('change', (newVal) => {
             if (!newVal) return;
             currentState = newVal;
-            requestAnimationFrame(updatePositions);
+
+            // 名前は即時反映する
+            updateNames();
+
+            // 初回ロード時はアニメーションなしで即配置
+            if (isFirstLoad) {
+                displayRanks = [...newVal.ranks];
+                requestAnimationFrame(updatePositions);
+                return;
+            }
+
+            // ランクの変動があるかチェック
+            const hasRankChanged = newVal.ranks.some((r, i) => r !== displayRanks[i]);
+            if (hasRankChanged) {
+                pendingRanks = [...newVal.ranks];
+                
+                // コントローラーの「リセットボタン」等を押した時（1.8秒ディレイが発生しない時）は即時移動させる
+                setTimeout(() => {
+                    if (pendingRanks && !isAnimatingDelay) {
+                        displayRanks = [...pendingRanks];
+                        pendingRanks = null;
+                        updatePositions();
+                    }
+                }, 50);
+            }
         });
 
         window.addEventListener('resize', updatePositions);
