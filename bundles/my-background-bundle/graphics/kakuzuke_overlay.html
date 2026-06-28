@@ -27,7 +27,6 @@
 
         .nameplate-wrapper {
             position: absolute; top: 0; left: 0; display: flex; justify-content: center; align-items: center;
-            /* 初回ロード時はJS側でこれを無効化し、瞬間移動させます */
             transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1); 
         }
 
@@ -35,7 +34,7 @@
             background-color: #ffffff; border: 4px solid #0000ff; color: #000000;
             font-size: 32px; font-weight: bold; padding: 10px 15px; width: 85%;
             box-sizing: border-box; box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+            white-space: nowrap; overflow: hidden; text-align: center;
         }
 
         .is-nifram .nameplate { opacity: 0.4; filter: grayscale(100%); box-shadow: none; border-color: #999; }
@@ -70,7 +69,6 @@
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        // 🔴 音声再生の指示が来たら、HTML上のAudio要素を再生する
         nodecg.listenFor('trigger_kakuzuke_move', () => {
             const seElement = document.getElementById('slide-se');
             if (seElement) {
@@ -97,13 +95,12 @@
         }
 
         let currentState = null;
-        let isFirstLoad = true; // 🔴 初回ロード判定フラグ
+        let isFirstLoad = true;
 
         function updatePositions() {
             if (!currentState) return;
             const state = currentState;
             let needsRetry = false;
-
             const parentRect = document.getElementById('table-container').getBoundingClientRect();
 
             for (let i = 0; i < 7; i++) {
@@ -120,7 +117,15 @@
                 
                 if (!wrapper || !nameplate || !targetCell) continue;
 
+                // 🔴 文字が枠に収まるように自動リサイズする処理
                 nameplate.innerText = nameText;
+                nameplate.style.fontSize = '32px'; // まず最大サイズに戻す
+                let fontSize = 32;
+                while (nameplate.scrollWidth > nameplate.clientWidth && fontSize > 12) {
+                    fontSize -= 1;
+                    nameplate.style.fontSize = fontSize + 'px';
+                }
+
                 wrapper.style.opacity = '1'; 
 
                 const cellRect = targetCell.getBoundingClientRect();
@@ -135,7 +140,6 @@
                 wrapper.style.width = `${cellRect.width}px`;
                 wrapper.style.height = `${cellRect.height}px`;
 
-                // 🔴 初回ロード時（リロード直後）はアニメーションを無効にして現在位置へ瞬間移動させる
                 if (isFirstLoad) {
                     wrapper.style.transition = 'none';
                 } else {
@@ -152,13 +156,9 @@
             }
 
             if (needsRetry) {
-                // 枠の準備がまだ出来ていなければ少し待ってから再挑戦
                 setTimeout(updatePositions, 50);
             } else if (isFirstLoad) {
-                // 全員の配置が完了したら、次回以降はアニメーションを有効にするためフラグを折る
-                setTimeout(() => {
-                    isFirstLoad = false;
-                }, 100);
+                setTimeout(() => { isFirstLoad = false; }, 100);
             }
         }
 
