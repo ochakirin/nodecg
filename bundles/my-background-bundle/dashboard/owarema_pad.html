@@ -7,7 +7,10 @@
     <style>
         body { 
             margin: 0; padding: 0; background: #eceff1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: none; 
+            display: flex; flex-direction: column; 
+            /* 🔴 スマホのアドレスバーを考慮した高さ設定に変更、スクロール禁止を解除 */
+            min-height: 100vh;
+            min-height: 100dvh; 
         }
         .header { 
             padding: 12px; background: #37474f; color: white; text-align: center; font-size: 18px; font-weight: bold; 
@@ -22,12 +25,13 @@
         }
         .canvas-container { 
             flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative;
+            min-height: 300px; /* 🔴 潰れすぎないように最低高さを確保 */
         }
         
-        /* 🔴 キャンバスの見た目を青色に変更（データ自体は透明です） */
         canvas { 
             background-color: #1565c0; 
             border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            /* 🔴 キャンバス上だけはスクロールせず描画できるように維持 */
             touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%;
         }
         
@@ -108,10 +112,8 @@
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
         
-        // 🔴 初期化時に白で塗りつぶす処理を削除（透明なままにする）
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 🔴 ペンの設定（青背景に合わせて白ペンに変更）
         ctx.strokeStyle = '#ffffff'; 
         ctx.lineWidth = 8;           
         ctx.lineCap = 'round';       
@@ -167,7 +169,6 @@
         canvas.addEventListener('touchend', stopDrawing, { passive: false });
         canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
         
-        // 🔴 全消去ボタン（白塗りつぶしではなく、透明クリアに変更）
         document.getElementById('btn-clear').addEventListener('click', () => {
             if (confirm('描いた内容をすべて消去しますか？')) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -175,7 +176,6 @@
         });
 
         document.getElementById('btn-submit').addEventListener('click', () => {
-            // 背景が透明なPNGとして出力されます
             const dataUrl = canvas.toDataURL('image/png');
             const state = JSON.parse(JSON.stringify(gameRep.value));
             if (!state.answers) state.answers = Array(14).fill('');
