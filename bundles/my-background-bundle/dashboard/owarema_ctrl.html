@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: sans-serif; padding: 10px; margin: 0; background: #f5f5f5; }
-        .wrapper { display: flex; gap: 15px; width: 100%; }
-        .col { flex: 1; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        /* 🔴 3チームが潰れないように flex-wrap と min-width を追加 */
+        .wrapper { display: flex; flex-wrap: wrap; gap: 15px; width: 100%; }
+        .col { flex: 1; min-width: 340px; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .col-a { border-top: 5px solid #ff9800; }
         .col-b { border-top: 5px solid #2196f3; }
+        .col-c { border-top: 5px solid #4caf50; } /* 🟢 チームC用のカラー */
+        
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .team-title { font-size: 18px; font-weight: bold; }
         .active-btn { background: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -32,7 +35,7 @@
         .is-active-badge { display: inline-block; padding: 2px 6px; background: #ff0000; color: white; border-radius: 10px; font-size: 12px; margin-left: 10px; }
 
         .team-actions { display: flex; gap: 10px; margin-top: 15px; }
-        .team-actions button { flex: 1; padding: 12px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 12px; }
+        .team-actions button { flex: 1; padding: 10px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 12px; }
         .btn-open-all { background: #ff9800; }
         .btn-apply-correct { background: #e91e63; }
         .btn-clear-team { background: #607d8b; }
@@ -67,7 +70,7 @@
             <div class="team-actions">
                 <button class="btn-open-all" onclick="openAll(0)">🎉 一斉オープン</button>
                 <button class="btn-apply-correct" onclick="applyCorrect(0)">🔴 赤背景を一斉反映</button>
-                <button class="btn-clear-team" onclick="clearTeamAnswers(0)">🧹 回答・背景を消去</button>
+                <button class="btn-clear-team" onclick="clearTeamAnswers(0)">🧹 消去</button>
             </div>
         </div>
 
@@ -97,23 +100,54 @@
             <div class="team-actions">
                 <button class="btn-open-all" onclick="openAll(1)">🎉 一斉オープン</button>
                 <button class="btn-apply-correct" onclick="applyCorrect(1)">🔴 赤背景を一斉反映</button>
-                <button class="btn-clear-team" onclick="clearTeamAnswers(1)">🧹 回答・背景を消去</button>
+                <button class="btn-clear-team" onclick="clearTeamAnswers(1)">🧹 消去</button>
+            </div>
+        </div>
+
+        <!-- 🟢 Team C -->
+        <div class="col col-c">
+            <div class="header-row">
+                <div class="team-title">🟩 チームC <span id="badge-2" class="is-active-badge" style="display:none;">配信中</span></div>
+                <button class="active-btn" id="btn-active-2">このチームを配信画面に表示</button>
+            </div>
+            <div class="input-group">
+                <label>チーム名</label><input type="text" id="t-name-2" placeholder="チームC" onchange="updateTeamMeta(2, 'name', this.value)">
+            </div>
+            <div class="input-group">
+                <label>お題</label><input type="text" id="t-theme-2" placeholder="チームCのお題" onchange="updateTeamMeta(2, 'theme', this.value)">
+            </div>
+            <div class="input-group">
+                <label>得点</label>
+                <div style="display:flex; gap:5px; flex:1;">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(2, -10)">-10</button>
+                    <input type="number" id="t-score-2" value="0" style="text-align:center; font-weight:bold; font-size:16px;" onchange="updateTeamMeta(2, 'score', this.value)">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(2, 10)">+10</button>
+                </div>
+            </div>
+            <hr>
+            <div id="players-2"></div>
+
+            <div class="team-actions">
+                <button class="btn-open-all" onclick="openAll(2)">🎉 一斉オープン</button>
+                <button class="btn-apply-correct" onclick="applyCorrect(2)">🔴 赤背景を一斉反映</button>
+                <button class="btn-clear-team" onclick="clearTeamAnswers(2)">🧹 消去</button>
             </div>
         </div>
     </div>
 
     <script>
+        // 🔴 配列を 3チーム（21名分）に拡張
         const gameRep = nodecg.Replicant('owarematenState', {
             defaultValue: {
-                teamNames: ['チームA', 'チームB'],
-                teamThemes: ['', ''],
-                teamScores: [0, 0],
+                teamNames: ['チームA', 'チームB', 'チームC'],
+                teamThemes: ['', '', ''],
+                teamScores: [0, 0, 0],
                 activeTeam: 0,
-                names: Array(14).fill(''),
-                answers: Array(14).fill(''),
-                isOpen: Array(14).fill(false),
-                isCorrect: Array(14).fill(false),
-                nextCorrect: Array(14).fill(false)
+                names: Array(21).fill(''),
+                answers: Array(21).fill(''),
+                isOpen: Array(21).fill(false),
+                isCorrect: Array(21).fill(false),
+                nextCorrect: Array(21).fill(false)
             },
             persistent: true
         });
@@ -122,21 +156,20 @@
         window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`プレイヤー${idx+1}のパッドURLをコピーしました`)); }
         window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
 
-        // 🔴 新しい配列を作成して代入することで、NodeCGに「変更された」と確実に認識させる
         function updateTeamMeta(teamIdx, key, val) {
             if (!gameRep.value) return;
             if (key === 'name') {
-                const arr = [...gameRep.value.teamNames];
+                const arr = [...(gameRep.value.teamNames || ['チームA', 'チームB', 'チームC'])];
                 arr[teamIdx] = val;
                 gameRep.value.teamNames = arr;
             }
             if (key === 'theme') {
-                const arr = [...gameRep.value.teamThemes];
+                const arr = [...(gameRep.value.teamThemes || ['', '', ''])];
                 arr[teamIdx] = val;
                 gameRep.value.teamThemes = arr;
             }
             if (key === 'score') {
-                const arr = [...(gameRep.value.teamScores || [0, 0])];
+                const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
                 arr[teamIdx] = parseInt(val, 10) || 0;
                 gameRep.value.teamScores = arr;
             }
@@ -144,19 +177,21 @@
 
         window.addScore = function(teamIdx, amount) {
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.teamScores || [0, 0])];
+            const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
             arr[teamIdx] = (arr[teamIdx] || 0) + amount;
             gameRep.value.teamScores = arr;
         }
 
         document.getElementById('btn-active-0').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 0; };
         document.getElementById('btn-active-1').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 1; };
+        document.getElementById('btn-active-2').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 2; };
 
         function renderPlayers() {
-            [0, 1].forEach(teamIdx => {
+            // 🔴 3チーム分のループに変更
+            [0, 1, 2].forEach(teamIdx => {
                 const container = document.getElementById(`players-${teamIdx}`);
                 container.innerHTML = '';
-                const offset = teamIdx === 1 ? 7 : 0;
+                const offset = teamIdx * 7;
                 for (let i = 0; i < 7; i++) {
                     const pIdx = i + offset;
                     const role = i === 0 ? "👑" : `回答${i}`;
@@ -192,20 +227,18 @@
             if(!gameRep.value) return;
             const arr = [...gameRep.value.isOpen];
             arr[idx] = !arr[idx];
-            gameRep.value.isOpen = arr; // 🔴 配列を丸ごと代入して通信を確実に発生させる
+            gameRep.value.isOpen = arr; 
             if(arr[idx]) nodecg.sendMessage('play_open_se');
         }
 
-        // 🔴 一斉オープン処理
         window.openAll = function(teamIdx) {
             if(!gameRep.value || !gameRep.value.isOpen) return;
-            const offset = teamIdx === 1 ? 7 : 0;
+            const offset = teamIdx * 7;
             const arr = [...gameRep.value.isOpen];
             let changed = false;
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
-                // 未オープンかつ、回答が提出されている人のみ開く
                 if (!arr[pIdx] && gameRep.value.answers[pIdx] !== '') {
                     arr[pIdx] = true;
                     changed = true;
@@ -222,14 +255,14 @@
         
         window.updateNextCorrect = function(idx, val) {
             if(!gameRep.value) return;
-            const arr = [...(gameRep.value.nextCorrect || Array(14).fill(false))];
+            const arr = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
             arr[idx] = val;
             gameRep.value.nextCorrect = arr;
         }
 
         window.applyCorrect = function(teamIdx) {
             if(!gameRep.value || !gameRep.value.nextCorrect) return;
-            const offset = teamIdx === 1 ? 7 : 0;
+            const offset = teamIdx * 7;
             const arr = [...gameRep.value.isCorrect];
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -241,12 +274,12 @@
         window.clearTeamAnswers = function(teamIdx) {
             if(!confirm("このチームの【回答】と【赤背景のチェック】をすべて消去しますか？（名前は残ります）")) return;
             if(!gameRep.value) return;
-            const offset = teamIdx === 1 ? 7 : 0;
+            const offset = teamIdx * 7;
             
             const newAnswers = [...gameRep.value.answers];
             const newIsOpen = [...gameRep.value.isOpen];
             const newIsCorrect = [...gameRep.value.isCorrect];
-            const newNext = [...(gameRep.value.nextCorrect || Array(14).fill(false))];
+            const newNext = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -266,7 +299,7 @@
             const newAnswers = [...gameRep.value.answers];
             const newIsOpen = [...gameRep.value.isOpen];
             const newIsCorrect = [...gameRep.value.isCorrect];
-            const newNext = [...(gameRep.value.nextCorrect || Array(14).fill(false))];
+            const newNext = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
 
             newAnswers[idx] = '';
             newIsOpen[idx] = false;
@@ -282,28 +315,33 @@
         gameRep.on('change', (newVal) => {
             if(!newVal) return;
             
-            if(!newVal.nextCorrect) newVal.nextCorrect = Array(14).fill(false);
-            if(!newVal.teamScores) newVal.teamScores = [0, 0]; 
+            if(!newVal.names || newVal.names.length < 21) return; // 過去の14人データとの競合防止
+            if(!newVal.nextCorrect) newVal.nextCorrect = Array(21).fill(false);
+            if(!newVal.teamScores) newVal.teamScores = [0, 0, 0]; 
 
-            document.getElementById('badge-0').style.display = newVal.activeTeam === 0 ? 'inline-block' : 'none';
-            document.getElementById('btn-active-0').disabled = newVal.activeTeam === 0;
-            document.getElementById('badge-1').style.display = newVal.activeTeam === 1 ? 'inline-block' : 'none';
-            document.getElementById('btn-active-1').disabled = newVal.activeTeam === 1;
+            // 🔴 3チーム分のループ更新
+            [0, 1, 2].forEach(teamIdx => {
+                const badge = document.getElementById(`badge-${teamIdx}`);
+                const btnActive = document.getElementById(`btn-active-${teamIdx}`);
+                if(badge) badge.style.display = newVal.activeTeam === teamIdx ? 'inline-block' : 'none';
+                if(btnActive) btnActive.disabled = newVal.activeTeam === teamIdx;
 
-            if(newVal.teamNames) {
-                if(document.activeElement.id !== 't-name-0') document.getElementById('t-name-0').value = newVal.teamNames[0] || '';
-                if(document.activeElement.id !== 't-name-1') document.getElementById('t-name-1').value = newVal.teamNames[1] || '';
-            }
-            if(newVal.teamThemes) {
-                if(document.activeElement.id !== 't-theme-0') document.getElementById('t-theme-0').value = newVal.teamThemes[0] || '';
-                if(document.activeElement.id !== 't-theme-1') document.getElementById('t-theme-1').value = newVal.teamThemes[1] || '';
-            }
-            if(newVal.teamScores) {
-                if(document.activeElement.id !== 't-score-0') document.getElementById('t-score-0').value = newVal.teamScores[0] || 0;
-                if(document.activeElement.id !== 't-score-1') document.getElementById('t-score-1').value = newVal.teamScores[1] || 0;
-            }
+                if(newVal.teamNames) {
+                    const tName = document.getElementById(`t-name-${teamIdx}`);
+                    if(tName && document.activeElement !== tName) tName.value = newVal.teamNames[teamIdx] || '';
+                }
+                if(newVal.teamThemes) {
+                    const tTheme = document.getElementById(`t-theme-${teamIdx}`);
+                    if(tTheme && document.activeElement !== tTheme) tTheme.value = newVal.teamThemes[teamIdx] || '';
+                }
+                if(newVal.teamScores) {
+                    const tScore = document.getElementById(`t-score-${teamIdx}`);
+                    if(tScore && document.activeElement !== tScore) tScore.value = newVal.teamScores[teamIdx] || 0;
+                }
+            });
 
-            for(let i=0; i<14; i++) {
+            // 🔴 21人分の処理に拡張
+            for(let i=0; i<21; i++) {
                 const nameInp = document.getElementById(`p-name-${i}`);
                 if(nameInp && document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
                 
