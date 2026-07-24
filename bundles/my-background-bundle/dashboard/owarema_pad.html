@@ -8,7 +8,6 @@
         body { 
             margin: 0; padding: 0; background: #eceff1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
             display: flex; flex-direction: column; 
-            /* 🔴 スマホのアドレスバーを考慮した高さ設定に変更、スクロール禁止を解除 */
             min-height: 100vh;
             min-height: 100dvh; 
         }
@@ -25,13 +24,12 @@
         }
         .canvas-container { 
             flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative;
-            min-height: 300px; /* 🔴 潰れすぎないように最低高さを確保 */
+            min-height: 300px; 
         }
         
         canvas { 
             background-color: #1565c0; 
             border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-            /* 🔴 キャンバス上だけはスクロールせず描画できるように維持 */
             touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%;
         }
         
@@ -82,15 +80,26 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = parseInt(urlParams.get('p') || '0', 10);
-        const myTeamIdx = playerId < 7 ? 0 : 1; 
         
-        const localIdx = myTeamIdx === 0 ? playerId : playerId - 7;
+        // 🔴 3チーム（各7人）の計算ロジックに変更
+        const myTeamIdx = Math.floor(playerId / 7); 
+        const localIdx = playerId % 7;
         const roleName = localIdx === 0 ? "👑 リーダー" : `回答者 ${localIdx}`;
         
         document.getElementById('player-label').innerText = roleName;
         const badgeEl = document.getElementById('team-badge');
-        badgeEl.innerText = myTeamIdx === 0 ? "🟥 チームA" : "🟦 チームB";
-        badgeEl.style.background = myTeamIdx === 0 ? "#d32f2f" : "#1976d2";
+        
+        // 🔴 チームCのバッジ・カラーを設定
+        if (myTeamIdx === 0) {
+            badgeEl.innerText = "🟥 チームA";
+            badgeEl.style.background = "#d32f2f";
+        } else if (myTeamIdx === 1) {
+            badgeEl.innerText = "🟦 チームB";
+            badgeEl.style.background = "#1976d2";
+        } else {
+            badgeEl.innerText = "🟩 チームC";
+            badgeEl.style.background = "#388e3c";
+        }
 
         const gameRep = nodecg.Replicant('owarematenState');
         const themeDisplay = document.getElementById('theme-display');
@@ -98,7 +107,7 @@
 
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
-            const themes = newVal.teamThemes || ['', ''];
+            const themes = newVal.teamThemes || ['', '', ''];
             const myTheme = themes[myTeamIdx] || "未設定";
             themeDisplay.innerText = `お題: ${myTheme}`;
 
@@ -113,7 +122,6 @@
         const ctx = canvas.getContext('2d');
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
         ctx.strokeStyle = '#ffffff'; 
         ctx.lineWidth = 8;           
         ctx.lineCap = 'round';       
@@ -178,14 +186,15 @@
         document.getElementById('btn-submit').addEventListener('click', () => {
             const dataUrl = canvas.toDataURL('image/png');
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.answers) state.answers = Array(14).fill('');
+            // 🔴 配列を21人分に拡張
+            if (!state.answers) state.answers = Array(21).fill('');
             state.answers[playerId] = dataUrl;
             gameRep.value = state;
         });
 
         document.getElementById('btn-edit').addEventListener('click', () => {
             const state = JSON.parse(JSON.stringify(gameRep.value));
-            if (!state.answers) state.answers = Array(14).fill('');
+            if (!state.answers) state.answers = Array(21).fill('');
             state.answers[playerId] = ''; 
             gameRep.value = state;
         });
