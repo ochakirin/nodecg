@@ -73,6 +73,13 @@
             persistent: true
         });
 
+        // 🔴 過去の短いデータが来ても、指定の長さまで安全に補完する関数
+        function getSafeArray(source, length, defaultValue) {
+            const arr = Array.isArray(source) ? [...source] : [];
+            while (arr.length < length) arr.push(defaultValue);
+            return arr;
+        }
+
         const colors = ['#ff9800', '#2196f3', '#4caf50'];
         const teamLabels = ['🟥 チームA', '🟦 チームB', '🟩 チームC'];
         const container = document.getElementById('team-panels-container');
@@ -115,21 +122,20 @@
         window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`プレイヤー${idx+1}のパッドURLをコピーしました`)); }
         window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
 
-        // 🔴 変更点：ディープコピー（全体上書き）をやめ、対象の配列だけをピンポイントで差し替える
         function updateTeamMeta(teamIdx, key, val) {
             if (!gameRep.value) return;
             if (key === 'name') {
-                const arr = [...(gameRep.value.teamNames || ['チームA', 'チームB', 'チームC'])];
+                const arr = getSafeArray(gameRep.value.teamNames, 3, '');
                 arr[teamIdx] = val;
                 gameRep.value.teamNames = arr;
             }
             if (key === 'theme') {
-                const arr = [...(gameRep.value.teamThemes || ['', '', ''])];
+                const arr = getSafeArray(gameRep.value.teamThemes, 3, '');
                 arr[teamIdx] = val;
                 gameRep.value.teamThemes = arr;
             }
             if (key === 'score') {
-                const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
+                const arr = getSafeArray(gameRep.value.teamScores, 3, 0);
                 arr[teamIdx] = parseInt(val, 10) || 0;
                 gameRep.value.teamScores = arr;
             }
@@ -137,14 +143,14 @@
 
         window.addScore = function(teamIdx, amount) { 
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
+            const arr = getSafeArray(gameRep.value.teamScores, 3, 0);
             arr[teamIdx] += amount;
             gameRep.value.teamScores = arr;
         }
 
         window.addPlayerScore = function(pIdx, amount) { 
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.playerScores || Array(21).fill(0))];
+            const arr = getSafeArray(gameRep.value.playerScores, 21, 0);
             arr[pIdx] = Math.max(0, arr[pIdx] + amount);
             gameRep.value.playerScores = arr;
         }
@@ -206,7 +212,7 @@
 
         function updateName(idx, val) { 
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.names || Array(21).fill(''))];
+            const arr = getSafeArray(gameRep.value.names, 21, '');
             arr[idx] = val;
             gameRep.value.names = arr;
         }
@@ -216,7 +222,7 @@
             if (val) {
                 const teamStart = Math.floor(idx / 7) * 7;
                 let currentCount = 0;
-                const dispArr = gameRep.value.isDisplayed || Array(21).fill(false);
+                const dispArr = getSafeArray(gameRep.value.isDisplayed, 21, false);
                 for (let i = 1; i < 7; i++) {
                     if (dispArr[teamStart + i]) currentCount++;
                 }
@@ -226,21 +232,21 @@
                     return; 
                 }
             }
-            const arr = [...(gameRep.value.isDisplayed || Array(21).fill(false))];
+            const arr = getSafeArray(gameRep.value.isDisplayed, 21, false);
             arr[idx] = val;
             gameRep.value.isDisplayed = arr;
         }
 
         window.updateNextOpen = function(idx, val) { 
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+            const arr = getSafeArray(gameRep.value.nextOpen, 21, false);
             arr[idx] = val;
             gameRep.value.nextOpen = arr;
         }
 
         window.updateNextCorrect = function(idx, val) { 
             if (!gameRep.value) return;
-            const arr = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
+            const arr = getSafeArray(gameRep.value.nextCorrect, 21, false);
             arr[idx] = val;
             gameRep.value.nextCorrect = arr;
         }
@@ -249,9 +255,9 @@
             if (!gameRep.value) return;
             const offset = teamIdx * 7;
             let isNewlyOpened = false;
-            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
-            const nextOpen = gameRep.value.nextOpen || Array(21).fill(false);
-            const answers = gameRep.value.answers || Array(21).fill('');
+            const newIsOpen = getSafeArray(gameRep.value.isOpen, 21, false);
+            const nextOpen = getSafeArray(gameRep.value.nextOpen, 21, false);
+            const answers = getSafeArray(gameRep.value.answers, 21, '');
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -268,9 +274,9 @@
             if (!gameRep.value) return;
             const offset = teamIdx * 7;
             let changed = false;
-            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
-            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
-            const answers = gameRep.value.answers || Array(21).fill('');
+            const newIsOpen = getSafeArray(gameRep.value.isOpen, 21, false);
+            const newNextOpen = getSafeArray(gameRep.value.nextOpen, 21, false);
+            const answers = getSafeArray(gameRep.value.answers, 21, '');
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -292,8 +298,8 @@
         window.applyCorrect = function(teamIdx) {
             if (!gameRep.value) return;
             const offset = teamIdx * 7;
-            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
-            const nextCorrect = gameRep.value.nextCorrect || Array(21).fill(false);
+            const newIsCorrect = getSafeArray(gameRep.value.isCorrect, 21, false);
+            const nextCorrect = getSafeArray(gameRep.value.nextCorrect, 21, false);
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -307,11 +313,11 @@
             if (!gameRep.value) return;
             const offset = teamIdx * 7;
             
-            const newAnswers = [...(gameRep.value.answers || Array(21).fill(''))];
-            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
-            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
-            const newNextCorrect = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
-            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+            const newAnswers = getSafeArray(gameRep.value.answers, 21, '');
+            const newIsOpen = getSafeArray(gameRep.value.isOpen, 21, false);
+            const newIsCorrect = getSafeArray(gameRep.value.isCorrect, 21, false);
+            const newNextCorrect = getSafeArray(gameRep.value.nextCorrect, 21, false);
+            const newNextOpen = getSafeArray(gameRep.value.nextOpen, 21, false);
 
             for(let i=0; i<7; i++) {
                 const pIdx = i + offset;
@@ -332,11 +338,11 @@
         function clearAnswer(idx) { 
             if (!gameRep.value) return;
             
-            const newAnswers = [...(gameRep.value.answers || Array(21).fill(''))];
-            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
-            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
-            const newNextCorrect = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
-            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+            const newAnswers = getSafeArray(gameRep.value.answers, 21, '');
+            const newIsOpen = getSafeArray(gameRep.value.isOpen, 21, false);
+            const newIsCorrect = getSafeArray(gameRep.value.isCorrect, 21, false);
+            const newNextCorrect = getSafeArray(gameRep.value.nextCorrect, 21, false);
+            const newNextOpen = getSafeArray(gameRep.value.nextOpen, 21, false);
 
             newAnswers[idx] = '';
             newIsOpen[idx] = false;
@@ -354,16 +360,17 @@
         gameRep.on('change', (newVal) => {
             if(!newVal) return;
             
-            if(!newVal.names || newVal.names.length < 21) return;
-            
-            // 安全策（過去のデータ補完）
-            const isDisplayed = newVal.isDisplayed || Array(21).fill(false);
-            const nextOpen = newVal.nextOpen || Array(21).fill(false);
-            const nextCorrect = newVal.nextCorrect || Array(21).fill(false);
-            const playerScores = newVal.playerScores || Array(21).fill(0);
-            const teamScores = newVal.teamScores || [0, 0, 0];
-            const teamNames = newVal.teamNames || ['チームA', 'チームB', 'チームC'];
-            const teamThemes = newVal.teamThemes || ['', '', ''];
+            // 🔴 過去のデータ（14人等）をすべて安全な21人（または3チーム）に変換
+            const isDisplayed = getSafeArray(newVal.isDisplayed, 21, false);
+            const nextOpen = getSafeArray(newVal.nextOpen, 21, false);
+            const nextCorrect = getSafeArray(newVal.nextCorrect, 21, false);
+            const playerScores = getSafeArray(newVal.playerScores, 21, 0);
+            const teamScores = getSafeArray(newVal.teamScores, 3, 0);
+            const teamNames = getSafeArray(newVal.teamNames, 3, '');
+            const teamThemes = getSafeArray(newVal.teamThemes, 3, '');
+            const names = getSafeArray(newVal.names, 21, '');
+            const answers = getSafeArray(newVal.answers, 21, '');
+            const isOpen = getSafeArray(newVal.isOpen, 21, false);
 
             [0, 1, 2].forEach(teamIdx => {
                 const badge = document.getElementById(`badge-${teamIdx}`);
@@ -383,7 +390,7 @@
 
             for(let i=0; i<21; i++) {
                 const nameInp = document.getElementById(`p-name-${i}`);
-                if(nameInp && document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
+                if(nameInp && document.activeElement !== nameInp) nameInp.value = names[i];
                 
                 const pScore = document.getElementById(`p-score-${i}`);
                 if(pScore) pScore.innerText = playerScores[i];
@@ -399,7 +406,7 @@
 
                 const status = document.getElementById(`status-${i}`);
                 if(status) {
-                    if(newVal.answers[i] !== '') { status.innerText = '✅完'; status.style.color = '#e91e63'; }
+                    if(answers[i] !== '') { status.innerText = '✅完'; status.style.color = '#e91e63'; }
                     else { status.innerText = '未'; status.style.color = '#999'; }
                 }
             }
