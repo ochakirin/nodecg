@@ -48,6 +48,14 @@
         <option value="11">[B] 回答者4</option>
         <option value="12">[B] 回答者5</option>
         <option value="13">[B] 回答者6</option>
+        <!-- 🔴 チームCのプルダウン選択肢を追加 -->
+        <option value="14">[C] 👑 リーダー</option>
+        <option value="15">[C] 回答者1</option>
+        <option value="16">[C] 回答者2</option>
+        <option value="17">[C] 回答者3</option>
+        <option value="18">[C] 回答者4</option>
+        <option value="19">[C] 回答者5</option>
+        <option value="20">[C] 回答者6</option>
     </select>
 
     <canvas id="draw-pad" width="600" height="300"></canvas>
@@ -62,11 +70,15 @@
         <div class="preview-grid" id="preview-grid-a"></div>
         <div class="preview-title" style="margin-top:10px;">📊 チームB 回答状況</div>
         <div class="preview-grid" id="preview-grid-b"></div>
+        <!-- 🔴 チームCのプレビューエリアを追加 -->
+        <div class="preview-title" style="margin-top:10px;">📊 チームC 回答状況</div>
+        <div class="preview-grid" id="preview-grid-c"></div>
     </div>
 
     <script>
+        // 🔴 全ての配列を21人分に拡張
         const gameRep = nodecg.Replicant('owarematenState', {
-            defaultValue: { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill('') }
+            defaultValue: { answers: Array(21).fill(''), isOpen: Array(21).fill(false), names: Array(21).fill('') }
         });
 
         const canvas = document.getElementById('draw-pad');
@@ -76,10 +88,12 @@
         const previewSection = document.getElementById('preview-section');
         const previewGridA = document.getElementById('preview-grid-a');
         const previewGridB = document.getElementById('preview-grid-b');
+        const previewGridC = document.getElementById('preview-grid-c');
 
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = parseInt(urlParams.get('player'), 10);
-        const isStandalone = !isNaN(playerId) && playerId >= 0 && playerId <= 13;
+        // 🔴 idの上限を20（チームCの最後）に変更
+        const isStandalone = !isNaN(playerId) && playerId >= 0 && playerId <= 20;
 
         if (isStandalone) {
             playerSelect.style.display = 'none';
@@ -108,7 +122,10 @@
             if (!isStandalone) {
                 previewGridA.innerHTML = '';
                 previewGridB.innerHTML = '';
-                for (let i = 0; i < 14; i++) {
+                previewGridC.innerHTML = ''; // 🔴 Cも初期化
+                
+                // 🔴 ループを21回に変更し、Cチームまで処理
+                for (let i = 0; i < 21; i++) {
                     const box = document.createElement('div');
                     box.className = 'preview-box';
                     const localIdx = i % 7;
@@ -120,14 +137,20 @@
                     } else {
                         box.innerHTML = `<div class="p-name">${pName}</div><div class="p-status">考え中...</div>`;
                     }
-                    if (i < 7) previewGridA.appendChild(box);
-                    else previewGridB.appendChild(box);
+                    
+                    // 🔴 それぞれのチームのグリッドに振り分け
+                    if (i < 7) {
+                        previewGridA.appendChild(box);
+                    } else if (i < 14) {
+                        previewGridB.appendChild(box);
+                    } else {
+                        previewGridC.appendChild(box);
+                    }
                 }
             }
         });
 
         function clearCanvas() {
-            // 🔴 背景を透明にする
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         clearCanvas();
@@ -184,11 +207,12 @@
             const imageData = canvas.toDataURL('image/png');
             
             let state = gameRep.value;
-            if (!state) { state = { answers: Array(14).fill(''), isOpen: Array(14).fill(false), names: Array(14).fill('') }; }
+            // 🔴 新規作成時の配列を21人分に拡張
+            if (!state) { state = { answers: Array(21).fill(''), isOpen: Array(21).fill(false), names: Array(21).fill('') }; }
             else { state = JSON.parse(JSON.stringify(state)); }
 
-            if (!state.answers) state.answers = Array(14).fill('');
-            if (!state.isOpen) state.isOpen = Array(14).fill(false);
+            if (!state.answers) state.answers = Array(21).fill('');
+            if (!state.isOpen) state.isOpen = Array(21).fill(false);
 
             state.answers[targetIndex] = imageData;
             state.isOpen[targetIndex] = false; 
