@@ -20,7 +20,7 @@
         .input-group input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
         
         .player-row { display: flex; gap: 5px; align-items: center; margin-bottom: 8px; padding: 6px; background: #fafafa; border: 1px solid #eee; border-radius: 4px; }
-        .player-row.is-leader { background: #fff3e0; border-color: #ffe0b2; } /* リーダーだけ色を変える */
+        .player-row.is-leader { background: #fff3e0; border-color: #ffe0b2; }
         .player-row input[type="text"] { width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
         
         .btn-sm { padding: 4px 6px; font-size: 11px; cursor: pointer; border: none; border-radius: 3px; color: white; transition: 0.1s; font-weight: bold; }
@@ -73,19 +73,6 @@
             persistent: true
         });
 
-        function modifyState(modifierFunc) {
-            if (!gameRep.value) return;
-            const newState = JSON.parse(JSON.stringify(gameRep.value)); 
-            
-            if(!newState.isDisplayed) newState.isDisplayed = Array(21).fill(false);
-            if(!newState.nextOpen) newState.nextOpen = Array(21).fill(false);
-            if(!newState.nextCorrect) newState.nextCorrect = Array(21).fill(false);
-            if(!newState.playerScores) newState.playerScores = Array(21).fill(0);
-            
-            modifierFunc(newState);
-            gameRep.value = newState; 
-        }
-
         const colors = ['#ff9800', '#2196f3', '#4caf50'];
         const teamLabels = ['🟥 チームA', '🟦 チームB', '🟩 チームC'];
         const container = document.getElementById('team-panels-container');
@@ -128,21 +115,44 @@
         window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`プレイヤー${idx+1}のパッドURLをコピーしました`)); }
         window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
 
+        // 🔴 変更点：ディープコピー（全体上書き）をやめ、対象の配列だけをピンポイントで差し替える
         function updateTeamMeta(teamIdx, key, val) {
-            modifyState(s => {
-                if (key === 'name') s.teamNames[teamIdx] = val;
-                if (key === 'theme') s.teamThemes[teamIdx] = val;
-                if (key === 'score') s.teamScores[teamIdx] = parseInt(val, 10) || 0;
-            });
+            if (!gameRep.value) return;
+            if (key === 'name') {
+                const arr = [...(gameRep.value.teamNames || ['チームA', 'チームB', 'チームC'])];
+                arr[teamIdx] = val;
+                gameRep.value.teamNames = arr;
+            }
+            if (key === 'theme') {
+                const arr = [...(gameRep.value.teamThemes || ['', '', ''])];
+                arr[teamIdx] = val;
+                gameRep.value.teamThemes = arr;
+            }
+            if (key === 'score') {
+                const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
+                arr[teamIdx] = parseInt(val, 10) || 0;
+                gameRep.value.teamScores = arr;
+            }
         }
 
-        window.addScore = function(teamIdx, amount) { modifyState(s => { s.teamScores[teamIdx] += amount; }); }
-        window.addPlayerScore = function(pIdx, amount) { modifyState(s => { s.playerScores[pIdx] = Math.max(0, s.playerScores[pIdx] + amount); }); }
+        window.addScore = function(teamIdx, amount) { 
+            if (!gameRep.value) return;
+            const arr = [...(gameRep.value.teamScores || [0, 0, 0])];
+            arr[teamIdx] += amount;
+            gameRep.value.teamScores = arr;
+        }
+
+        window.addPlayerScore = function(pIdx, amount) { 
+            if (!gameRep.value) return;
+            const arr = [...(gameRep.value.playerScores || Array(21).fill(0))];
+            arr[pIdx] = Math.max(0, arr[pIdx] + amount);
+            gameRep.value.playerScores = arr;
+        }
 
         setTimeout(() => {
-            document.getElementById('btn-active-0').onclick = () => { modifyState(s => s.activeTeam = 0); };
-            document.getElementById('btn-active-1').onclick = () => { modifyState(s => s.activeTeam = 1); };
-            document.getElementById('btn-active-2').onclick = () => { modifyState(s => s.activeTeam = 2); };
+            document.getElementById('btn-active-0').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 0; };
+            document.getElementById('btn-active-1').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 1; };
+            document.getElementById('btn-active-2').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 2; };
         }, 100);
 
         function renderPlayers() {
@@ -155,7 +165,6 @@
                     const isLeader = (i === 0);
                     const role = isLeader ? "👑" : `回${i}`;
                     
-                    // 🔴 リーダーは常に表示されるため「表示」チェックボックスは出さない
                     const displayCheckHtml = isLeader ? 
                         `<span style="width:48px; display:inline-block; text-align:center; font-size:10px; color:#888;">(常時)</span>` :
                         `<label class="disp-label">
@@ -195,104 +204,166 @@
         }
         renderPlayers();
 
-        function updateName(idx, val) { modifyState(s => s.names[idx] = val); }
-
-        // 🔴 各チームごとの表示フラグの更新（リーダーを除き、チーム内で4人制限）
-        window.updateNextDisplay = function(idx, val) {
-            modifyState(s => {
-                if (val) {
-                    const teamStart = Math.floor(idx / 7) * 7;
-                    let currentCount = 0;
-                    // 同じチームの1番目～6番目（回答者）のチェック数をカウント
-                    for (let i = 1; i < 7; i++) {
-                        if (s.isDisplayed[teamStart + i]) currentCount++;
-                    }
-                    if (currentCount >= 4) {
-                        alert("各チームで画面に表示できる回答者は最大4人までです！\n他の人のチェックを外してください。");
-                        // DOM上のチェックを強制的に戻す
-                        document.getElementById(`check-disp-${idx}`).checked = false;
-                        return; // 状態は変えずに終了
-                    }
-                }
-                s.isDisplayed[idx] = val;
-            });
+        function updateName(idx, val) { 
+            if (!gameRep.value) return;
+            const arr = [...(gameRep.value.names || Array(21).fill(''))];
+            arr[idx] = val;
+            gameRep.value.names = arr;
         }
 
-        window.updateNextOpen = function(idx, val) { modifyState(s => s.nextOpen[idx] = val); }
-        window.updateNextCorrect = function(idx, val) { modifyState(s => s.nextCorrect[idx] = val); }
+        window.updateNextDisplay = function(idx, val) {
+            if (!gameRep.value) return;
+            if (val) {
+                const teamStart = Math.floor(idx / 7) * 7;
+                let currentCount = 0;
+                const dispArr = gameRep.value.isDisplayed || Array(21).fill(false);
+                for (let i = 1; i < 7; i++) {
+                    if (dispArr[teamStart + i]) currentCount++;
+                }
+                if (currentCount >= 4) {
+                    alert("各チームで画面に表示できる回答者は最大4人までです！\n他の人のチェックを外してください。");
+                    document.getElementById(`check-disp-${idx}`).checked = false;
+                    return; 
+                }
+            }
+            const arr = [...(gameRep.value.isDisplayed || Array(21).fill(false))];
+            arr[idx] = val;
+            gameRep.value.isDisplayed = arr;
+        }
+
+        window.updateNextOpen = function(idx, val) { 
+            if (!gameRep.value) return;
+            const arr = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+            arr[idx] = val;
+            gameRep.value.nextOpen = arr;
+        }
+
+        window.updateNextCorrect = function(idx, val) { 
+            if (!gameRep.value) return;
+            const arr = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
+            arr[idx] = val;
+            gameRep.value.nextCorrect = arr;
+        }
 
         window.applyOpen = function(teamIdx) {
-            modifyState(s => {
-                const offset = teamIdx * 7;
-                let isNewlyOpened = false;
-                for(let i=0; i<7; i++) {
-                    const pIdx = i + offset;
-                    if (s.nextOpen[pIdx] && !s.isOpen[pIdx] && s.answers[pIdx] !== '') {
-                        isNewlyOpened = true;
-                    }
-                    s.isOpen[pIdx] = s.nextOpen[pIdx];
+            if (!gameRep.value) return;
+            const offset = teamIdx * 7;
+            let isNewlyOpened = false;
+            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
+            const nextOpen = gameRep.value.nextOpen || Array(21).fill(false);
+            const answers = gameRep.value.answers || Array(21).fill('');
+
+            for(let i=0; i<7; i++) {
+                const pIdx = i + offset;
+                if (nextOpen[pIdx] && !newIsOpen[pIdx] && answers[pIdx] !== '') {
+                    isNewlyOpened = true;
                 }
-                if (isNewlyOpened) nodecg.sendMessage('play_open_se');
-            });
+                newIsOpen[pIdx] = nextOpen[pIdx];
+            }
+            gameRep.value.isOpen = newIsOpen;
+            if (isNewlyOpened) nodecg.sendMessage('play_open_se');
         }
 
         window.openAll = function(teamIdx) {
-            modifyState(s => {
-                const offset = teamIdx * 7;
-                let changed = false;
-                for(let i=0; i<7; i++) {
-                    const pIdx = i + offset;
-                    if (!s.isOpen[pIdx] && s.answers[pIdx] !== '') {
-                        s.isOpen[pIdx] = true;
-                        s.nextOpen[pIdx] = true; 
-                        changed = true;
-                    }
+            if (!gameRep.value) return;
+            const offset = teamIdx * 7;
+            let changed = false;
+            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
+            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+            const answers = gameRep.value.answers || Array(21).fill('');
+
+            for(let i=0; i<7; i++) {
+                const pIdx = i + offset;
+                if (!newIsOpen[pIdx] && answers[pIdx] !== '') {
+                    newIsOpen[pIdx] = true;
+                    newNextOpen[pIdx] = true; 
+                    changed = true;
                 }
-                if (changed) nodecg.sendMessage('play_open_se');
-                else alert("新しくオープンできる回答がありません。");
-            });
+            }
+            if (changed) {
+                gameRep.value.isOpen = newIsOpen;
+                gameRep.value.nextOpen = newNextOpen;
+                nodecg.sendMessage('play_open_se');
+            } else {
+                alert("新しくオープンできる回答がありません。");
+            }
         }
         
         window.applyCorrect = function(teamIdx) {
-            modifyState(s => {
-                const offset = teamIdx * 7;
-                for(let i=0; i<7; i++) {
-                    const pIdx = i + offset;
-                    s.isCorrect[pIdx] = s.nextCorrect[pIdx];
-                }
-            });
+            if (!gameRep.value) return;
+            const offset = teamIdx * 7;
+            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
+            const nextCorrect = gameRep.value.nextCorrect || Array(21).fill(false);
+
+            for(let i=0; i<7; i++) {
+                const pIdx = i + offset;
+                newIsCorrect[pIdx] = nextCorrect[pIdx];
+            }
+            gameRep.value.isCorrect = newIsCorrect;
         }
 
         window.clearTeamAnswers = function(teamIdx) {
             if(!confirm("このチームの【回答】と【チェック項目】をすべて消去しますか？（名前と正解数は残ります）")) return;
-            modifyState(s => {
-                const offset = teamIdx * 7;
-                for(let i=0; i<7; i++) {
-                    const pIdx = i + offset;
-                    s.answers[pIdx] = '';
-                    s.isOpen[pIdx] = false;
-                    s.isCorrect[pIdx] = false;
-                    s.nextCorrect[pIdx] = false;
-                    s.nextOpen[pIdx] = false;
-                }
-            });
+            if (!gameRep.value) return;
+            const offset = teamIdx * 7;
+            
+            const newAnswers = [...(gameRep.value.answers || Array(21).fill(''))];
+            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
+            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
+            const newNextCorrect = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
+            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+
+            for(let i=0; i<7; i++) {
+                const pIdx = i + offset;
+                newAnswers[pIdx] = '';
+                newIsOpen[pIdx] = false;
+                newIsCorrect[pIdx] = false;
+                newNextCorrect[pIdx] = false;
+                newNextOpen[pIdx] = false;
+            }
+            
+            gameRep.value.answers = newAnswers;
+            gameRep.value.isOpen = newIsOpen;
+            gameRep.value.isCorrect = newIsCorrect;
+            gameRep.value.nextCorrect = newNextCorrect;
+            gameRep.value.nextOpen = newNextOpen;
         }
 
         function clearAnswer(idx) { 
-            modifyState(s => {
-                s.answers[idx] = '';
-                s.isOpen[idx] = false;
-                s.isCorrect[idx] = false;
-                s.nextCorrect[idx] = false;
-                s.nextOpen[idx] = false;
-            });
+            if (!gameRep.value) return;
+            
+            const newAnswers = [...(gameRep.value.answers || Array(21).fill(''))];
+            const newIsOpen = [...(gameRep.value.isOpen || Array(21).fill(false))];
+            const newIsCorrect = [...(gameRep.value.isCorrect || Array(21).fill(false))];
+            const newNextCorrect = [...(gameRep.value.nextCorrect || Array(21).fill(false))];
+            const newNextOpen = [...(gameRep.value.nextOpen || Array(21).fill(false))];
+
+            newAnswers[idx] = '';
+            newIsOpen[idx] = false;
+            newIsCorrect[idx] = false;
+            newNextCorrect[idx] = false;
+            newNextOpen[idx] = false;
+
+            gameRep.value.answers = newAnswers;
+            gameRep.value.isOpen = newIsOpen;
+            gameRep.value.isCorrect = newIsCorrect;
+            gameRep.value.nextCorrect = newNextCorrect;
+            gameRep.value.nextOpen = newNextOpen;
         }
 
         gameRep.on('change', (newVal) => {
             if(!newVal) return;
             
             if(!newVal.names || newVal.names.length < 21) return;
-            if(!newVal.isDisplayed) newVal.isDisplayed = Array(21).fill(false);
+            
+            // 安全策（過去のデータ補完）
+            const isDisplayed = newVal.isDisplayed || Array(21).fill(false);
+            const nextOpen = newVal.nextOpen || Array(21).fill(false);
+            const nextCorrect = newVal.nextCorrect || Array(21).fill(false);
+            const playerScores = newVal.playerScores || Array(21).fill(0);
+            const teamScores = newVal.teamScores || [0, 0, 0];
+            const teamNames = newVal.teamNames || ['チームA', 'チームB', 'チームC'];
+            const teamThemes = newVal.teamThemes || ['', '', ''];
 
             [0, 1, 2].forEach(teamIdx => {
                 const badge = document.getElementById(`badge-${teamIdx}`);
@@ -301,13 +372,13 @@
                 if(btnActive) btnActive.disabled = newVal.activeTeam === teamIdx;
 
                 const tName = document.getElementById(`t-name-${teamIdx}`);
-                if(tName && document.activeElement !== tName) tName.value = newVal.teamNames ? newVal.teamNames[teamIdx] : '';
+                if(tName && document.activeElement !== tName) tName.value = teamNames[teamIdx];
 
                 const tTheme = document.getElementById(`t-theme-${teamIdx}`);
-                if(tTheme && document.activeElement !== tTheme) tTheme.value = newVal.teamThemes ? newVal.teamThemes[teamIdx] : '';
+                if(tTheme && document.activeElement !== tTheme) tTheme.value = teamThemes[teamIdx];
 
                 const tScore = document.getElementById(`t-score-${teamIdx}`);
-                if(tScore && document.activeElement !== tScore) tScore.value = newVal.teamScores ? newVal.teamScores[teamIdx] : 0;
+                if(tScore && document.activeElement !== tScore) tScore.value = teamScores[teamIdx];
             });
 
             for(let i=0; i<21; i++) {
@@ -315,16 +386,16 @@
                 if(nameInp && document.activeElement !== nameInp) nameInp.value = newVal.names[i] || '';
                 
                 const pScore = document.getElementById(`p-score-${i}`);
-                if(pScore) pScore.innerText = (newVal.playerScores && newVal.playerScores[i]) ? newVal.playerScores[i] : 0;
+                if(pScore) pScore.innerText = playerScores[i];
 
                 const checkDisp = document.getElementById(`check-disp-${i}`);
-                if(checkDisp) checkDisp.checked = newVal.isDisplayed[i];
+                if(checkDisp) checkDisp.checked = isDisplayed[i];
 
                 const checkOpen = document.getElementById(`check-open-${i}`);
-                if(checkOpen) checkOpen.checked = newVal.nextOpen[i];
+                if(checkOpen) checkOpen.checked = nextOpen[i];
                 
                 const checkCorrect = document.getElementById(`check-${i}`);
-                if(checkCorrect) checkCorrect.checked = newVal.nextCorrect[i];
+                if(checkCorrect) checkCorrect.checked = nextCorrect[i];
 
                 const status = document.getElementById(`status-${i}`);
                 if(status) {
