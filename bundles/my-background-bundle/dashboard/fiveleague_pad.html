@@ -5,21 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ファイブリーグ 回答パッド</title>
     <style>
-        body { margin: 0; padding: 0; background: #eceff1; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; touch-action: none; }
-        .header { padding: 12px; background: #1e88e5; color: white; text-align: center; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        body { 
+            margin: 0; padding: 0; background: #eceff1; font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            display: flex; flex-direction: column; 
+            /* 🔴 スマホのアドレスバーを考慮した高さ設定に変更、スクロール禁止を解除 */
+            min-height: 100vh; 
+            min-height: 100dvh;
+        }
+        .header { 
+            padding: 12px; background: #1e88e5; color: white; text-align: center; font-size: 18px; font-weight: bold; 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
         .team-badge { padding: 4px 10px; border-radius: 4px; font-size: 14px; background: #1565c0; }
-        #theme-display { background: #ffeb3b; color: #212121; padding: 10px; text-align: center; font-weight: 900; font-size: 18px; border-bottom: 2px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
-        .canvas-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; }
+        #theme-display { 
+            background: #ffeb3b; color: #212121; padding: 10px; text-align: center; font-weight: 900; font-size: 18px; 
+            border-bottom: 2px solid #fbc02d; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; 
+        }
+        .canvas-container { 
+            flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; 
+            min-height: 300px; /* 🔴 潰れすぎないように最低高さを確保 */
+        }
         
-        canvas { background-color: #1565c0; border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%; }
+        canvas { 
+            background-color: #1565c0; border: 2px solid #cfd8dc; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            /* 🔴 キャンバス上だけはスクロールせず描画できるように維持 */
+            touch-action: none; cursor: crosshair; max-width: 100%; max-height: 100%; 
+        }
         
         .controls { padding: 10px 15px 20px; display: flex; gap: 15px; background: #ffffff; border-top: 1px solid #cfd8dc; }
-        button { flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        button { 
+            flex: 1; padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; color: white; 
+            cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); 
+        }
         button:active { transform: translateY(2px); box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
         #btn-clear { background: #78909c; }
         #btn-submit { background: #e91e63; }
         
-        #status-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:none; justify-content:center; align-items:center; font-size:28px; font-weight:bold; color:#e91e63; z-index: 100; flex-direction: column; text-align: center; }
+        #status-overlay { 
+            position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); 
+            display:none; justify-content:center; align-items:center; font-size:28px; font-weight:bold; 
+            color:#e91e63; z-index: 100; flex-direction: column; text-align: center; 
+        }
         .status-sub { font-size: 16px; color: #546e7a; margin-top: 15px; font-weight: normal; }
         #btn-edit { margin-top: 30px; background: #2196f3; padding: 12px 30px; font-size: 16px; width: auto; }
     </style>
