@@ -52,6 +52,15 @@
             <div class="input-group">
                 <label>お題</label><input type="text" id="t-theme-0" placeholder="チームAのお題" onchange="updateTeamMeta(0, 'theme', this.value)">
             </div>
+            <!-- 🔴 得点入力欄を追加 -->
+            <div class="input-group">
+                <label>得点</label>
+                <div style="display:flex; gap:5px; flex:1;">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(0, -10)">-10</button>
+                    <input type="number" id="t-score-0" value="0" style="text-align:center; font-weight:bold; font-size:16px;" onchange="updateTeamMeta(0, 'score', this.value)">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(0, 10)">+10</button>
+                </div>
+            </div>
             <hr>
             <div id="players-0"></div>
             
@@ -73,6 +82,15 @@
             <div class="input-group">
                 <label>お題</label><input type="text" id="t-theme-1" placeholder="チームBのお題" onchange="updateTeamMeta(1, 'theme', this.value)">
             </div>
+            <!-- 🔴 得点入力欄を追加 -->
+            <div class="input-group">
+                <label>得点</label>
+                <div style="display:flex; gap:5px; flex:1;">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(1, -10)">-10</button>
+                    <input type="number" id="t-score-1" value="0" style="text-align:center; font-weight:bold; font-size:16px;" onchange="updateTeamMeta(1, 'score', this.value)">
+                    <button class="btn-sm" style="background:#555; padding: 6px 12px;" onclick="addScore(1, 10)">+10</button>
+                </div>
+            </div>
             <hr>
             <div id="players-1"></div>
 
@@ -88,25 +106,35 @@
             defaultValue: {
                 teamNames: ['チームA', 'チームB'],
                 teamThemes: ['', ''],
+                teamScores: [0, 0], // 🔴 スコアのデフォルト値を追加
                 activeTeam: 0,
                 names: Array(14).fill(''),
                 answers: Array(14).fill(''),
                 isOpen: Array(14).fill(false),
                 isCorrect: Array(14).fill(false),
-                nextCorrect: Array(14).fill(false) // 🔴 チェックボックス用の事前準備ステータスを追加
+                nextCorrect: Array(14).fill(false)
             },
             persistent: true
         });
 
-        // パッドURLの生成
         window.getPadUrl = function(idx) { return `${window.location.origin}/bundles/my-background-bundle/dashboard/owarema_pad.html?p=${idx}&standalone=true`; }
         window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`プレイヤー${idx+1}のパッドURLをコピーしました`)); }
         window.openUrl = function(idx) { window.open(getPadUrl(idx), '_blank'); }
 
         function updateTeamMeta(teamIdx, key, val) {
             if (!gameRep.value) return;
+            if (!gameRep.value.teamScores) gameRep.value.teamScores = [0, 0]; // 過去データ保護
+
             if (key === 'name') gameRep.value.teamNames[teamIdx] = val;
             if (key === 'theme') gameRep.value.teamThemes[teamIdx] = val;
+            if (key === 'score') gameRep.value.teamScores[teamIdx] = parseInt(val, 10) || 0;
+        }
+
+        // 🔴 スコアの増減処理
+        window.addScore = function(teamIdx, amount) {
+            if (!gameRep.value) return;
+            if (!gameRep.value.teamScores) gameRep.value.teamScores = [0, 0];
+            gameRep.value.teamScores[teamIdx] = (gameRep.value.teamScores[teamIdx] || 0) + amount;
         }
 
         document.getElementById('btn-active-0').onclick = () => { if(gameRep.value) gameRep.value.activeTeam = 0; };
@@ -150,14 +178,12 @@
             if(gameRep.value.isOpen[idx]) nodecg.sendMessage('play_open_se');
         }
         
-        // 🔴 チェックボックスの状態だけを更新
         window.updateNextCorrect = function(idx, val) {
             if(!gameRep.value) return;
             if(!gameRep.value.nextCorrect) gameRep.value.nextCorrect = Array(14).fill(false);
             gameRep.value.nextCorrect[idx] = val;
         }
 
-        // 🔴 チームごとに赤背景を配信画面に一斉反映
         window.applyCorrect = function(teamIdx) {
             if(!gameRep.value || !gameRep.value.nextCorrect) return;
             const offset = teamIdx === 1 ? 7 : 0;
@@ -167,7 +193,6 @@
             }
         }
 
-        // 🔴 チームごとの回答と赤背景の一括消去
         window.clearTeamAnswers = function(teamIdx) {
             if(!confirm("このチームの【回答】と【赤背景のチェック】をすべて消去しますか？（名前は残ります）")) return;
             if(!gameRep.value) return;
@@ -192,8 +217,8 @@
         gameRep.on('change', (newVal) => {
             if(!newVal) return;
             
-            // 安全対策：プロパティが存在しない場合は補完
             if(!newVal.nextCorrect) newVal.nextCorrect = Array(14).fill(false);
+            if(!newVal.teamScores) newVal.teamScores = [0, 0]; // 過去データ保護
 
             document.getElementById('badge-0').style.display = newVal.activeTeam === 0 ? 'inline-block' : 'none';
             document.getElementById('btn-active-0').disabled = newVal.activeTeam === 0;
@@ -208,6 +233,11 @@
                 if(document.activeElement.id !== 't-theme-0') document.getElementById('t-theme-0').value = newVal.teamThemes[0] || '';
                 if(document.activeElement.id !== 't-theme-1') document.getElementById('t-theme-1').value = newVal.teamThemes[1] || '';
             }
+            // 🔴 得点の表示を同期
+            if(newVal.teamScores) {
+                if(document.activeElement.id !== 't-score-0') document.getElementById('t-score-0').value = newVal.teamScores[0] || 0;
+                if(document.activeElement.id !== 't-score-1') document.getElementById('t-score-1').value = newVal.teamScores[1] || 0;
+            }
 
             for(let i=0; i<14; i++) {
                 const nameInp = document.getElementById(`p-name-${i}`);
@@ -219,7 +249,6 @@
                     btnOpen.innerText = newVal.isOpen[i] ? '👁️ 閉じる' : '👁️ オープン';
                 }
                 
-                // チェックボックスの状態を同期
                 const checkCorrect = document.getElementById(`check-${i}`);
                 if(checkCorrect) checkCorrect.checked = newVal.nextCorrect[i];
 
