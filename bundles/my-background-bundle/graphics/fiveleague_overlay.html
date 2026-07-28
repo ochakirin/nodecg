@@ -36,7 +36,8 @@
 
         @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        .slot.is-correct { transform: scale(1.05) translateY(-10px); z-index: 50; border-color: #ffeb3b; }
+        /* 🔴 変更点：オープン前のネタバレを防ぐため、外枠の変形や枠色変更を削除し、画像の装飾のみに限定 */
+        .slot.is-correct { z-index: 50; }
         .slot.is-correct .answer-img { background-color: #d32f2f !important; border-color: #ffeb3b !important; box-shadow: 0 0 40px rgba(211, 47, 47, 0.9) !important; }
     </style>
 </head>
@@ -47,7 +48,8 @@
     <div class="question-area" id="question-display">問題：未設定</div>
 
     <div class="slots-container" id="slots-container">
-        </div>
+        <!-- JSで生成 -->
+    </div>
 
     <script>
         const stateRep = nodecg.Replicant('fiveLeagueState');
@@ -103,9 +105,8 @@
                 const img = document.getElementById(`img-${i}`);
                 const nameTag = document.getElementById(`name-${i}`);
 
-                // 🔴 文字が枠に収まるように自動リサイズする処理
                 nameTag.innerText = newVal.names[i] || `回答者 ${i+1}`;
-                nameTag.style.fontSize = '26px'; // まず最大サイズに戻す
+                nameTag.style.fontSize = '26px'; 
                 let fontSize = 26;
                 while (nameTag.scrollWidth > nameTag.clientWidth && fontSize > 10) {
                     fontSize -= 1;
