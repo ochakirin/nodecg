@@ -32,7 +32,8 @@
 
         .nameplate {
             background-color: #ffffff; border: 4px solid #0000ff; color: #000000;
-            font-size: 32px; font-weight: bold; padding: 10px 15px; width: 85%;
+            /* 🔴 文字サイズを 32px から 44px に大きくしました */
+            font-size: 44px; font-weight: bold; padding: 10px 15px; width: 85%;
             box-sizing: border-box; box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
             white-space: nowrap; overflow: hidden; text-align: center;
         }
@@ -66,11 +67,13 @@
         const stateRep = nodecg.Replicant('kakuzukeState');
         const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
         
-        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
+        // 🔴 9人分のデフォルト名に拡張
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする", "プレイヤー8", "プレイヤー9"];
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        for (let i = 0; i < 7; i++) {
+        // 🔴 9人分の枠を生成[cite: 8]
+        for (let i = 0; i < 9; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
                 const td = document.createElement('td');
@@ -88,16 +91,14 @@
 
         let currentState = null;
         let isFirstLoad = true;
-        let displayRanks = Array(7).fill(0); // 実際に画面に表示するランクを管理
+        let displayRanks = Array(9).fill(0); // 🔴 9人に変更
         let pendingRanks = null;
         let isAnimatingDelay = false;
         let delayTimer = null;
 
-        // 🔴 コントローラーから一斉移動の合図が来た時
         nodecg.listenFor('trigger_kakuzuke_move', () => {
             isAnimatingDelay = true;
 
-            // 1. まずBGM（rankdown.mp3）を再生
             const bgmElement = document.getElementById('rankdown-bgm');
             if (bgmElement) {
                 bgmElement.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
@@ -107,7 +108,6 @@
 
             if (delayTimer) clearTimeout(delayTimer);
 
-            // 2. 1.8秒後に移動SE再生 ＆ 移動アニメーション開始
             delayTimer = setTimeout(() => {
                 isAnimatingDelay = false;
                 delayTimer = null;
@@ -119,7 +119,6 @@
                     seElement.play().catch(e => console.error(e));
                 }
 
-                // 待機させていた新しいランクを反映して移動させる
                 if (pendingRanks || (currentState && currentState.ranks)) {
                     displayRanks = pendingRanks ? [...pendingRanks] : [...currentState.ranks];
                     pendingRanks = null;
@@ -128,10 +127,10 @@
             }, 1800);
         });
 
-        // 🔴 名前を更新し、長ければリサイズする処理
+        // 🔴 9人分の名前更新と、新しい文字サイズ（44px）に合わせたリサイズ処理[cite: 8]
         function updateNames() {
             if (!currentState) return;
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < 9; i++) {
                 const wrapper = document.getElementById(`wrapper-${i}`);
                 const nameplate = document.getElementById(`name-${i}`);
                 
@@ -139,8 +138,8 @@
                 if (nameText.trim() === '') nameText = defaultNames[i] || `プレイヤー${i+1}`;
                 
                 nameplate.innerText = nameText;
-                nameplate.style.fontSize = '32px';
-                let fontSize = 32;
+                nameplate.style.fontSize = '44px'; // 🔴 最大サイズを大きく変更
+                let fontSize = 44;
                 while (nameplate.scrollWidth > nameplate.clientWidth && fontSize > 12) {
                     fontSize -= 1;
                     nameplate.style.fontSize = fontSize + 'px';
@@ -149,13 +148,13 @@
             }
         }
 
-        // 🔴 指定されたランク(displayRanks)に合わせて座標を計算し移動する処理
+        // 🔴 9人分の座標更新処理[cite: 8]
         function updatePositions() {
             if (!currentState) return;
             let needsRetry = false;
             const parentRect = document.getElementById('table-container').getBoundingClientRect();
 
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < 9; i++) {
                 const rank = displayRanks[i] !== undefined ? parseInt(displayRanks[i], 10) : 0;
                 const wrapper = document.getElementById(`wrapper-${i}`);
                 const targetCell = document.getElementById(`cell-${i}-${rank}`);
@@ -200,22 +199,18 @@
             if (!newVal) return;
             currentState = newVal;
 
-            // 名前は即時反映する
             updateNames();
 
-            // 初回ロード時はアニメーションなしで即配置
             if (isFirstLoad) {
                 displayRanks = [...newVal.ranks];
                 requestAnimationFrame(updatePositions);
                 return;
             }
 
-            // ランクの変動があるかチェック
             const hasRankChanged = newVal.ranks.some((r, i) => r !== displayRanks[i]);
             if (hasRankChanged) {
                 pendingRanks = [...newVal.ranks];
                 
-                // コントローラーの「リセットボタン」等を押した時（1.8秒ディレイが発生しない時）は即時移動させる
                 setTimeout(() => {
                     if (pendingRanks && !isAnimatingDelay) {
                         displayRanks = [...pendingRanks];
