@@ -13,19 +13,53 @@
         .btn-buzzer:hover { background-color: #d32f2f; }
         .btn-reset { background-color: #607d8b; }
         .btn-reset:hover { background-color: #455a64; }
-        .status-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status-box { background: white; padding: 15px; border-radius: 8px; border: 1px solid #e1e4e8; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px;}
         .status-title { font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .status-val { font-size: 24px; font-weight: 900; color: #e91e63; }
+
+        /* 🔴 新設：スコア操作エリア */
+        .score-group { display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e1e4e8; }
+        .score-group label { font-size: 14px; font-weight: bold; width: 40px; color: #333; }
+        .score-controls { display: flex; gap: 5px; flex: 1; }
+        .score-controls input { flex: 1; text-align: center; font-size: 16px; font-weight: bold; border: 1px solid #ccc; border-radius: 4px; padding: 6px; }
+        .score-controls button { padding: 8px; background: #607d8b; width: 50px; flex: none; font-size: 14px; }
+
+        /* 🔴 新設：名前入力エリア */
+        .names-container { background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e1e4e8; margin-bottom: 10px; }
+        .names-title { font-size: 13px; font-weight: bold; color: #555; margin-bottom: 10px; }
+        .name-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+        .name-row label { font-size: 12px; font-weight: bold; color: #555; width: 45px; }
+        .name-row input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
     </style>
 </head>
 <body>
+
+    <!-- 🔴 得点入力コントローラー -->
+    <div class="score-group">
+        <label>得点</label>
+        <div class="score-controls">
+            <button onclick="addScore(-10)">-10</button>
+            <input type="number" id="team-score" value="0" onchange="updateScore(this.value)">
+            <button onclick="addScore(10)">+10</button>
+        </div>
+    </div>
+
+    <!-- 🔴 名前入力欄 -->
+    <div class="names-container">
+        <div class="names-title">回答者の名前</div>
+        <div class="name-row"><label>1人目</label><input type="text" id="name-0" placeholder="1人目の名前" onchange="updateName(0, this.value)"></div>
+        <div class="name-row"><label>2人目</label><input type="text" id="name-1" placeholder="2人目の名前" onchange="updateName(1, this.value)"></div>
+        <div class="name-row"><label>3人目</label><input type="text" id="name-2" placeholder="3人目の名前" onchange="updateName(2, this.value)"></div>
+        <div class="name-row"><label>4人目</label><input type="text" id="name-3" placeholder="4人目の名前" onchange="updateName(3, this.value)"></div>
+        <div class="name-row"><label>5人目</label><input type="text" id="name-4" placeholder="5人目の名前" onchange="updateName(4, this.value)"></div>
+    </div>
 
     <div class="ctrl-group">
         <button class="btn-start" id="btn-start">🚀 START (BGMオン)</button>
         <button class="btn-buzzer" id="btn-buzzer">❌ 不正解 (ブザー)</button>
     </div>
     <div class="ctrl-group">
-        <button class="btn-reset" id="btn-reset">🔄 RESET (全初期化)</button>
+        <button class="btn-reset" id="btn-reset">🔄 RESET (ゲームのみ初期化)</button>
     </div>
 
     <div class="status-box">
@@ -34,8 +68,10 @@
     </div>
 
     <script>
+        // 🔴 names と score をデフォルト値に追加
         const bomberRep = nodecg.Replicant('fiveBomberState', {
-            defaultValue: { status: 'idle', count: 0, buzzerTrigger: 0 }
+            defaultValue: { status: 'idle', count: 0, buzzerTrigger: 0, names: ['', '', '', '', ''], score: 0 },
+            persistent: true
         });
 
         const activeAnswer = nodecg.Replicant('activeAnswer', { defaultValue: '' });
@@ -46,8 +82,32 @@
         const btnReset = document.getElementById('btn-reset');
         const syncCount = document.getElementById('sync-count');
 
+        // 🔴 データの安全な更新処理
+        function modifyState(modifierFunc) {
+            if (!bomberRep.value) return;
+            const s = JSON.parse(JSON.stringify(bomberRep.value));
+            if (!s.names) s.names = ['', '', '', '', ''];
+            if (s.score === undefined) s.score = 0;
+            modifierFunc(s);
+            bomberRep.value = s;
+        }
+
+        window.updateName = function(idx, val) {
+            modifyState(s => { s.names[idx] = val; });
+        };
+
+        window.addScore = function(amount) {
+            modifyState(s => { s.score += amount; });
+        };
+
+        window.updateScore = function(val) {
+            modifyState(s => { s.score = parseInt(val, 10) || 0; });
+        };
+
         bomberRep.on('change', (newVal) => {
             if (!newVal) return;
+
+            // 状態に応じたボタン制御
             if (newVal.status === 'playing') {
                 btnStart.disabled = true;
                 btnStart.innerText = '⏱️ タイマー進行中...';
@@ -56,6 +116,17 @@
                 btnStart.disabled = false;
                 btnStart.innerText = '🚀 START (BGMオン)';
                 btnStart.style.opacity = 1;
+            }
+
+            // 得点と名前の表示を同期
+            const scoreEl = document.getElementById('team-score');
+            if (scoreEl && document.activeElement !== scoreEl) scoreEl.value = newVal.score || 0;
+
+            for (let i = 0; i < 5; i++) {
+                const nameEl = document.getElementById(`name-${i}`);
+                if (nameEl && document.activeElement !== nameEl) {
+                    nameEl.value = (newVal.names && newVal.names[i]) ? newVal.names[i] : '';
+                }
             }
         });
 
@@ -75,14 +146,17 @@
             }
         });
 
-        // 🔴 不正解ボタン：画面側にブザー音を鳴らすシグナルを送る
         btnBuzzer.addEventListener('click', () => {
-            if (!bomberRep.value.buzzerTrigger) bomberRep.value.buzzerTrigger = 0;
-            bomberRep.value.buzzerTrigger++; // カウントを刻んで変化を通知
+            modifyState(s => { s.buzzerTrigger = (s.buzzerTrigger || 0) + 1; });
         });
 
+        // 🔴 名前と得点は保持したまま、進行状態のみリセットするように変更
         btnReset.addEventListener('click', () => {
-            bomberRep.value = { status: 'idle', count: 0, buzzerTrigger: 0 };
+            modifyState(s => {
+                s.status = 'idle';
+                s.count = 0;
+                s.buzzerTrigger = 0;
+            });
             activeAnswer.value = '';
             checkedItems.value = [];
         });
