@@ -30,13 +30,14 @@
 
     <script>
         const RANK_NAMES = ["一流", "普通", "二流", "三流", "マネマネ", "ニフラム"];
-        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする"];
+        // 🔴 9人分のデフォルト名に拡張
+        const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする", "プレイヤー8", "プレイヤー9"];
         
-        // 🔴 defaultValueを削除。過去の保存データを無条件で最優先で読み込む
         const stateRep = nodecg.Replicant('kakuzukeState', { persistent: true });
 
         const container = document.getElementById('teams-container');
-        for (let i = 0; i < 7; i++) {
+        // 🔴 9人分の入力欄を生成[cite: 9]
+        for (let i = 0; i < 9; i++) {
             let options = RANK_NAMES.map((r, idx) => `<option value="${idx}">${r}</option>`).join('');
             container.innerHTML += `
                 <div class="team-row">
@@ -65,7 +66,8 @@
             if (!stateRep.value) return;
             let isChanged = false;
             
-            for(let i=0; i<7; i++) {
+            // 🔴 9人分の移動処理[cite: 9]
+            for(let i=0; i<9; i++) {
                 if(stateRep.value.ranks[i] !== stateRep.value.nextRanks[i]) {
                     isChanged = true;
                     stateRep.value.ranks[i] = stateRep.value.nextRanks[i]; 
@@ -86,17 +88,18 @@
         }
 
         stateRep.on('change', (newVal) => {
-            // 🔴 サーバーに完全にデータが存在しない（初回起動など）場合のみ、初期化を行う
+            // 🔴 初期化時に9人分の配列を作成[cite: 9]
             if (!newVal || !newVal.names) {
                 stateRep.value = { 
                     names: [...defaultNames], 
-                    ranks: [0, 0, 0, 0, 0, 0, 0],       
-                    nextRanks: [0, 0, 0, 0, 0, 0, 0]    
+                    ranks: [0, 0, 0, 0, 0, 0, 0, 0, 0],       
+                    nextRanks: [0, 0, 0, 0, 0, 0, 0, 0, 0]    
                 };
                 return; 
             }
 
-            for(let i=0; i<7; i++) {
+            // 🔴 9人分の表示を更新[cite: 9]
+            for(let i=0; i<9; i++) {
                 const nameInp = document.getElementById(`name-${i}`);
                 if (nameInp && document.activeElement !== nameInp) {
                     nameInp.value = (newVal.names && newVal.names[i] !== undefined) ? newVal.names[i] : (defaultNames[i] || '');
