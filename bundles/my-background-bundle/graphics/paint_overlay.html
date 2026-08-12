@@ -48,7 +48,7 @@
         .center-container {
             position: absolute;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 720px; height: 540px; 
+            width: 760px; height: 600px; /* 全体の高さを広げて真ん中に余裕を持たせる */
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(2, 1fr);
@@ -58,14 +58,19 @@
 
         /* 🔴 中央に配置される各チームのゲーム画面枠 */
         .game-screen {
-            border: 4px solid;
+            border: 8px solid; /* 枠を太く変更（4px → 8px） */
             border-radius: 8px;
-            background: transparent; /* ゲーム画面を見せるために透明 */
+            background: transparent;
+            width: 100%;
+            height: 260px; /* 高さを固定して上下に寄せる */
+            box-sizing: border-box;
         }
-        #gs-0 { border-color: #d32f2f; }
-        #gs-1 { border-color: #1976d2; }
-        #gs-2 { border-color: #388e3c; }
-        #gs-3 { border-color: #7b1fa2; }
+        
+        /* 🔴 上2つは上寄せ(start)、下2つは下寄せ(end) */
+        #gs-0 { border-color: #d32f2f; align-self: start; }
+        #gs-1 { border-color: #1976d2; align-self: start; }
+        #gs-2 { border-color: #388e3c; align-self: end; }
+        #gs-3 { border-color: #7b1fa2; align-self: end; }
 
         /* 🔴 カウントダウンタイマー */
         .timer-box {
