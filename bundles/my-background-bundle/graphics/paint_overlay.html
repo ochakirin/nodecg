@@ -6,7 +6,6 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        /* 四隅に配置するためのスロット共通スタイル */
         .answer-slot { 
             position: absolute; 
             width: 560px; height: 500px; 
@@ -18,14 +17,11 @@
             overflow: hidden; 
         }
 
-        /* 各チームの配置とカラー設定 */
-        /* ※ width:560 + 左右border:16 + 隙間:25 = 画面端から 601px までを占有する計算になります */
-        #slot-0 { top: 25px; left: 25px; border-color: #d32f2f; }       /* 左上：赤 */
-        #slot-1 { top: 25px; right: 25px; border-color: #1976d2; }      /* 右上：青 */
-        #slot-2 { bottom: 25px; left: 25px; border-color: #388e3c; }    /* 左下：緑 */
-        #slot-3 { bottom: 25px; right: 25px; border-color: #7b1fa2; }   /* 右下：紫 */
+        #slot-0 { top: 25px; left: 25px; border-color: #d32f2f; }
+        #slot-1 { top: 25px; right: 25px; border-color: #1976d2; }
+        #slot-2 { bottom: 25px; left: 25px; border-color: #388e3c; }
+        #slot-3 { bottom: 25px; right: 25px; border-color: #7b1fa2; }
 
-        /* チーム名と得点の情報バー */
         .info-bar {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 20px; color: white;
@@ -45,15 +41,9 @@
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eceff1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #90a4ae; font-size: 40px; z-index: 10; transition: opacity 0.3s; }
         .cover.submitted { background: rgba(233, 30, 99, 0.2); border: 10px solid #e91e63; color: #e91e63; font-size: 60px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; pointer-events: none; }
 
-        /* 🔴 中央のゲーム画面・タイマー用のコンテナ */
         .center-container {
             position: absolute;
-            /* 🔴 ペイント枠と被らないように左右の余白を610px確保（585px + 25pxの余裕） */
-            left: 610px; 
-            right: 610px;
-            /* 🔴 ペイント枠の上下ラインと完全に一致させる */
-            top: 25px;
-            bottom: 25px;
+            left: 610px; right: 610px; top: 25px; bottom: 25px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(2, 1fr);
@@ -61,23 +51,45 @@
             z-index: 5;
         }
 
-        /* 🔴 中央に配置される各チームのゲーム画面枠 */
+        /* 🔴 ゲーム画面と走者名のラッパー */
+        .gs-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        #gsw-0, #gsw-1 { align-self: start; } /* 上寄せ：ゲーム枠が上、名前が下 */
+        #gsw-2, #gsw-3 { align-self: end; flex-direction: column-reverse; } /* 下寄せ：名前が上、ゲーム枠が下 */
+
         .game-screen {
             border: 8px solid; 
             border-radius: 8px;
             background: transparent;
             width: 100%;
-            height: 260px; /* 高さはおおよそ4:3になるように設定 */
+            height: 260px; 
             box-sizing: border-box;
         }
         
-        /* 🔴 align-selfを使って、コンテナの上端（top:25px）と下端（bottom:25px）にピッタリくっつける */
-        #gs-0 { border-color: #d32f2f; align-self: start; }
-        #gs-1 { border-color: #1976d2; align-self: start; }
-        #gs-2 { border-color: #388e3c; align-self: end; }
-        #gs-3 { border-color: #7b1fa2; align-self: end; }
+        #gs-0 { border-color: #d32f2f; }
+        #gs-1 { border-color: #1976d2; }
+        #gs-2 { border-color: #388e3c; }
+        #gs-3 { border-color: #7b1fa2; }
 
-        /* 🔴 カウントダウンタイマー */
+        /* 🔴 走者名ラベル */
+        .runner-name {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 4px 20px;
+            border-radius: 6px;
+            border: 2px solid #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            margin: 8px 0;
+            display: none; /* 入力されるまで隠す */
+        }
+
         .timer-box {
             position: absolute;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -93,12 +105,24 @@
 </head>
 <body>
 
-    <!-- 中央のゲーム画面枠とタイマー -->
     <div class="center-container">
-        <div class="game-screen" id="gs-0"></div>
-        <div class="game-screen" id="gs-1"></div>
-        <div class="game-screen" id="gs-2"></div>
-        <div class="game-screen" id="gs-3"></div>
+        <!-- 🔴 各枠にラッパーと名前要素を追加 -->
+        <div class="gs-wrapper" id="gsw-0">
+            <div class="game-screen" id="gs-0"></div>
+            <div class="runner-name" id="runner-0">走者名</div>
+        </div>
+        <div class="gs-wrapper" id="gsw-1">
+            <div class="game-screen" id="gs-1"></div>
+            <div class="runner-name" id="runner-1">走者名</div>
+        </div>
+        <div class="gs-wrapper" id="gsw-2">
+            <div class="game-screen" id="gs-2"></div>
+            <div class="runner-name" id="runner-2">走者名</div>
+        </div>
+        <div class="gs-wrapper" id="gsw-3">
+            <div class="game-screen" id="gs-3"></div>
+            <div class="runner-name" id="runner-3">走者名</div>
+        </div>
         <div class="timer-box" id="timer-display">00:00</div>
     </div>
 
@@ -124,13 +148,18 @@
 
     <script>
         const gameRep = nodecg.Replicant('paintState', {
-            defaultValue: { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], live: ['', '', '', ''], scores: [0, 0, 0, 0] }
+            // 🔴 runnerNamesをデフォルト値に追加
+            defaultValue: { 
+                answers: ['', '', '', ''], isOpen: [false, false, false, false], 
+                names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], 
+                runnerNames: ['', '', '', ''],
+                live: ['', '', '', ''], scores: [0, 0, 0, 0] 
+            }
         });
         const timerRep = nodecg.Replicant('paintTimer', {
             defaultValue: { isRunning: false, totalSeconds: 600, remainingSeconds: 600, endTime: null }
         });
 
-        // パッド側の描画・文字の反映
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 4; i++) {
@@ -139,6 +168,15 @@
                 
                 document.getElementById(`name-tag-${i}`).innerText = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i].trim() : `${['A','B','C','D'][i]}チーム`;
                 document.getElementById(`score-${i}`).innerText = (newVal.scores && newVal.scores[i]) ? newVal.scores[i] : 0;
+
+                // 🔴 走者名の反映処理
+                const runnerTag = document.getElementById(`runner-${i}`);
+                if (newVal.runnerNames && newVal.runnerNames[i] && newVal.runnerNames[i].trim() !== '') {
+                    runnerTag.innerText = newVal.runnerNames[i].trim();
+                    runnerTag.style.display = 'block'; // 文字があれば表示
+                } else {
+                    runnerTag.style.display = 'none'; // 無ければ隠す
+                }
 
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
@@ -160,7 +198,6 @@
             }
         });
 
-        // タイマーの描画処理
         function formatTime(secs) {
             if (secs < 0) secs = 0;
             const h = Math.floor(secs / 3600);
