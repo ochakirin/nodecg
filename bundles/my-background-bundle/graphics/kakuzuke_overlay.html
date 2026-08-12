@@ -12,9 +12,14 @@
         }
         
         #table-container { position: relative; background-color: #ffff00; padding: 0; box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
-        .rating-table { border-collapse: collapse; border: 6px solid #ff0000; width: 1700px; height: 950px; table-layout: fixed; }
+        
+        /* 🔴 heightの固定を外し、勝手に余りが下に偏るのを防ぐ */
+        .rating-table { border-collapse: collapse; border: 6px solid #ff0000; width: 1700px; table-layout: fixed; }
         .rating-table th, .rating-table td { border: 3px solid #ff0000; text-align: center; vertical-align: middle; padding: 0; }
         .rating-table th { height: 120px; font-size: 38px; font-weight: 900; line-height: 1.2; }
+        
+        /* 🔴 すべての行を均等な高さに完全固定 */
+        .rating-table td { height: 92px; }
 
         .h-0 { background-color: #ffff00; color: #000; } 
         .h-1 { background-color: #ffffff; color: #000; } 
@@ -32,7 +37,6 @@
 
         .nameplate {
             background-color: #ffffff; border: 4px solid #0000ff; color: #000000;
-            /* 🔴 文字サイズを 32px から 44px に大きくしました */
             font-size: 44px; font-weight: bold; padding: 10px 15px; width: 85%;
             box-sizing: border-box; box-shadow: 2px 4px 6px rgba(0,0,0,0.3);
             white-space: nowrap; overflow: hidden; text-align: center;
@@ -67,12 +71,10 @@
         const stateRep = nodecg.Replicant('kakuzukeState');
         const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
         
-        // 🔴 9人分のデフォルト名に拡張
         const defaultNames = ["せん", "御茶麒麟", "hamaguchi伝助", "ようぶん", "Maru", "使いこなし鯛", "すする", "プレイヤー8", "プレイヤー9"];
         const tbody = document.getElementById('table-body');
         const playersLayer = document.getElementById('players-layer');
 
-        // 🔴 9人分の枠を生成[cite: 8]
         for (let i = 0; i < 9; i++) {
             const tr = document.createElement('tr');
             for (let j = 0; j < 6; j++) {
@@ -91,7 +93,7 @@
 
         let currentState = null;
         let isFirstLoad = true;
-        let displayRanks = Array(9).fill(0); // 🔴 9人に変更
+        let displayRanks = Array(9).fill(0);
         let pendingRanks = null;
         let isAnimatingDelay = false;
         let delayTimer = null;
@@ -127,7 +129,6 @@
             }, 1800);
         });
 
-        // 🔴 9人分の名前更新と、新しい文字サイズ（44px）に合わせたリサイズ処理[cite: 8]
         function updateNames() {
             if (!currentState) return;
             for (let i = 0; i < 9; i++) {
@@ -138,7 +139,7 @@
                 if (nameText.trim() === '') nameText = defaultNames[i] || `プレイヤー${i+1}`;
                 
                 nameplate.innerText = nameText;
-                nameplate.style.fontSize = '44px'; // 🔴 最大サイズを大きく変更
+                nameplate.style.fontSize = '44px';
                 let fontSize = 44;
                 while (nameplate.scrollWidth > nameplate.clientWidth && fontSize > 12) {
                     fontSize -= 1;
@@ -148,7 +149,6 @@
             }
         }
 
-        // 🔴 9人分の座標更新処理[cite: 8]
         function updatePositions() {
             if (!currentState) return;
             let needsRetry = false;
