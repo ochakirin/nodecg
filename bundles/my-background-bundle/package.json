@@ -28,7 +28,7 @@
     "title": "名前・得点管理",
     "workspace": "5.ペイント",
     "file": "paint_info.html",
-    "width": 3},
+    "width": 6},
       { "name": "kakuzuke-control", "title": "👑 格付け進行管理", "file": "kakuzuke_ctrl.html", "headerColor": "#D32F2F", "width": 4, "workspace": "6.格付けチェック" },
 
       { "name": "sound-control", "title": "🔊 サウンド音量管理", "file": "sound_ctrl.html", "headerColor": "#00BCD4", "width": 3, "workspace": "7.サウンド管理" },
