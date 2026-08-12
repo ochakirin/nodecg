@@ -6,11 +6,11 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        /* 🔴 四隅に配置するためのスロット共通スタイル */
+        /* 四隅に配置するためのスロット共通スタイル */
         .answer-slot { 
             position: absolute; 
             width: 560px; height: 500px; 
-            background: #000; /* 画像に合わせた黒背景 */
+            background: #000; 
             border: 8px solid; 
             border-radius: 12px; 
             display: flex; flex-direction: column; 
@@ -18,7 +18,7 @@
             overflow: hidden; 
         }
 
-        /* 🔴 各チームの配置とカラー設定 */
+        /* 各チームの配置とカラー設定 */
         #slot-0 { top: 25px; left: 25px; border-color: #d32f2f; }       /* 左上：赤 */
         #slot-1 { top: 25px; right: 25px; border-color: #1976d2; }      /* 右上：青 */
         #slot-2 { bottom: 25px; left: 25px; border-color: #388e3c; }    /* 左下：緑 */
@@ -43,78 +43,93 @@
 
         .cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #eceff1; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #90a4ae; font-size: 40px; z-index: 10; transition: opacity 0.3s; }
         .cover.submitted { background: rgba(233, 30, 99, 0.2); border: 10px solid #e91e63; color: #e91e63; font-size: 60px; text-shadow: 2px 2px 0px #fff, -2px -2px 0px #fff, 2px -2px 0px #fff, -2px 2px 0px #fff; pointer-events: none; }
+
+        /* 🔴 中央のゲーム画面・タイマー用のコンテナ */
+        .center-container {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 720px; height: 540px; 
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            z-index: 5;
+        }
+
+        /* 🔴 中央に配置される各チームのゲーム画面枠 */
+        .game-screen {
+            border: 4px solid;
+            border-radius: 8px;
+            background: transparent; /* ゲーム画面を見せるために透明 */
+        }
+        #gs-0 { border-color: #d32f2f; }
+        #gs-1 { border-color: #1976d2; }
+        #gs-2 { border-color: #388e3c; }
+        #gs-3 { border-color: #7b1fa2; }
+
+        /* 🔴 カウントダウンタイマー */
+        .timer-box {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #000; color: #00e5ff;
+            padding: 8px 30px; border-radius: 8px;
+            font-size: 56px; font-weight: bold;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            border: 2px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 🔴 4つの枠を四隅に独立して配置 -->
+    <!-- 中央のゲーム画面枠とタイマー -->
+    <div class="center-container">
+        <div class="game-screen" id="gs-0"></div>
+        <div class="game-screen" id="gs-1"></div>
+        <div class="game-screen" id="gs-2"></div>
+        <div class="game-screen" id="gs-3"></div>
+        <div class="timer-box" id="timer-display">00:00</div>
+    </div>
+
     <div class="answer-slot" id="slot-0">
-        <div class="board-area">
-            <img class="answer-img" id="img-0" src="">
-            <div class="cover" id="cover-0">お絵かき待機中...</div>
-        </div>
-        <div class="info-bar" id="info-0">
-            <div class="team-name" id="name-tag-0">Aチーム</div>
-            <div class="team-score"><span id="score-0">0</span> pt</div>
-        </div>
+        <div class="board-area"><img class="answer-img" id="img-0" src=""><div class="cover" id="cover-0">お絵かき待機中...</div></div>
+        <div class="info-bar" id="info-0"><div class="team-name" id="name-tag-0">Aチーム</div><div class="team-score"><span id="score-0">0</span> pt</div></div>
     </div>
 
     <div class="answer-slot" id="slot-1">
-        <div class="board-area">
-            <img class="answer-img" id="img-1" src="">
-            <div class="cover" id="cover-1">お絵かき待機中...</div>
-        </div>
-        <div class="info-bar" id="info-1">
-            <div class="team-name" id="name-tag-1">Bチーム</div>
-            <div class="team-score"><span id="score-1">0</span> pt</div>
-        </div>
+        <div class="board-area"><img class="answer-img" id="img-1" src=""><div class="cover" id="cover-1">お絵かき待機中...</div></div>
+        <div class="info-bar" id="info-1"><div class="team-name" id="name-tag-1">Bチーム</div><div class="team-score"><span id="score-1">0</span> pt</div></div>
     </div>
 
     <div class="answer-slot" id="slot-2">
-        <div class="board-area">
-            <img class="answer-img" id="img-2" src="">
-            <div class="cover" id="cover-2">お絵かき待機中...</div>
-        </div>
-        <div class="info-bar" id="info-2">
-            <div class="team-name" id="name-tag-2">Cチーム</div>
-            <div class="team-score"><span id="score-2">0</span> pt</div>
-        </div>
+        <div class="board-area"><img class="answer-img" id="img-2" src=""><div class="cover" id="cover-2">お絵かき待機中...</div></div>
+        <div class="info-bar" id="info-2"><div class="team-name" id="name-tag-2">Cチーム</div><div class="team-score"><span id="score-2">0</span> pt</div></div>
     </div>
 
     <div class="answer-slot" id="slot-3">
-        <div class="board-area">
-            <img class="answer-img" id="img-3" src="">
-            <div class="cover" id="cover-3">お絵かき待機中...</div>
-        </div>
-        <div class="info-bar" id="info-3">
-            <div class="team-name" id="name-tag-3">Dチーム</div>
-            <div class="team-score"><span id="score-3">0</span> pt</div>
-        </div>
+        <div class="board-area"><img class="answer-img" id="img-3" src=""><div class="cover" id="cover-3">お絵かき待機中...</div></div>
+        <div class="info-bar" id="info-3"><div class="team-name" id="name-tag-3">Dチーム</div><div class="team-score"><span id="score-3">0</span> pt</div></div>
     </div>
 
     <script>
-        // 🔴 スコア(scores)をデフォルト値に追加
         const gameRep = nodecg.Replicant('paintState', {
-            defaultValue: { 
-                answers: ['', '', '', ''], isOpen: [false, false, false, false], 
-                names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], live: ['', '', '', ''],
-                scores: [0, 0, 0, 0] 
-            }
+            defaultValue: { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], live: ['', '', '', ''], scores: [0, 0, 0, 0] }
+        });
+        const timerRep = nodecg.Replicant('paintTimer', {
+            defaultValue: { isRunning: false, totalSeconds: 600, remainingSeconds: 600, endTime: null }
         });
 
+        // パッド側の描画・文字の反映
         gameRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 0; i < 4; i++) {
                 const cover = document.getElementById(`cover-${i}`);
                 const img = document.getElementById(`img-${i}`);
-                const nameTag = document.getElementById(`name-tag-${i}`);
-                const scoreTag = document.getElementById(`score-${i}`);
+                
+                document.getElementById(`name-tag-${i}`).innerText = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i].trim() : `${['A','B','C','D'][i]}チーム`;
+                document.getElementById(`score-${i}`).innerText = (newVal.scores && newVal.scores[i]) ? newVal.scores[i] : 0;
 
-                // 名前と得点の反映
-                nameTag.innerText = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i].trim() : `${['A','B','C','D'][i]}チーム`;
-                scoreTag.innerText = (newVal.scores && newVal.scores[i]) ? newVal.scores[i] : 0;
-
-                // リアルタイムダダ漏れロジック
                 if (newVal.answers && newVal.answers[i] !== '') {
                     img.src = newVal.answers[i];
                     cover.innerText = "完成！";
@@ -132,6 +147,31 @@
                     cover.style.opacity = '1';
                     cover.style.background = '#eceff1'; 
                 }
+            }
+        });
+
+        // 🔴 タイマーの描画処理
+        function formatTime(secs) {
+            if (secs < 0) secs = 0;
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60).toString().padStart(2, '0');
+            const s = (Math.floor(secs) % 60).toString().padStart(2, '0');
+            return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+        }
+
+        let timerInterval;
+        timerRep.on('change', (newVal) => {
+            if (!newVal) return;
+            clearInterval(timerInterval);
+            
+            if (newVal.isRunning && newVal.endTime) {
+                timerInterval = setInterval(() => {
+                    const remain = Math.max(0, (newVal.endTime - Date.now()) / 1000);
+                    document.getElementById('timer-display').innerText = formatTime(remain);
+                    if (remain <= 0) clearInterval(timerInterval);
+                }, 100);
+            } else {
+                document.getElementById('timer-display').innerText = formatTime(newVal.remainingSeconds);
             }
         });
     </script>
