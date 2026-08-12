@@ -19,6 +19,7 @@
         }
 
         /* 各チームの配置とカラー設定 */
+        /* ※ width:560 + 左右border:16 + 隙間:25 = 画面端から 601px までを占有する計算になります */
         #slot-0 { top: 25px; left: 25px; border-color: #d32f2f; }       /* 左上：赤 */
         #slot-1 { top: 25px; right: 25px; border-color: #1976d2; }      /* 右上：青 */
         #slot-2 { bottom: 25px; left: 25px; border-color: #388e3c; }    /* 左下：緑 */
@@ -47,8 +48,12 @@
         /* 🔴 中央のゲーム画面・タイマー用のコンテナ */
         .center-container {
             position: absolute;
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 760px; height: 600px; /* 全体の高さを広げて真ん中に余裕を持たせる */
+            /* 🔴 ペイント枠と被らないように左右の余白を610px確保（585px + 25pxの余裕） */
+            left: 610px; 
+            right: 610px;
+            /* 🔴 ペイント枠の上下ラインと完全に一致させる */
+            top: 25px;
+            bottom: 25px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(2, 1fr);
@@ -58,15 +63,15 @@
 
         /* 🔴 中央に配置される各チームのゲーム画面枠 */
         .game-screen {
-            border: 8px solid; /* 枠を太く変更（4px → 8px） */
+            border: 8px solid; 
             border-radius: 8px;
             background: transparent;
             width: 100%;
-            height: 260px; /* 高さを固定して上下に寄せる */
+            height: 260px; /* 高さはおおよそ4:3になるように設定 */
             box-sizing: border-box;
         }
         
-        /* 🔴 上2つは上寄せ(start)、下2つは下寄せ(end) */
+        /* 🔴 align-selfを使って、コンテナの上端（top:25px）と下端（bottom:25px）にピッタリくっつける */
         #gs-0 { border-color: #d32f2f; align-self: start; }
         #gs-1 { border-color: #1976d2; align-self: start; }
         #gs-2 { border-color: #388e3c; align-self: end; }
@@ -155,7 +160,7 @@
             }
         });
 
-        // 🔴 タイマーの描画処理
+        // タイマーの描画処理
         function formatTime(secs) {
             if (secs < 0) secs = 0;
             const h = Math.floor(secs / 3600);
