@@ -4,8 +4,22 @@
     <meta charset="UTF-8">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 10px; background: #f5f5f5; margin: 0; }
-        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         
+        /* 🔴 タイマーパネルのスタイル */
+        .timer-panel {
+            background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-top: 5px solid #607d8b; display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;
+        }
+        .timer-panel h3 { margin: 0; font-size: 16px; color: #333; width: 100%; }
+        .timer-inputs { display: flex; align-items: center; gap: 5px; }
+        .timer-inputs input { width: 50px; padding: 6px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+        .timer-actions { display: flex; gap: 10px; flex: 1; justify-content: flex-end; }
+        .btn-timer { padding: 8px 15px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
+        #btn-timer-set { background: #2196f3; }
+        #btn-timer-toggle { background: #4caf50; min-width: 110px; }
+        #btn-timer-reset { background: #f44336; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .team-box { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-top: 5px solid; }
         #box-0 { border-color: #d32f2f; }
         #box-1 { border-color: #1976d2; }
@@ -13,7 +27,6 @@
         #box-3 { border-color: #7b1fa2; }
 
         .team-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333; }
-        
         .input-group { margin-bottom: 12px; }
         .input-group label { display: block; font-size: 12px; font-weight: bold; color: #666; margin-bottom: 4px; }
         .input-group input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
@@ -28,21 +41,81 @@
 </head>
 <body>
 
+    <!-- 🔴 タイマーコントロールを追加 -->
+    <div class="timer-panel">
+        <h3>⏱️ カウントダウンタイマー</h3>
+        <div class="timer-inputs">
+            <input type="number" id="timer-m" value="10" min="0"> 分
+            <input type="number" id="timer-s" value="0" min="0" max="59"> 秒
+            <button class="btn-timer" id="btn-timer-set" onclick="setTimer()">設定</button>
+        </div>
+        <div class="timer-actions">
+            <button class="btn-timer" id="btn-timer-toggle" onclick="toggleTimer()">▶️ スタート</button>
+            <button class="btn-timer" id="btn-timer-reset" onclick="resetTimer()">🔄 リセット</button>
+        </div>
+    </div>
+
     <div class="grid-container" id="teams-container">
         <!-- JSで4チーム分生成 -->
     </div>
 
     <script>
         const gameRep = nodecg.Replicant('paintState', {
-            defaultValue: { 
-                answers: ['', '', '', ''], isOpen: [false, false, false, false], 
-                names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], live: ['', '', '', ''],
-                scores: [0, 0, 0, 0] 
-            },
+            defaultValue: { answers: ['', '', '', ''], isOpen: [false, false, false, false], names: ['Aチーム', 'Bチーム', 'Cチーム', 'Dチーム'], live: ['', '', '', ''], scores: [0, 0, 0, 0] },
             persistent: true
         });
 
-        // 競合を防ぐための安全な状態更新関数
+        const timerRep = nodecg.Replicant('paintTimer', {
+            defaultValue: { isRunning: false, totalSeconds: 600, remainingSeconds: 600, endTime: null },
+            persistent: true
+        });
+
+        // 🔴 タイマーの操作関数
+        window.setTimer = function() {
+            if (!timerRep.value) return;
+            const m = parseInt(document.getElementById('timer-m').value) || 0;
+            const s = parseInt(document.getElementById('timer-s').value) || 0;
+            const total = m * 60 + s;
+            const state = JSON.parse(JSON.stringify(timerRep.value));
+            state.totalSeconds = total;
+            state.remainingSeconds = total;
+            state.isRunning = false;
+            state.endTime = null;
+            timerRep.value = state;
+        }
+
+        window.toggleTimer = function() {
+            if (!timerRep.value) return;
+            const state = JSON.parse(JSON.stringify(timerRep.value));
+            if (state.isRunning) {
+                state.isRunning = false;
+                state.remainingSeconds = Math.max(0, (state.endTime - Date.now()) / 1000);
+                state.endTime = null;
+            } else {
+                state.isRunning = true;
+                state.endTime = Date.now() + state.remainingSeconds * 1000;
+            }
+            timerRep.value = state;
+        }
+
+        window.resetTimer = function() {
+            if (!timerRep.value) return;
+            const state = JSON.parse(JSON.stringify(timerRep.value));
+            state.remainingSeconds = state.totalSeconds;
+            state.isRunning = false;
+            state.endTime = null;
+            timerRep.value = state;
+        }
+
+        timerRep.on('change', (newVal) => {
+            if (!newVal) return;
+            const btn = document.getElementById('btn-timer-toggle');
+            if (btn) {
+                btn.innerText = newVal.isRunning ? '⏸️ 一時停止' : '▶️ スタート';
+                btn.style.background = newVal.isRunning ? '#ff9800' : '#4caf50';
+            }
+        });
+
         function modifyState(modifierFunc) {
             if (!gameRep.value) return;
             const s = JSON.parse(JSON.stringify(gameRep.value));
