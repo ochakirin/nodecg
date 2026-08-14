@@ -32,6 +32,13 @@
       { "name": "kakuzuke-control", "title": "👑 格付け進行管理", "file": "kakuzuke_ctrl.html", "headerColor": "#D32F2F", "width": 4, "workspace": "6.格付けチェック" },
 
       { "name": "sound-control", "title": "🔊 サウンド音量管理", "file": "sound_ctrl.html", "headerColor": "#00BCD4", "width": 3, "workspace": "7.サウンド管理" },
+      {
+    "name": "dqchicken_ctrl",
+    "title": "進行管理",
+    "workspace": "8.ドラクエチキンレース",
+    "file": "dqchicken_ctrl.html",
+    "width": 5
+},
 
       { "name": "fiveleague-pad", "title": "📱 5リーグパッド (バックグラウンド)", "file": "fiveleague_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
       { "name": "owarema-pad", "title": "📱 出演者パッド (バックグラウンド)", "file": "owarema_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
