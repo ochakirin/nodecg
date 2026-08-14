@@ -37,7 +37,7 @@
     "title": "進行管理",
     "workspace": "8.ドラクエチキンレース",
     "file": "dqchicken_ctrl.html",
-    "width": 5
+    "width": 8
 },
 
       { "name": "fiveleague-pad", "title": "📱 5リーグパッド (バックグラウンド)", "file": "fiveleague_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
