@@ -50,7 +50,12 @@
       { "file": "owarematen.html", "width": 1920, "height": 1080 },
       { "file": "paint_overlay.html", "width": 1920, "height": 1080 },
       { "file": "kakuzuke_overlay.html", "width": 1920, "height": 1080 },
-      { "file": "fiveleague_overlay.html", "width": 1920, "height": 1080 }
+      { "file": "fiveleague_overlay.html", "width": 1920, "height": 1080 },
+      {
+        "file": "dqchicken_overlay.html",
+        "width": 1920,
+        "height": 1080
+    }
     ]
   },
   "dependencies": {}
