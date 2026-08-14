@@ -23,7 +23,6 @@
         .btn-score { padding: 6px 4px; font-size: 12px; font-weight: bold; background: #eceff1; color: #333; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; flex: none; }
         .btn-score:hover { background: #cfd8dc; }
 
-        /* 🔴 フリップのプレビュー（ハイライト） */
         .preview-box { height: 100px; background: #e0e0e0; border: 2px dashed #9e9e9e; border-radius: 4px; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; }
         .preview-box img { width: 100%; height: 100%; object-fit: contain; background: white; display: none; }
         .preview-box span { font-size: 12px; font-weight: bold; color: #757575; position: absolute; }
@@ -83,12 +82,10 @@
                             <button class="btn-score" onclick="addScore(${i}, 10)">+10</button>
                         </div>
                     </div>
-                    <!-- プレビュー -->
                     <div class="preview-box">
                         <span id="prev-text-${i}">未提出</span>
                         <img id="prev-img-${i}" src="">
                     </div>
-                    <!-- アクション -->
                     <div class="action-row">
                         <button class="btn-action btn-open" id="btn-open-${i}" onclick="toggleOpen(${i})">👁️ 開く</button>
                         <button class="btn-action btn-clear" onclick="clearAnswer(${i})">消去</button>
@@ -98,7 +95,11 @@
             `;
         }
 
-        window.getPadUrl = function(idx) { return `${window.location.origin}/bundles/my-background-bundle/dashboard/dqchicken_pad.html?p=${idx}`; }
+        // 🔴 過去の他ゲームと全く同じURL発行の仕組みに戻しました
+        window.getPadUrl = function(idx) { 
+            const bundleName = window.location.pathname.split('/')[2] || 'my-background-bundle';
+            return `${window.location.origin}/bundles/${bundleName}/dashboard/dqchicken_pad.html?p=${idx}&standalone=true`; 
+        }
         window.copyUrl = function(idx) { navigator.clipboard.writeText(getPadUrl(idx)).then(() => alert(`走者${idx+1}のパッドURLをコピーしました`)); }
 
         window.updateTheme = function(val) { modifyState(s => s.theme = val); }
