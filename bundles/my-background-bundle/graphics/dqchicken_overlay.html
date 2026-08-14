@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>DQ Chicken Race Overlay</title>
+    <style>
+        body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
+        
+        /* 🔴 左上：問題（テーマ）表示エリア */
+        .question-area {
+            position: absolute;
+            top: 30px; left: 30px;
+            width: 950px; /* 左側のゲーム画面に合わせた幅 */
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 36px;
+            font-weight: bold;
+            border: 4px solid #ff9800;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        /* 🔴 右側：フリップを4行×2列で配置するコンテナ */
+        .flips-container {
+            position: absolute;
+            top: 20px; right: 20px; bottom: 20px;
+            width: 860px; /* 右側の占有幅 */
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 15px;
+            z-index: 10;
+        }
+
+        /* フリップの個別枠 */
+        .flip-slot {
+            background: #1e1e1e;
+            border: 6px solid #607d8b;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            transition: all 0.3s ease;
+        }
+
+        /* ヘッダー（名前と点数） */
+        .flip-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #37474f; color: white;
+            padding: 8px 15px;
+            border-bottom: 4px solid #263238;
+        }
+        .p-name { font-size: 24px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .p-score { font-size: 28px; font-weight: 900; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 6px; color: #ffeb3b; }
+
+        /* 描画エリア */
+        .flip-body {
+            flex: 1; position: relative; background: #000;
+            display: flex; justify-content: center; align-items: center;
+            padding: 5px; box-sizing: border-box;
+        }
+        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; background: #fff; border-radius: 4px; }
+        
+        /* 待機中のカバー */
+        .cover {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #cfd8dc; display: flex; justify-content: center; align-items: center;
+            font-weight: bold; color: #78909c; font-size: 32px; z-index: 10;
+            transition: opacity 0.3s;
+        }
+        .cover.submitted { background: #ff9800; color: white; }
+
+        /* オープン時のアニメーション */
+        .is-open .cover { opacity: 0; pointer-events: none; }
+        .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
+
+        @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="question-area" id="question-display">問題：未設定</div>
+
+    <div class="flips-container" id="flips-container">
+        <!-- JSで8個分生成 -->
+    </div>
+
+    <script>
+        const gameRep = nodecg.Replicant('dqChickenState', {
+            defaultValue: { theme: '', names: Array(8).fill(''), scores: Array(8).fill(0), answers: Array(8).fill(''), isOpen: Array(8).fill(false) }
+        });
+        const soundRep = nodecg.Replicant('soundSettings', { defaultValue: { seVolume: 0.5, bgmVolume: 0.5 } });
+
+        let soundOpen;
+        try { soundOpen = new Audio('sounds/open.mp3'); } catch(e) {}
+        nodecg.listenFor('play_open_se', () => {
+            if (soundOpen) {
+                soundOpen.volume = soundRep.value ? soundRep.value.seVolume : 0.5;
+                soundOpen.currentTime = 0;
+                soundOpen.play().catch(e => {});
+            }
+        });
+
+        const container = document.getElementById('flips-container');
+        for (let i = 0; i < 8; i++) {
+            container.innerHTML += `
+                <div class="flip-slot" id="slot-${i}">
+                    <div class="flip-header">
+                        <div class="p-name" id="name-${i}">走者 ${i+1}</div>
+                        <div class="p-score"><span id="score-${i}">0</span> pt</div>
+                    </div>
+                    <div class="flip-body">
+                        <img class="answer-img" id="img-${i}" src="">
+                        <div class="cover" id="cover-${i}">待機中</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        gameRep.on('change', (newVal) => {
+            if (!newVal) return;
+
+            const qEl = document.getElementById('question-display');
+            if (newVal.theme && newVal.theme.trim() !== '') {
+                qEl.innerText = `問題：${newVal.theme}`;
+                qEl.style.display = 'block';
+            } else {
+                qEl.style.display = 'none';
+            }
+
+            for (let i = 0; i < 8; i++) {
+                const slot = document.getElementById(`slot-${i}`);
+                const cover = document.getElementById(`cover-${i}`);
+                const img = document.getElementById(`img-${i}`);
+                
+                document.getElementById(`name-${i}`).innerText = (newVal.names && newVal.names[i] && newVal.names[i].trim() !== '') ? newVal.names[i].trim() : `走者 ${i+1}`;
+                document.getElementById(`score-${i}`).innerText = (newVal.scores && newVal.scores[i]) ? newVal.scores[i] : 0;
+
+                if (newVal.answers && newVal.answers[i] !== '') {
+                    img.src = newVal.answers[i];
+                    cover.innerText = "回答完了";
+                    cover.classList.add('submitted');
+                } else {
+                    img.src = "";
+                    cover.innerText = "待機中";
+                    cover.classList.remove('submitted');
+                }
+
+                if (newVal.isOpen && newVal.isOpen[i] && newVal.answers && newVal.answers[i] !== '') {
+                    slot.classList.add('is-open');
+                } else {
+                    slot.classList.remove('is-open');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
