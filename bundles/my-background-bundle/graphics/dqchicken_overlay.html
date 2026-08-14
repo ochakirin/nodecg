@@ -6,11 +6,10 @@
     <style>
         body { margin: 0; padding: 0; width: 1920px; height: 1080px; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; position: relative; }
         
-        /* 🔴 左上：問題（テーマ）表示エリア */
         .question-area {
             position: absolute;
             top: 30px; left: 30px;
-            width: 950px; /* 左側のゲーム画面に合わせた幅 */
+            width: 950px; 
             background: rgba(0, 0, 0, 0.85);
             color: white;
             padding: 20px 40px;
@@ -24,19 +23,19 @@
             display: none;
         }
 
-        /* 🔴 右側：フリップを4行×2列で配置するコンテナ */
+        /* 🔴 枠のはみ出しを防ぐため、paddingとgapを厳密に計算 */
         .flips-container {
             position: absolute;
-            top: 20px; right: 20px; bottom: 20px;
-            width: 860px; /* 右側の占有幅 */
+            top: 30px; right: 30px; bottom: 30px;
+            width: 800px; 
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(4, 1fr);
-            gap: 15px;
+            gap: 20px;
             z-index: 10;
         }
 
-        /* フリップの個別枠 */
+        /* 🔴 box-sizing: border-box; を追加して枠線が外に膨らまないように固定 */
         .flip-slot {
             background: #1e1e1e;
             border: 6px solid #607d8b;
@@ -46,27 +45,30 @@
             overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.6);
             transition: all 0.3s ease;
+            box-sizing: border-box; 
         }
 
-        /* ヘッダー（名前と点数） */
         .flip-header {
             display: flex; justify-content: space-between; align-items: center;
             background: #37474f; color: white;
             padding: 8px 15px;
             border-bottom: 4px solid #263238;
+            height: 54px; /* 高さを固定 */
+            box-sizing: border-box;
         }
         .p-name { font-size: 24px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
         .p-score { font-size: 28px; font-weight: 900; background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 6px; color: #ffeb3b; }
 
-        /* 描画エリア */
+        /* 🔴 描画エリアも高さを厳格化し、背景色を青色に合わせる */
         .flip-body {
-            flex: 1; position: relative; background: #000;
+            flex: 1; position: relative; background: #1565c0;
             display: flex; justify-content: center; align-items: center;
-            padding: 5px; box-sizing: border-box;
+            padding: 0; box-sizing: border-box;
+            overflow: hidden;
         }
-        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; background: #fff; border-radius: 4px; }
+        /* 🔴 余白が出ないように透過・アスペクト比固定 */
+        .answer-img { width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; background: transparent; }
         
-        /* 待機中のカバー */
         .cover {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #cfd8dc; display: flex; justify-content: center; align-items: center;
@@ -75,7 +77,6 @@
         }
         .cover.submitted { background: #ff9800; color: white; }
 
-        /* オープン時のアニメーション */
         .is-open .cover { opacity: 0; pointer-events: none; }
         .is-open .answer-img { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
 
