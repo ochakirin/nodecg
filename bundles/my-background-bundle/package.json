@@ -42,7 +42,8 @@
 
       { "name": "fiveleague-pad", "title": "📱 5リーグパッド (バックグラウンド)", "file": "fiveleague_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
       { "name": "owarema-pad", "title": "📱 出演者パッド (バックグラウンド)", "file": "owarema_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
-      { "name": "paint-pad", "title": "📱 ペイントパッド (バックグラウンド)", "file": "paint_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" }
+      { "name": "paint-pad", "title": "📱 ペイントパッド (バックグラウンド)", "file": "paint_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" },
+       { "name": "dqchicken_pad", "title": "📱チキンレースパッド (バックグラウンド)", "file": "dqchicken_pad.html", "headerColor": "#000000", "width": 2, "workspace": "99.バックグラウンド" }
     ],
     "graphics": [
       { "file": "index.html", "width": 1920, "height": 1080 },
