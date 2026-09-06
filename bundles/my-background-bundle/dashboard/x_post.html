@@ -12,7 +12,7 @@
 </head>
 <body>
     <textarea id="tweet-text" placeholder="ここに投稿内容を入力..."></textarea>
-    <button id="post-btn">Xに投稿する</button>
+    <button id="post-btn">Xの投稿画面を開く</button>
     <div id="status"></div>
 
     <script>
@@ -22,23 +22,23 @@
 
         btn.addEventListener('click', () => {
             const content = text.value.trim();
-            if (!content) return;
-
-            btn.disabled = true;
-            status.style.color = 'black';
-            status.textContent = '送信中...';
-
-            // NodeCGのバックエンド（Extension）へ投稿指示を送る
-            nodecg.sendMessage('postToX', content).then(() => {
-                status.style.color = 'green';
-                status.textContent = '✅ 投稿完了しました！';
-                text.value = ''; // 成功したらクリア
-            }).catch(err => {
+            if (!content) {
                 status.style.color = 'red';
-                status.textContent = '❌ エラー: ' + err;
-            }).finally(() => {
-                btn.disabled = false;
-            });
+                status.textContent = 'テキストを入力してください。';
+                return;
+            }
+
+            // 改行や記号をURLで安全に送信できる形式（パーセントエンコーディング）に変換
+            const encodedText = encodeURIComponent(content);
+            
+            // Xの標準Web Intent機能を使用してURLを生成
+            const intentUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+
+            // 新しいタブでXの投稿画面をポップアップ表示
+            window.open(intentUrl, '_blank');
+
+            status.style.color = 'green';
+            status.textContent = '✅ Xの投稿画面を新しいタブで開きました。';
         });
     </script>
 </body>
