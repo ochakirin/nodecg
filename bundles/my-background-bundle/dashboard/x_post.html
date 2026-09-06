@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 10px; }
+        textarea { width: 100%; height: 100px; resize: vertical; margin-bottom: 10px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #000; color: #fff; border: none; font-weight: bold; cursor: pointer; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status { margin-top: 10px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <textarea id="tweet-text" placeholder="ここに投稿内容を入力..."></textarea>
+    <button id="post-btn">Xに投稿する</button>
+    <div id="status"></div>
+
+    <script>
+        const btn = document.getElementById('post-btn');
+        const text = document.getElementById('tweet-text');
+        const status = document.getElementById('status');
+
+        btn.addEventListener('click', () => {
+            const content = text.value.trim();
+            if (!content) return;
+
+            btn.disabled = true;
+            status.style.color = 'black';
+            status.textContent = '送信中...';
+
+            // NodeCGのバックエンド（Extension）へ投稿指示を送る
+            nodecg.sendMessage('postToX', content).then(() => {
+                status.style.color = 'green';
+                status.textContent = '✅ 投稿完了しました！';
+                text.value = ''; // 成功したらクリア
+            }).catch(err => {
+                status.style.color = 'red';
+                status.textContent = '❌ エラー: ' + err;
+            }).finally(() => {
+                btn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
