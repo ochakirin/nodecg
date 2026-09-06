@@ -11,7 +11,7 @@
     "hasExtension": true,
     "dashboardPanels": [
       { "name": "timer-control", "title": "タイマーコントローラー", "file": "timer.html", "headerColor": "#52575c", "width": 3, "workspace": "1.メイン管理" },
-      { "name": "lap-counter", "title": "ラップ記録（20チーム分）", "file": "lap.html", "headerColor": "#009688", "width": 4, "workspace": "1.メイン管理" },
+      { "name": "lap-counter", "title": "ラップ記録（20チーム分）", "file": "lap.html", "headerColor": "#009688", "width": 8, "workspace": "1.メイン管理" },
       { "name": "sheet-preview", "title": "シートプレビュー", "file": "preview.html", "headerColor": "#673AB7", "width": 5, "workspace": "1.メイン管理" },
       { "name": "ranking-display", "title": "チームランキング", "file": "ranking.html", "headerColor": "#FF9800", "width": 4, "workspace": "1.メイン管理" }
     ],
