@@ -72,3 +72,38 @@ module.exports = function (nodecg) {
         timerRep.value.formatted = formatTime(customSeconds);
     });
 };
+
+const { TwitterApi } = require('twitter-api-v2');
+
+module.exports = function (nodecg) {
+    // X APIの認証情報（Developer Portalで取得したもの）
+    const client = new TwitterApi({
+        appKey: 'YOUR_API_KEY',
+        appSecret: 'YOUR_API_SECRET',
+        accessToken: 'YOUR_ACCESS_TOKEN',
+        accessSecret: 'YOUR_ACCESS_TOKEN_SECRET',
+    });
+
+    const rwClient = client.readWrite;
+
+    // ダッシュボードからの 'postToX' メッセージをリッスン
+    nodecg.listenFor('postToX', async (text, ack) => {
+        try {
+            // Xへツイートを送信 (API v2)
+            const { data: createdTweet } = await rwClient.v2.tweet(text);
+            nodecg.log.info('Xに投稿しました: ', createdTweet.id);
+            
+            // 成功した場合はフロントエンドに完了を通知
+            if (ack && !ack.handled) {
+                ack(null, createdTweet);
+            }
+        } catch (error) {
+            nodecg.log.error('X投稿エラー:', error);
+            
+            // エラーをフロントエンドに返す
+            if (ack && !ack.handled) {
+                ack(new Error('投稿に失敗しました。認証情報やAPI制限を確認してください。'));
+            }
+        }
+    });
+};
