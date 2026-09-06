@@ -6,7 +6,8 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: #f0f2f5; margin: 0; }
         .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .team-box { background: white; border: 1px solid #e1e4e8; border-radius: 8px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px; }
-        .team-title { font-size: 14px; font-weight: bold; color: #009688; text-align: center; border-bottom: 2px solid #009688; padding-bottom: 4px; margin-bottom: 2px; }
+        .team-title { font-size: 13px; font-weight: bold; color: #009688; text-align: center; border-bottom: 2px solid #009688; padding-bottom: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-select { padding: 5px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
         .btn-group { display: flex; gap: 8px; }
         button { flex: 1; padding: 10px 0; font-size: 13px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; color: white; transition: background 0.1s, transform 0.05s; }
         button:active { transform: scale(0.95); }
@@ -37,15 +38,40 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        function handleLapAction(teamNum, action, buttons) {
+        // スプレッドシートから抽出した19チームとメンバーの情報
+        const teamsData = [
+            { name: "アストラルヒーローズ～至高の一杯～", members: ["ギャース", "望月まどか", "TA-KA", "ROM", "ぐーい", "はなん", "テリーマン"] },
+            { name: "オレハマッテルゼⅩⅠ", members: ["ヤミフネ", "わさび塩", "チェリーソウマ", "まるマール", "氷矢", "のらねこ", "もるっち"] },
+            { name: "ドラクエソルジャーズ", members: ["さんちゃん", "オリハ", "えび", "さん.", "ぽん", "みりい", "ぶんまる"] },
+            { name: "暴れん坊将軍VII", members: ["ざらめ", "やしお", "ゆっきー", "かみ", "わっち", "やごごごご", "スズカ"] },
+            { name: "ORAeSports", members: ["ゆうてい7", "ちくわ", "いつみ五郎", "岡崎 鍵", "ashu", "マスターT", "松金"] },
+            { name: "おれたちはしょうきにもどった", members: ["ありくい", "かしわ親方", "レシリア", "marty", "しげる", "のらこ", "セミ"] },
+            { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] },
+            { name: "あまいおかし", members: ["桃瀬りりあ", "golgo0531", "かすてら", "そら", "konpira", "リトラブ", "げるっち"] },
+            { name: "導かれし7匹の(･∀･)", members: ["夜凪", "ユーリル", "waiwai", "けいる", "しゃり", "きゅー(･∀･)", "さくらば"] },
+            { name: "Ξ", members: ["とーま", "ろーれん", "壁くれいじー", "ろーにんさん", "ゆー", "けんしろー", "もりぞー"] },
+            { name: "くまぼく。Reimagined", members: ["Sawa", "ペコ", "くまさん", "るるりゅー", "えとら", "うつも", "マキナ"] },
+            { name: "世界最速救済機構 ISRI", members: ["たっつん", "永佳", "ともり", "ミルコヒ", "たけたか", "すしめもー", "はっち"] },
+            { name: "ＯＮＥ ４ ＡＬＬ", members: ["iwanofu", "ありすやさん", "くりおね", "あぶきん", "アズサ", "Begirama", "masarucci"] },
+            { name: "カタカナ", members: ["ヨハネス", "ユジン", "ラフ", "ペテア", "スッシィ", "タイドノ", "ダイダマル"] },
+            { name: "老化2026〜加齢なる一族〜", members: ["うめミンツ", "焼きさば", "西城みらん", "aotigers1234", "台所ch", "りおりなゆうた", "kota skywalker"] },
+            { name: "40年後もドラクエが好き", members: ["とれっぴぃ", "フハニル", "けいげーむ", "はぷもん", "まるたん", "H2O", "香歌"] },
+            { name: "やきにく（游玄亭）たべたーい！", members: ["たすぱ", "小パン", "ハマグチ伝助", "月島優架", "かわうそ", "lis", "たの"] },
+            { name: "名古屋酒乱会", members: ["芦川T", "喰っちゃン", "つれづれ", "ようぶん", "十兵衛", "にゃーす", "ドン"] },
+            { name: "ドラナナｼｺ×2", members: ["たなか", "あんぱん", "TEE™", "みるきぃ", "奴隷先輩", "みすち", "Rou"] }
+        ];
+
+        function handleLapAction(teamNum, action, buttons, selectElement) {
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
-            const targetColumn = teamNum + 1;
+            const targetColumn = teamNum; // GAS側の仕様に合わせる（以前の仕様が +1 なら変更してください）
+            const selectedMember = selectElement.value; // プルダウンで選択されたメンバー
 
             const payload = { 
                 action: action, 
                 teamNum: targetColumn, 
                 timeStr: timeStr,
+                member: selectedMember, // 将来的に連動できるよう追加
                 secret_token: "lap_secure_pass_2026" 
             };
 
@@ -68,11 +94,21 @@
         }
 
         const grid = document.getElementById('teams-grid');
-        for (let i = 1; i <= 20; i++) {
+        
+        teamsData.forEach((team, index) => {
+            const teamNum = index + 1;
             const box = document.createElement('div');
             box.className = 'team-box';
+            
+            // メンバーの<option>タグを生成
+            const memberOptions = team.members.map(m => `<option value="${m}">${m}</option>`).join('');
+            
             box.innerHTML = `
-                <div class="team-title">チーム ${i}</div>
+                <div class="team-title" title="${team.name}">${team.name}</div>
+                <select class="member-select" id="member-select-${teamNum}">
+                    <option value="">メンバーを選択...</option>
+                    ${memberOptions}
+                </select>
                 <div class="btn-group">
                     <button class="btn-forward">進む</button>
                     <button class="btn-backward">戻る</button>
@@ -81,13 +117,17 @@
 
             const btnForward = box.querySelector('.btn-forward');
             const btnBackward = box.querySelector('.btn-backward');
+            const selectElement = box.querySelector(`#member-select-${teamNum}`);
             const targetButtons = [btnForward, btnBackward];
 
-            btnForward.addEventListener('click', () => handleLapAction(i, 'forward', targetButtons));
-            btnBackward.addEventListener('click', () => handleLapAction(i, 'backward', targetButtons));
+            // 修正箇所: 以前の `teamNum + 1` となっていた部分をスプレッドシートの仕様(B列開始)に合わせて調整が必要か確認してください。
+            // GAS側が1起点で受けてB列を見ているのであれば `teamNum + 1` のままで、そのまま受けているなら `teamNum` となります。
+            // 以前のコードは `const targetColumn = teamNum + 1;` だったので、そのまま引き継ぐ場合は関数内で調整してください。
+            btnForward.addEventListener('click', () => handleLapAction(teamNum + 1, 'forward', targetButtons, selectElement));
+            btnBackward.addEventListener('click', () => handleLapAction(teamNum + 1, 'backward', targetButtons, selectElement));
 
             grid.appendChild(box);
-        }
+        });
     </script>
 </body>
 </html>
