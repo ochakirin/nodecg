@@ -24,6 +24,11 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
+        
+        // 🔴 追加: メンバー選択状態を全クライアントで同期・保持するためのReplicant
+        // defaultValueを空のオブジェクト{}にしておき、{ "1": "ギャース", "2": "ヤミフネ"... } のように保存します
+        const selectedMembersRep = nodecg.Replicant('lapSelectedMembers', { defaultValue: {} });
+
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
         let currentSeconds = 0;
 
@@ -38,7 +43,6 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        // スプレッドシートから抽出した19チームとメンバーの情報
         const teamsData = [
             { name: "アストラルヒーローズ～至高の一杯～", members: ["ギャース", "望月まどか", "TA-KA", "ROM", "ぐーい", "はなん", "テリーマン"] },
             { name: "オレハマッテルゼⅩⅠ", members: ["ヤミフネ", "わさび塩", "チェリーソウマ", "まるマール", "氷矢", "のらねこ", "もるっち"] },
@@ -64,25 +68,23 @@
         function handleLapAction(teamNum, action, buttons, selectElement) {
             buttons.forEach(b => b.disabled = true);
             const timeStr = getFormattedTime();
-            const targetColumn = teamNum; // GAS側の仕様に合わせる（以前の仕様が +1 なら変更してください）
-            const selectedMember = selectElement.value; // プルダウンで選択されたメンバー
+            const targetColumn = teamNum;
+            const selectedMember = selectElement.value;
 
             const payload = { 
                 action: action, 
                 teamNum: targetColumn, 
                 timeStr: timeStr,
-                member: selectedMember, // 将来的に連動できるよう追加
+                member: selectedMember,
                 secret_token: "lap_secure_pass_2026" 
             };
 
-            // 1. GASへデータを送信
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             }).then(() => {
-                // 🔴 2. 書き込みリクエストが完了したタイミングで、プレビュー画面へ「データ読みにいって」と通知
                 nodecg.sendMessage('trigger_auto_sync');
             }).catch(error => {
                 console.error('GAS送信エラー:', error);
@@ -100,7 +102,6 @@
             const box = document.createElement('div');
             box.className = 'team-box';
             
-            // メンバーの<option>タグを生成
             const memberOptions = team.members.map(m => `<option value="${m}">${m}</option>`).join('');
             
             box.innerHTML = `
@@ -120,14 +121,37 @@
             const selectElement = box.querySelector(`#member-select-${teamNum}`);
             const targetButtons = [btnForward, btnBackward];
 
-            // 修正箇所: 以前の `teamNum + 1` となっていた部分をスプレッドシートの仕様(B列開始)に合わせて調整が必要か確認してください。
-            // GAS側が1起点で受けてB列を見ているのであれば `teamNum + 1` のままで、そのまま受けているなら `teamNum` となります。
-            // 以前のコードは `const targetColumn = teamNum + 1;` だったので、そのまま引き継ぐ場合は関数内で調整してください。
+            // 🔴 追加: プルダウンが「変更された時」に、そのチームの値だけをReplicantに書き込む
+            selectElement.addEventListener('change', (e) => {
+                if (!selectedMembersRep.value) selectedMembersRep.value = {};
+                // 特定のチーム番号のデータのみを更新（他クライアントの古い全データで上書きするロールバックを防ぐ）
+                selectedMembersRep.value[teamNum] = e.target.value;
+            });
+
             btnForward.addEventListener('click', () => handleLapAction(teamNum + 1, 'forward', targetButtons, selectElement));
             btnBackward.addEventListener('click', () => handleLapAction(teamNum + 1, 'backward', targetButtons, selectElement));
 
             grid.appendChild(box);
         });
+
+        // 🔴 追加: ページ読み込み時、または誰かがプルダウンを変更した時にUIを同期する
+        selectedMembersRep.on('change', (newVal) => {
+            if (!newVal) return;
+            
+            // すべてのチームのプルダウンを最新状態に合わせる
+            teamsData.forEach((team, index) => {
+                const teamNum = index + 1;
+                const selectElement = document.getElementById(`member-select-${teamNum}`);
+                
+                // サーバー(Replicant)にそのチームのデータが存在し、かつ現在のプルダウンの値と違う場合のみ上書きする
+                if (selectElement && newVal[teamNum] !== undefined) {
+                    if (selectElement.value !== newVal[teamNum]) {
+                        selectElement.value = newVal[teamNum];
+                    }
+                }
+            });
+        });
+
     </script>
 </body>
 </html>
