@@ -1,6 +1,14 @@
 'use strict';
 
+// 1. ファイルの一番上に require を配置する
+const { TwitterApi } = require('twitter-api-v2');
+
+// 2. module.exports はファイル内で1回だけにする
 module.exports = function (nodecg) {
+    
+    // ==========================================
+    // タイマー関連のコード
+    // ==========================================
     // タイマーの状態を管理するReplicant
     // state: 'stop' (停止中) / 'running' (動作中)
     const timerRep = nodecg.Replicant('streamTimer', { 
@@ -71,19 +79,9 @@ module.exports = function (nodecg) {
         timerRep.value.baseSeconds = customSeconds;
         timerRep.value.formatted = formatTime(customSeconds);
     });
-};
 
-// 1. ファイルの一番上に require を追加する
-const { TwitterApi } = require('twitter-api-v2');
-
-module.exports = function (nodecg) {
     // ==========================================
-    // ここに元々 extension.js に書かれていたコードを残す
-    // ==========================================
-
-    
-    // ==========================================
-    // 以下、今回追加するX投稿用のコードを追記
+    // X投稿用のコード
     // ==========================================
     if (process.env.TWITTER_APP_KEY && process.env.TWITTER_APP_SECRET) {
         const client = new TwitterApi({
@@ -114,5 +112,3 @@ module.exports = function (nodecg) {
         nodecg.log.warn('X APIのキーが設定されていないため、X投稿機能は無効になります。');
     }
 };
-
-
