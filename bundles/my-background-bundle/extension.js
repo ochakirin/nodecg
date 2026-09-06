@@ -73,4 +73,46 @@ module.exports = function (nodecg) {
     });
 };
 
+// 1. ファイルの一番上に require を追加する
+const { TwitterApi } = require('twitter-api-v2');
+
+module.exports = function (nodecg) {
+    // ==========================================
+    // ここに元々 extension.js に書かれていたコードを残す
+    // ==========================================
+
+    
+    // ==========================================
+    // 以下、今回追加するX投稿用のコードを追記
+    // ==========================================
+    if (process.env.TWITTER_APP_KEY && process.env.TWITTER_APP_SECRET) {
+        const client = new TwitterApi({
+            appKey: process.env.TWITTER_APP_KEY,
+            appSecret: process.env.TWITTER_APP_SECRET,
+            accessToken: process.env.TWITTER_ACCESS_TOKEN,
+            accessSecret: process.env.TWITTER_ACCESS_SECRET,
+        });
+
+        const rwClient = client.readWrite;
+
+        nodecg.listenFor('postToX', async (text, ack) => {
+            try {
+                const { data: createdTweet } = await rwClient.v2.tweet(text);
+                nodecg.log.info('Xに投稿しました: ', createdTweet.id);
+                
+                if (ack && !ack.handled) {
+                    ack(null, createdTweet);
+                }
+            } catch (error) {
+                nodecg.log.error('X投稿エラー:', error);
+                if (ack && !ack.handled) {
+                    ack(new Error('投稿に失敗しました。'));
+                }
+            }
+        });
+    } else {
+        nodecg.log.warn('X APIのキーが設定されていないため、X投稿機能は無効になります。');
+    }
+};
+
 
