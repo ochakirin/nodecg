@@ -27,8 +27,7 @@
             z-index: 1;
         }
 
-        /* 🔴 チーム名・走者名表示グリッド（完全座標指定） */
-        /* コンテナは 画面左上(0, 1) から始まり、縦845px、横1825pxの範囲を利用 */
+        /* チーム名・走者名表示グリッド（完全座標指定） */
         .runners-grid {
             position: absolute;
             top: 1px;
@@ -37,9 +36,7 @@
             height: 845px;
             z-index: 5;
             display: grid;
-            /* 列(X軸)の座標幅: 365px間隔 × 5列 */
             grid-template-columns: repeat(5, 365px);
-            /* 行(Y軸)の座標幅: 1行あたり270px (実質的なマージン含む。表示ブロック自体の高さは約34px) */
             grid-template-rows: repeat(4, 269px); 
         }
 
@@ -52,19 +49,15 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            /* 高さ 34px (指定の 1-35 などに合致) に固定 */
             height: 34px; 
             box-sizing: border-box;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         
-        /* チーム名を左に寄せて、走者を右に寄せる */
         .runner-box .t-name { font-size: 14px; font-weight: bold; color: #ffeb3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
         .runner-box .m-name { font-size: 16px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 
-
-        /* 🔴 順位表示（ポジションマップ）の配置変更 */
-        /* 範囲指定: 左上(1465, 810) 〜 右下(1920, 965) -> 幅455px、高さ155px */
+        /* 順位表示（ポジションマップ）の配置変更 */
         .position-map-container {
             position: absolute;
             top: 810px;
@@ -74,7 +67,6 @@
             z-index: 10;
         }
 
-        /* 内部のベースラインは中心に引く */
         .map-line {
             position: absolute;
             top: 50%;
@@ -89,7 +81,7 @@
         .team-circle {
             position: absolute;
             top: 50%;
-            width: 40px;  /* 枠が狭いので少し小さめに */
+            width: 40px; 
             height: 40px;
             background: #009688; 
             color: white;
@@ -98,19 +90,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px; 
+            /* 🔴 略称が収まるようにフォントサイズを微調整 */
+            font-size: 13px; 
             font-weight: 900; 
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s, width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
             transform: translate(-50%, -50%); 
         }
 
-        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 50px; height: 50px; font-size: 20px; z-index: 100; } 
-        .team-circle.rank-2 { background: #ff9100; width: 45px; height: 45px; font-size: 18px; z-index: 90; }  
-        .team-circle.rank-3 { background: #00b0ff; width: 45px; height: 45px; font-size: 18px; z-index: 80; }  
-        .team-circle.is-tie { width: 35px; height: 35px; font-size: 14px; opacity: 0.95; border: 2px solid #fff; }
+        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 50px; height: 50px; font-size: 16px; z-index: 100; } 
+        .team-circle.rank-2 { background: #ff9100; width: 45px; height: 45px; font-size: 15px; z-index: 90; }  
+        .team-circle.rank-3 { background: #00b0ff; width: 45px; height: 45px; font-size: 15px; z-index: 80; }  
+        .team-circle.is-tie { width: 35px; height: 35px; font-size: 11px; opacity: 0.95; border: 2px solid #fff; }
 
-        /* タイマー設定（左下などに配置） */
+        /* タイマー設定 */
         .timer-container {
             position: absolute;
             bottom: 40px;
@@ -127,14 +120,12 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知（ラップタイム）の範囲変更 */
-        /* 範囲指定: 左上(1465, 810) 〜 右下(1920, 1080) -> 幅455px */
-        /* ※ ポジションマップ(810〜965)の下に出すため、bottom基準で配置 */
+        /* ポップアップ通知（ラップタイム） */
         .popup-notification {
             position: absolute;
-            bottom: 10px; /* 1080pxの少し上（1070px位置）から上方向へ伸びる */
-            right: -500px; /* 初期状態は右枠外 */
-            width: 430px; /* 455px以内に収まるように */
+            bottom: 10px; 
+            right: -500px; 
+            width: 430px; 
             background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
             border-radius: 4px 8px 8px 4px;
@@ -146,16 +137,8 @@
             transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
         }
 
-        /* スライドイン：画面右端から約10pxの余白（1465〜1920の枠内右端）に配置 */
-        .popup-notification.slide-in { 
-            right: 15px; 
-            opacity: 1;
-        } 
-        /* スライドアウト：右外側へ退避 */
-        .popup-notification.slide-out { 
-            right: -500px; 
-            opacity: 0; 
-        } 
+        .popup-notification.slide-in { right: 15px; opacity: 1; } 
+        .popup-notification.slide-out { right: -500px; opacity: 0; } 
 
         .popup-title { font-size: 13px; font-weight: bold; color: #ff9800; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
         
@@ -173,20 +156,16 @@
 
     <div class="background-layer"></div>
     
-    <!-- 🔴 チーム名と走者名の表示グリッド -->
     <div class="runners-grid" id="runners-grid">
         <!-- JSで19チーム分生成 -->
     </div>
 
-    <!-- 🔴 順位表示コンテナ（枠サイズ完全指定） -->
     <div class="position-map-container" id="map-container">
         <div class="map-line"></div>
     </div>
 
-    <!-- タイマー（左下） -->
     <div class="timer-container" id="timer-display">00:00:00</div>
 
-    <!-- 🔴 ポップアップ通知（右下指定範囲内） -->
     <div class="popup-notification" id="popup-board">
         <div class="popup-title" id="popup-title-text">⏱️ LAP UPDATE</div>
         <table class="popup-table">
@@ -204,10 +183,8 @@
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
         const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
-        // 🔴 追加: lap.html で選択されたメンバーを受け取るReplicant
         const selectedMembersRep = nodecg.Replicant('lapSelectedMembers', { defaultValue: {} });
         
-        // チーム名定義（lap.htmlと同じ並び順）
         const teamsDataList = [
             "カタカナ", "くまぼく。Reimagined", "世界最速救済機構 ISRI", "暴れん坊将軍VII", 
             "アストラルヒーローズ～至高の一杯～", "おれたちはしょうきにもどった", "名古屋酒乱会", 
@@ -216,11 +193,15 @@
             "やきにく（游玄亭）たべたーい！", "老化2026〜加齢なる一族〜", "ゆるふわ"
         ];
 
-        // 🔴 走者名表示グリッドの生成
+        // 🔴 追加：順位表示用のチーム略称リスト
+        const teamShortNames = [
+            "カタ", "くま", "救済", "将軍", "アス", "正気", "酒乱", "ソル", "ナナ", "O4A",
+            "40", "7匹", "Ξ", "あま", "オレ", "ORA", "焼肉", "老化", "ゆる"
+        ];
+
         const runnersGrid = document.getElementById('runners-grid');
         for (let i = 0; i < 20; i++) {
             const box = document.createElement('div');
-            // チームが存在しない20枠目は透明にする
             if (i >= teamsDataList.length) {
                 box.style.visibility = 'hidden';
             } else {
@@ -234,7 +215,6 @@
             runnersGrid.appendChild(box);
         }
 
-        // 走者名Replicantの変更検知
         selectedMembersRep.on('change', (newVal) => {
             if (!newVal) return;
             for (let i = 1; i <= 19; i++) {
@@ -245,7 +225,6 @@
             }
         });
 
-        // 以下、タイマーと順位・ラップ表示ロジック
         const container = document.getElementById('map-container');
         const timerDisplay = document.getElementById('timer-display');
         const popupBoard = document.getElementById('popup-board');
@@ -298,7 +277,7 @@
 
             const rowTitles = rows.map(r => r[0]); 
             const headers = rows[0];
-            const teamDataList = [];
+            const teamDataListObj = [];
 
             let triggeredLapIndex = -1;
 
@@ -314,6 +293,8 @@
 
                 const currentLapCount = laps.length;
                 const teamNumStr = String(colIdx);
+                // 🔴 略称を取得（1列目は colIdx=1 なので -1 して配列にアクセス）
+                const shortName = teamShortNames[colIdx - 1] || teamNumStr;
 
                 if (!isFirstLoad) {
                     const prevCount = previousTeamLapsMap[teamNumStr] || 0;
@@ -324,9 +305,9 @@
 
                 previousTeamLapsMap[teamNumStr] = currentLapCount;
 
-                teamDataList.push({
+                teamDataListObj.push({
                     id: `team-circle-node-${colIdx}`, 
-                    displayNum: teamNumStr,     
+                    displayNum: shortName, // 略称を表示用に設定
                     lapCount: currentLapCount,
                     lastTime: currentLapCount > 0 ? laps[currentLapCount - 1] : '--:--:--',
                     allLaps: laps 
@@ -335,7 +316,7 @@
 
             isFirstLoad = false;
 
-            teamDataList.sort((a, b) => {
+            teamDataListObj.sort((a, b) => {
                 if (b.lapCount !== a.lapCount) return b.lapCount - a.lapCount; 
                 if (a.lapCount > 0) {
                     return timeToSeconds(a.lastTime) - timeToSeconds(b.lastTime);
@@ -346,10 +327,10 @@
             let currentRank = 1;
             let tieGroups = {};
 
-            for (let i = 0; i < teamDataList.length; i++) {
-                const currentTeam = teamDataList[i];
+            for (let i = 0; i < teamDataListObj.length; i++) {
+                const currentTeam = teamDataListObj[i];
                 if (i > 0) {
-                    const prevTeam = teamDataList[i - 1];
+                    const prevTeam = teamDataListObj[i - 1];
                     if (currentTeam.lapCount !== prevTeam.lapCount || (currentTeam.lapCount > 0 && currentTeam.lastTime !== prevTeam.lastTime)) {
                         currentRank = i + 1;
                     }
@@ -360,8 +341,8 @@
                 tieGroups[currentRank].push(currentTeam);
             }
 
-            const totalTeams = teamDataList.length;
-            teamDataList.forEach((team) => {
+            const totalTeams = teamDataListObj.length;
+            teamDataListObj.forEach((team) => {
                 let circle = document.getElementById(team.id);
                 if (!circle) {
                     circle = document.createElement('div');
@@ -371,8 +352,7 @@
                 }
                 circle.innerText = team.displayNum;
 
-                const sortedIndex = teamDataList.indexOf(team); 
-                // 左(0%)が最下位、右(100%)が1位となるように配置
+                const sortedIndex = teamDataListObj.indexOf(team); 
                 let leftPositionPercent = ((totalTeams - 1 - sortedIndex) / (totalTeams - 1)) * 100;
 
                 circle.className = 'team-circle';
@@ -393,11 +373,10 @@
                 circle.style.left = `${leftPositionPercent}%`;
             });
 
-            // Pop-up通知制御
             if (triggeredLapIndex !== -1) {
                 const targetLapTitle = rowTitles[triggeredLapIndex]; 
 
-                const activePopupTeams = teamDataList.filter(t => t.lapCount >= triggeredLapIndex).map(t => {
+                const activePopupTeams = teamDataListObj.filter(t => t.lapCount >= triggeredLapIndex).map(t => {
                     return {
                         displayNum: t.displayNum,
                         lapTimeStr: t.allLaps[triggeredLapIndex - 1], 
@@ -426,7 +405,7 @@
 
                         tr.innerHTML = `
                             <td class="${rank === 1 ? 'pop-rank-1' : ''}">${rank}位</td>
-                            <td><span class="pop-team-num">チーム ${team.displayNum}</span></td>
+                            <td><span class="pop-team-num">${team.displayNum}</span></td>
                             <td>${timeCellHtml}</td>
                         `;
                         popupTbody.appendChild(tr);
