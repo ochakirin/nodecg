@@ -24,9 +24,6 @@
 
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
-        
-        // 🔴 追加: メンバー選択状態を全クライアントで同期・保持するためのReplicant
-        // defaultValueを空のオブジェクト{}にしておき、{ "1": "ギャース", "2": "ヤミフネ"... } のように保存します
         const selectedMembersRep = nodecg.Replicant('lapSelectedMembers', { defaultValue: {} });
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
@@ -43,15 +40,16 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
+        // 🔴 スプレッドシートに基づいてチーム順序を更新
         const teamsData = [
-            { name: "アストラルヒーローズ～至高の一杯～", members: ["ギャース", "望月まどか", "TA-KA", "ROM", "ぐーい", "はなん", "テリーマン"] },
             { name: "オレハマッテルゼⅩⅠ", members: ["ヤミフネ", "わさび塩", "チェリーソウマ", "まるマール", "氷矢", "のらねこ", "もるっち"] },
             { name: "ドラクエソルジャーズ", members: ["さんちゃん", "オリハ", "えび", "さん.", "ぽん", "みりい", "ぶんまる"] },
             { name: "暴れん坊将軍VII", members: ["ざらめ", "やしお", "ゆっきー", "かみ", "わっち", "やごごごご", "スズカ"] },
+            { name: "アストラルヒーローズ～至高の一杯～", members: ["ギャース", "望月まどか", "TA-KA", "ROM", "ぐーい", "はなん", "テリーマン"] },
             { name: "ORAeSports", members: ["ゆうてい7", "ちくわ", "いつみ五郎", "岡崎 鍵", "ashu", "マスターT", "松金"] },
             { name: "おれたちはしょうきにもどった", members: ["ありくい", "かしわ親方", "レシリア", "marty", "しげる", "のらこ", "セミ"] },
-            { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] },
             { name: "あまいおかし", members: ["桃瀬りりあ", "golgo0531", "かすてら", "そら", "konpira", "リトラブ", "げるっち"] },
+            { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] },
             { name: "導かれし7匹の(･∀･)", members: ["夜凪", "ユーリル", "waiwai", "けいる", "しゃり", "きゅー(･∀･)", "さくらば"] },
             { name: "Ξ", members: ["とーま", "ろーれん", "壁くれいじー", "ろーにんさん", "ゆー", "けんしろー", "もりぞー"] },
             { name: "くまぼく。Reimagined", members: ["Sawa", "ペコ", "くまさん", "るるりゅー", "えとら", "うつも", "マキナ"] },
@@ -121,10 +119,8 @@
             const selectElement = box.querySelector(`#member-select-${teamNum}`);
             const targetButtons = [btnForward, btnBackward];
 
-            // 🔴 追加: プルダウンが「変更された時」に、そのチームの値だけをReplicantに書き込む
             selectElement.addEventListener('change', (e) => {
                 if (!selectedMembersRep.value) selectedMembersRep.value = {};
-                // 特定のチーム番号のデータのみを更新（他クライアントの古い全データで上書きするロールバックを防ぐ）
                 selectedMembersRep.value[teamNum] = e.target.value;
             });
 
@@ -134,16 +130,13 @@
             grid.appendChild(box);
         });
 
-        // 🔴 追加: ページ読み込み時、または誰かがプルダウンを変更した時にUIを同期する
         selectedMembersRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            // すべてのチームのプルダウンを最新状態に合わせる
             teamsData.forEach((team, index) => {
                 const teamNum = index + 1;
                 const selectElement = document.getElementById(`member-select-${teamNum}`);
                 
-                // サーバー(Replicant)にそのチームのデータが存在し、かつ現在のプルダウンの値と違う場合のみ上書きする
                 if (selectElement && newVal[teamNum] !== undefined) {
                     if (selectElement.value !== newVal[teamNum]) {
                         selectElement.value = newVal[teamNum];
