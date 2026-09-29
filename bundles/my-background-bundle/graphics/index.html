@@ -149,34 +149,39 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知（文字サイズ拡大＆行数調整） */
+        /* 🔴 ポップアップ通知（縦サイズ上限190px＆下・右の隙間ゼロ） */
         .popup-notification {
             position: absolute;
-            bottom: 15px; 
+            bottom: 0px;  /* 下の隙間をなくす */
             right: -500px; 
-            width: 425px; /* 枠に収まるサイズ */
+            width: 425px; 
+            max-height: 190px; /* 縦サイズ上限を190ピクセルに設定 */
+            box-sizing: border-box; /* paddingを高さに含める */
+            overflow: hidden; /* はみ出した分を隠す */
             background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
-            border-radius: 4px 8px 8px 4px;
-            padding: 12px 15px;
+            border-radius: 8px 0 0 0; /* 右側の角丸を消して画面端にフィットさせる */
+            padding: 8px 12px; /* 190pxに収まるように内側の余白を少し詰める */
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            z-index: 30;
+            z-index: 30; /* タイマーより前面に出る */
             opacity: 0;
             transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
         }
 
-        .popup-notification.slide-in { right: 15px; opacity: 1; } 
+        .popup-notification.slide-in { right: 0px; opacity: 1; } /* 右の隙間をなくす */
         .popup-notification.slide-out { right: -500px; opacity: 0; } 
 
-        .popup-title { font-size: 16px; font-weight: bold; color: #ff9800; margin-bottom: 8px; border-bottom: 2px solid rgba(255,255,255,0.15); padding-bottom: 6px; }
+        .popup-title { font-size: 14px; font-weight: bold; color: #ff9800; margin-bottom: 4px; border-bottom: 2px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
         
         .popup-table { width: 100%; border-collapse: collapse; }
-        .popup-table th { padding: 6px 4px; text-align: center; font-size: 13px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
-        .popup-table td { padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 15px; font-weight: bold; }
+        .popup-table th { padding: 2px 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
         
-        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 18px !important; }
-        .pop-team-num { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-weight: bold; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; vertical-align: middle; }
+        /* 行の高さを抑えて190pxに綺麗に収める */
+        .popup-table td { padding: 3px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; font-weight: bold; height: 24px; }
+        
+        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 16px !important; }
+        .pop-team-num { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; vertical-align: middle; }
         .pop-time-diff { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #00ff66; }
         .pop-time-leader { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #fff; }
     </style>
@@ -399,8 +404,6 @@
                 circle.innerText = team.displayNum;
 
                 const sortedIndex = teamDataListObj.indexOf(team); 
-                
-                // 🔴 マップの両端にはみ出さないよう、6%〜94%の範囲で配置
                 let leftPositionPercent = 6 + ((totalTeams - 1 - sortedIndex) / (totalTeams - 1)) * 88;
 
                 circle.className = 'team-circle';
@@ -426,14 +429,12 @@
                 circle.style.left = `${leftPositionPercent}%`;
             });
 
-            // 🔴 ポップアップ通知の表示ロジック
             if (triggeredLapIndex !== -1) {
                 const targetLapTitle = rowTitles[triggeredLapIndex]; 
 
-                // 今回のラップを通過したチームを取得し、タイムで並び替える
                 const activePopupTeams = teamDataListObj.filter(t => t.lapCount >= triggeredLapIndex).map(t => {
                     return {
-                        displayNum: t.fullName, // フルネームを使用
+                        displayNum: t.fullName, 
                         lapTimeStr: t.allLaps[triggeredLapIndex - 1], 
                         lapSeconds: timeToSeconds(t.allLaps[triggeredLapIndex - 1])
                     };
@@ -443,7 +444,6 @@
 
                 if (activePopupTeams.length > 0) {
                     
-                    // 通過チームの中での順位を再計算
                     let popupRank = 1;
                     for(let i = 0; i < activePopupTeams.length; i++) {
                         if (i > 0 && activePopupTeams[i].lapSeconds !== activePopupTeams[i-1].lapSeconds) {
@@ -454,13 +454,12 @@
 
                     const leaderSeconds = activePopupTeams[0].lapSeconds;
                     
-                    // 🔴 1位 ＋ 最新の最大4チームを抽出
                     let displayTeams = [];
-                    displayTeams.push(activePopupTeams[0]); // 常に1位を表示
+                    displayTeams.push(activePopupTeams[0]); 
                     
                     let remaining = activePopupTeams.slice(1);
                     if (remaining.length > 4) {
-                        remaining = remaining.slice(remaining.length - 4); // 末尾から最大4件
+                        remaining = remaining.slice(remaining.length - 4); 
                     }
                     displayTeams = displayTeams.concat(remaining);
 
@@ -468,10 +467,9 @@
                     popupTbody.innerHTML = '';
                     
                     displayTeams.forEach((team, idx) => {
-                        // 1位と後続が離れている場合、間に省略記号を入れる
                         if (idx === 1 && activePopupTeams.length > 5) {
                             const ellipsisTr = document.createElement('tr');
-                            ellipsisTr.innerHTML = `<td colspan="3" style="color:#777; font-size: 18px; padding: 0;">︙</td>`;
+                            ellipsisTr.innerHTML = `<td colspan="3" style="color:#777; font-size: 16px; padding: 0;">︙</td>`;
                             popupTbody.appendChild(ellipsisTr);
                         }
 
@@ -498,7 +496,6 @@
                     
                     setTimeout(() => { popupBoard.classList.add('slide-in'); }, 50);
 
-                    // 8秒で閉じる
                     popupTimeoutToken = setTimeout(() => {
                         popupBoard.classList.remove('slide-in');
                         popupBoard.classList.add('slide-out');
