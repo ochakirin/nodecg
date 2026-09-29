@@ -15,7 +15,6 @@
             position: relative;
         }
 
-        /* 背景画像設定 */
         .background-layer {
             position: absolute;
             top: 0;
@@ -28,52 +27,94 @@
             z-index: 1;
         }
 
-        /* 画面真ん中のポジションマップ（ベースライン） */
+        /* 🔴 チーム名・走者名表示グリッド（完全座標指定） */
+        /* コンテナは 画面左上(0, 1) から始まり、縦845px、横1825pxの範囲を利用 */
+        .runners-grid {
+            position: absolute;
+            top: 1px;
+            left: 0px;
+            width: 1825px;
+            height: 845px;
+            z-index: 5;
+            display: grid;
+            /* 列(X軸)の座標幅: 365px間隔 × 5列 */
+            grid-template-columns: repeat(5, 365px);
+            /* 行(Y軸)の座標幅: 1行あたり270px (実質的なマージン含む。表示ブロック自体の高さは約34px) */
+            grid-template-rows: repeat(4, 269px); 
+        }
+
+        .runner-box {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff66;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            /* 高さ 34px (指定の 1-35 などに合致) に固定 */
+            height: 34px; 
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+        
+        /* チーム名を左に寄せて、走者を右に寄せる */
+        .runner-box .t-name { font-size: 14px; font-weight: bold; color: #ffeb3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+        .runner-box .m-name { font-size: 16px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+
+
+        /* 🔴 順位表示（ポジションマップ）の配置変更 */
+        /* 範囲指定: 左上(1465, 810) 〜 右下(1920, 965) -> 幅455px、高さ155px */
         .position-map-container {
             position: absolute;
-            top: 50%;
-            left: 150px; 
-            right: 150px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2); 
-            border-radius: 3px;
-            transform: translateY(-50%);
+            top: 810px;
+            left: 1465px;
+            width: 455px;
+            height: 155px;
             z-index: 10;
         }
 
-        /* チームの数字を囲う○の図形 */
+        /* 内部のベースラインは中心に引く */
+        .map-line {
+            position: absolute;
+            top: 50%;
+            left: 20px; 
+            right: 20px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3); 
+            border-radius: 2px;
+            transform: translateY(-50%);
+        }
+
         .team-circle {
             position: absolute;
             top: 50%;
-            width: 65px;
-            height: 65px;
+            width: 40px;  /* 枠が狭いので少し小さめに */
+            height: 40px;
             background: #009688; 
             color: white;
-            border: 4px solid white;
+            border: 2px solid white;
             border-radius: 50%; 
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px; 
+            font-size: 16px; 
             font-weight: 900; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
-                        transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), 
-                        width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s, width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
             transform: translate(-50%, -50%); 
         }
 
-        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 75px; height: 75px; font-size: 28px; z-index: 100; } 
-        .team-circle.rank-2 { background: #ff9100; width: 70px; height: 70px; font-size: 26px; z-index: 90; }  
-        .team-circle.rank-3 { background: #00b0ff; width: 70px; height: 70px; font-size: 26px; z-index: 80; }  
+        .team-circle.rank-1 { background: #ff1744; border-color: #ffea00; width: 50px; height: 50px; font-size: 20px; z-index: 100; } 
+        .team-circle.rank-2 { background: #ff9100; width: 45px; height: 45px; font-size: 18px; z-index: 90; }  
+        .team-circle.rank-3 { background: #00b0ff; width: 45px; height: 45px; font-size: 18px; z-index: 80; }  
+        .team-circle.is-tie { width: 35px; height: 35px; font-size: 14px; opacity: 0.95; border: 2px solid #fff; }
 
-        .team-circle.is-tie { width: 50px; height: 50px; font-size: 18px; opacity: 0.95; border: 3px solid #fff; }
-
-        /* タイマー設定（右下） */
+        /* タイマー設定（左下などに配置） */
         .timer-container {
             position: absolute;
             bottom: 40px;
-            right: 50px;
+            left: 50px;
             background: rgba(0, 0, 0, 0.75);
             border: 2px solid rgba(255, 255, 255, 0.2);
             padding: 10px 25px;
@@ -86,46 +127,44 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知のコンテナ（初期状態は画面の右外側「right: -500px」に隠す） */
+        /* 🔴 ポップアップ通知（ラップタイム）の範囲変更 */
+        /* 範囲指定: 左上(1465, 810) 〜 右下(1920, 1080) -> 幅455px */
+        /* ※ ポジションマップ(810〜965)の下に出すため、bottom基準で配置 */
         .popup-notification {
             position: absolute;
-            top: 80px; 
-            right: -500px; 
-            width: 420px;
-            background: rgba(20, 25, 35, 0.92); 
+            bottom: 10px; /* 1080pxの少し上（1070px位置）から上方向へ伸びる */
+            right: -500px; /* 初期状態は右枠外 */
+            width: 430px; /* 455px以内に収まるように */
+            background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
             border-radius: 4px 8px 8px 4px;
-            padding: 15px;
+            padding: 10px;
             color: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             z-index: 30;
-            opacity: 0; /* 初期状態は透明 */
-            
-            /* 🔴 滑らかな出入りのアニメーション（滑らかな加速減速をかける） */
-            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
-                        opacity 0.4s ease-in-out;
+            opacity: 0;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
         }
 
-        /* 🔴 【スライドイン】右から画面内に50pxの位置までスッと入ってくる状態 */
+        /* スライドイン：画面右端から約10pxの余白（1465〜1920の枠内右端）に配置 */
         .popup-notification.slide-in { 
-            right: 50px; 
+            right: 15px; 
             opacity: 1;
         } 
-
-        /* 🔴 【新演出：スライドアウト】消える時は右外側（-500px）へバックして戻っていく状態 */
+        /* スライドアウト：右外側へ退避 */
         .popup-notification.slide-out { 
             right: -500px; 
             opacity: 0; 
         } 
 
-        .popup-title { font-size: 14px; font-weight: bold; color: #ff9800; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
+        .popup-title { font-size: 13px; font-weight: bold; color: #ff9800; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
         
-        .popup-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .popup-table th { padding: 6px 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
-        .popup-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .popup-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .popup-table th { padding: 4px; text-align: center; font-size: 10px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .popup-table td { padding: 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
         
         .pop-rank-1 { color: #ff1744; font-weight: bold; }
-        .pop-team-num { background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .pop-team-num { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .pop-time-diff { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #00ff66; }
         .pop-time-leader { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #fff; }
     </style>
@@ -133,11 +172,21 @@
 <body>
 
     <div class="background-layer"></div>
+    
+    <!-- 🔴 チーム名と走者名の表示グリッド -->
+    <div class="runners-grid" id="runners-grid">
+        <!-- JSで19チーム分生成 -->
+    </div>
 
-    <div class="position-map-container" id="map-container"></div>
+    <!-- 🔴 順位表示コンテナ（枠サイズ完全指定） -->
+    <div class="position-map-container" id="map-container">
+        <div class="map-line"></div>
+    </div>
 
+    <!-- タイマー（左下） -->
     <div class="timer-container" id="timer-display">00:00:00</div>
 
+    <!-- 🔴 ポップアップ通知（右下指定範囲内） -->
     <div class="popup-notification" id="popup-board">
         <div class="popup-title" id="popup-title-text">⏱️ LAP UPDATE</div>
         <table class="popup-table">
@@ -155,10 +204,50 @@
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
         const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
+        // 🔴 追加: lap.html で選択されたメンバーを受け取るReplicant
+        const selectedMembersRep = nodecg.Replicant('lapSelectedMembers', { defaultValue: {} });
         
+        // チーム名定義（lap.htmlと同じ並び順）
+        const teamsDataList = [
+            "カタカナ", "くまぼく。Reimagined", "世界最速救済機構 ISRI", "暴れん坊将軍VII", 
+            "アストラルヒーローズ～至高の一杯～", "おれたちはしょうきにもどった", "名古屋酒乱会", 
+            "ドラクエソルジャーズ", "ドラナナｼｺ×2", "ＯＮＥ ４ ＡＬＬ", "40年後もドラクエが好き", 
+            "導かれし7匹の(･∀･)", "Ξ", "あまいおかし", "オレハマッテルゼⅩⅠ", "ORAeSports", 
+            "やきにく（游玄亭）たべたーい！", "老化2026〜加齢なる一族〜", "ゆるふわ"
+        ];
+
+        // 🔴 走者名表示グリッドの生成
+        const runnersGrid = document.getElementById('runners-grid');
+        for (let i = 0; i < 20; i++) {
+            const box = document.createElement('div');
+            // チームが存在しない20枠目は透明にする
+            if (i >= teamsDataList.length) {
+                box.style.visibility = 'hidden';
+            } else {
+                box.className = 'runner-box';
+                box.id = `runner-box-${i + 1}`;
+                box.innerHTML = `
+                    <span class="t-name">${teamsDataList[i]}</span>
+                    <span class="m-name" id="runner-name-${i + 1}">準備中...</span>
+                `;
+            }
+            runnersGrid.appendChild(box);
+        }
+
+        // 走者名Replicantの変更検知
+        selectedMembersRep.on('change', (newVal) => {
+            if (!newVal) return;
+            for (let i = 1; i <= 19; i++) {
+                const nameEl = document.getElementById(`runner-name-${i}`);
+                if (nameEl) {
+                    nameEl.innerText = newVal[i] ? newVal[i] : '---';
+                }
+            }
+        });
+
+        // 以下、タイマーと順位・ラップ表示ロジック
         const container = document.getElementById('map-container');
         const timerDisplay = document.getElementById('timer-display');
-        
         const popupBoard = document.getElementById('popup-board');
         const popupTbody = document.getElementById('popup-tbody');
         const popupTitleText = document.getElementById('popup-title-text');
@@ -283,6 +372,7 @@
                 circle.innerText = team.displayNum;
 
                 const sortedIndex = teamDataList.indexOf(team); 
+                // 左(0%)が最下位、右(100%)が1位となるように配置
                 let leftPositionPercent = ((totalTeams - 1 - sortedIndex) / (totalTeams - 1)) * 100;
 
                 circle.className = 'team-circle';
@@ -293,9 +383,9 @@
                     circle.classList.add('is-tie');
                     const groupIndex = tieGroups[team.rank].indexOf(team);
                     const groupCount = tieGroups[team.rank].length;
-                    const xOffset = (groupIndex - (groupCount - 1) / 2) * 1.2;
+                    const xOffset = (groupIndex - (groupCount - 1) / 2) * 2.5; 
                     leftPositionPercent += xOffset;
-                    const yOffset = (groupIndex % 2 === 0) ? '-22px' : '22px';
+                    const yOffset = (groupIndex % 2 === 0) ? '-15px' : '15px';
                     circle.style.transform = `translate(-50%, calc(-50% + ${yOffset}))`;
                 } else {
                     circle.style.transform = `translate(-50%, -50%)`;
@@ -319,10 +409,9 @@
 
                 if (activePopupTeams.length > 0) {
                     const leaderSeconds = activePopupTeams[0].lapSeconds;
-
                     popupTitleText.innerText = `⏱️ 通過情報: ${targetLapTitle}`;
-
                     popupTbody.innerHTML = '';
+                    
                     activePopupTeams.forEach((team, idx) => {
                         const rank = idx + 1;
                         const tr = document.createElement('tr');
@@ -344,16 +433,10 @@
                     });
 
                     if (popupTimeoutToken) clearTimeout(popupTimeoutToken);
-
-                    // 🔴 スライドクラスをクリアしてリセット
                     popupBoard.classList.remove('slide-in', 'slide-out');
                     
-                    // 1. 右からスッと登場
-                    setTimeout(() => {
-                        popupBoard.classList.add('slide-in');
-                    }, 50);
+                    setTimeout(() => { popupBoard.classList.add('slide-in'); }, 50);
 
-                    // 2. 7秒経過後、「slide-in」を外し「slide-out」を付与して右へ戻す
                     popupTimeoutToken = setTimeout(() => {
                         popupBoard.classList.remove('slide-in');
                         popupBoard.classList.add('slide-out');
