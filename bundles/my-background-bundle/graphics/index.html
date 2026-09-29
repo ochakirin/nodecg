@@ -149,19 +149,19 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知（縦サイズ上限435px） */
+        /* 🔴 ポップアップ通知（縦サイズ上限270px） */
         .popup-notification {
             position: absolute;
             bottom: 0px;  
             right: -500px; 
             width: 425px; 
-            max-height: 435px; 
+            max-height: 270px; /* 🔴 縦サイズ上限を270ピクセルに修正 */
             box-sizing: border-box; 
             overflow: hidden; 
             background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
             border-radius: 8px 0 0 0; 
-            padding: 12px 15px; 
+            padding: 10px 12px; /* 🔴 270pxに収まるように余白を少し詰める */
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             z-index: 30; 
@@ -174,31 +174,28 @@
         .popup-notification.slide-in { right: 0px; opacity: 1; } 
         .popup-notification.slide-out { right: -500px; opacity: 0; } 
 
-        /* 🔴 ラップ名が長すぎても改行させず、末尾を「...」にする */
         .popup-title { 
-            font-size: 16px; 
+            font-size: 15px; /* 🔴 少し縮小 */
             font-weight: bold; 
             color: #ff9800; 
-            margin-bottom: 8px; 
+            margin-bottom: 6px; 
             border-bottom: 2px solid rgba(255,255,255,0.15); 
-            padding-bottom: 6px; 
+            padding-bottom: 4px; 
             white-space: nowrap; 
             overflow: hidden; 
             text-overflow: ellipsis;
             flex-shrink: 0;
         }
         
-        /* 🔴 テーブルのレイアウトを固定し、中身の文字で枠が崩れないようにする */
         .popup-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .popup-table th { padding: 6px 4px; text-align: center; font-size: 12px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .popup-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 15px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .popup-table th { padding: 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .popup-table td { padding: 5px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 18px !important; }
+        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 16px !important; }
         
-        /* 🔴 チーム名もセル幅に自動で合わせて省略するように変更 */
         .pop-team-num { 
             background: rgba(255,255,255,0.1); 
-            padding: 4px 8px; 
+            padding: 3px 6px; 
             border-radius: 4px; 
             font-weight: bold; 
             display: block; 
