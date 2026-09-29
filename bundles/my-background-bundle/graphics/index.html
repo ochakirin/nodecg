@@ -149,39 +149,38 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知（縦サイズ上限190px＆下・右の隙間ゼロ） */
+        /* 🔴 ポップアップ通知（縦サイズ上限435px） */
         .popup-notification {
             position: absolute;
-            bottom: 0px;  /* 下の隙間をなくす */
+            bottom: 0px;  /* 下の隙間ゼロ */
             right: -500px; 
             width: 425px; 
-            max-height: 190px; /* 縦サイズ上限を190ピクセルに設定 */
-            box-sizing: border-box; /* paddingを高さに含める */
-            overflow: hidden; /* はみ出した分を隠す */
+            max-height: 435px; /* 🔴 縦サイズ上限を435ピクセルに修正 */
+            box-sizing: border-box; 
+            overflow: hidden; 
             background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
-            border-radius: 8px 0 0 0; /* 右側の角丸を消して画面端にフィットさせる */
-            padding: 8px 12px; /* 190pxに収まるように内側の余白を少し詰める */
+            border-radius: 8px 0 0 0; 
+            padding: 12px 15px; /* 上限が広がったので余白を広げて見やすく */
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            z-index: 30; /* タイマーより前面に出る */
+            z-index: 30; 
             opacity: 0;
             transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out;
         }
 
-        .popup-notification.slide-in { right: 0px; opacity: 1; } /* 右の隙間をなくす */
+        .popup-notification.slide-in { right: 0px; opacity: 1; } /* 右の隙間ゼロ */
         .popup-notification.slide-out { right: -500px; opacity: 0; } 
 
-        .popup-title { font-size: 14px; font-weight: bold; color: #ff9800; margin-bottom: 4px; border-bottom: 2px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
+        /* 🔴 余白ができた分、文字や行の高さを読みやすいサイズに戻しました */
+        .popup-title { font-size: 16px; font-weight: bold; color: #ff9800; margin-bottom: 8px; border-bottom: 2px solid rgba(255,255,255,0.15); padding-bottom: 6px; }
         
         .popup-table { width: 100%; border-collapse: collapse; }
-        .popup-table th { padding: 2px 4px; text-align: center; font-size: 11px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .popup-table th { padding: 6px 4px; text-align: center; font-size: 12px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .popup-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 15px; font-weight: bold; }
         
-        /* 行の高さを抑えて190pxに綺麗に収める */
-        .popup-table td { padding: 3px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; font-weight: bold; height: 24px; }
-        
-        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 16px !important; }
-        .pop-team-num { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; vertical-align: middle; }
+        .pop-rank-1 { color: #ff1744; font-weight: 900; font-size: 18px !important; }
+        .pop-team-num { background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-weight: bold; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; vertical-align: middle; }
         .pop-time-diff { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #00ff66; }
         .pop-time-leader { font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #fff; }
     </style>
