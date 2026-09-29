@@ -149,19 +149,19 @@
             z-index: 20;
         }
 
-        /* 🔴 ポップアップ通知（縦サイズ上限270px） */
+        /* ポップアップ通知（縦サイズ上限270px） */
         .popup-notification {
             position: absolute;
             bottom: 0px;  
             right: -500px; 
             width: 425px; 
-            max-height: 270px; /* 🔴 縦サイズ上限を270ピクセルに修正 */
+            max-height: 270px; 
             box-sizing: border-box; 
             overflow: hidden; 
             background: rgba(20, 25, 35, 0.95); 
             border-left: 6px solid #ff9800; 
             border-radius: 8px 0 0 0; 
-            padding: 10px 12px; /* 🔴 270pxに収まるように余白を少し詰める */
+            padding: 10px 12px; 
             color: white;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             z-index: 30; 
@@ -175,7 +175,7 @@
         .popup-notification.slide-out { right: -500px; opacity: 0; } 
 
         .popup-title { 
-            font-size: 15px; /* 🔴 少し縮小 */
+            font-size: 15px; 
             font-weight: bold; 
             color: #ff9800; 
             margin-bottom: 6px; 
@@ -491,11 +491,7 @@
                     popupTbody.innerHTML = '';
                     
                     displayTeams.forEach((team, idx) => {
-                        if (idx === 1 && activePopupTeams.length > 5) {
-                            const ellipsisTr = document.createElement('tr');
-                            ellipsisTr.innerHTML = `<td colspan="3" style="color:#777; font-size: 16px; padding: 0;">︙</td>`;
-                            popupTbody.appendChild(ellipsisTr);
-                        }
+                        // 🔴 間の「︙」行を追加するロジックを完全に削除しました
 
                         const tr = document.createElement('tr');
                         
