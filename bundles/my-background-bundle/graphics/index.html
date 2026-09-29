@@ -90,7 +90,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* 🔴 略称が収まるようにフォントサイズを微調整 */
             font-size: 13px; 
             font-weight: 900; 
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
@@ -103,15 +102,20 @@
         .team-circle.rank-3 { background: #00b0ff; width: 45px; height: 45px; font-size: 15px; z-index: 80; }  
         .team-circle.is-tie { width: 35px; height: 35px; font-size: 11px; opacity: 0.95; border: 2px solid #fff; }
 
-        /* タイマー設定 */
+        /* 🔴 タイマー設定（座標指定＆完全黒背景） */
         .timer-container {
             position: absolute;
-            bottom: 40px;
-            left: 50px;
-            background: rgba(0, 0, 0, 0.75);
+            top: 965px;
+            left: 1630px;
+            width: 290px;
+            height: 115px;
+            background: #000000; /* 透過なしの黒 */
             border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 25px;
             border-radius: 8px;
+            box-sizing: border-box; /* 枠線を幅・高さに含める */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #00ff66;
             font-family: 'Courier New', Courier, monospace;
             font-size: 48px;
@@ -193,7 +197,6 @@
             "やきにく（游玄亭）たべたーい！", "老化2026〜加齢なる一族〜", "ゆるふわ"
         ];
 
-        // 🔴 追加：順位表示用のチーム略称リスト
         const teamShortNames = [
             "カタ", "くま", "救済", "将軍", "アス", "正気", "酒乱", "ソル", "ナナ", "O4A",
             "40", "7匹", "Ξ", "あま", "オレ", "ORA", "焼肉", "老化", "ゆる"
@@ -293,7 +296,6 @@
 
                 const currentLapCount = laps.length;
                 const teamNumStr = String(colIdx);
-                // 🔴 略称を取得（1列目は colIdx=1 なので -1 して配列にアクセス）
                 const shortName = teamShortNames[colIdx - 1] || teamNumStr;
 
                 if (!isFirstLoad) {
@@ -307,7 +309,7 @@
 
                 teamDataListObj.push({
                     id: `team-circle-node-${colIdx}`, 
-                    displayNum: shortName, // 略称を表示用に設定
+                    displayNum: shortName, 
                     lapCount: currentLapCount,
                     lastTime: currentLapCount > 0 ? laps[currentLapCount - 1] : '--:--:--',
                     allLaps: laps 
