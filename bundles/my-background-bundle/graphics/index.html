@@ -54,10 +54,26 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         
-        .runner-box .t-name { font-size: 14px; font-weight: bold; color: #ffeb3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-        .runner-box .m-name { font-size: 16px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        /* 🔴 チーム名の省略を解除し、幅を固定してJSでサイズを縮小させる */
+        .runner-box .t-name { 
+            font-size: 14px; 
+            font-weight: bold; 
+            color: #ffeb3b; 
+            white-space: nowrap; 
+            width: 180px; 
+            overflow: visible;
+        }
+        .runner-box .m-name { 
+            font-size: 16px; 
+            font-weight: 900; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 140px; 
+            text-align: right;
+        }
 
-        /* 順位表示（ポジションマップ）の配置変更 */
+        /* 順位表示（ポジションマップ） */
         .position-map-container {
             position: absolute;
             top: 810px;
@@ -67,9 +83,9 @@
             z-index: 10;
         }
 
+        /* 🔴 マップの線を2本（2列）に変更 */
         .map-line {
             position: absolute;
-            top: 50%;
             left: 20px; 
             right: 20px;
             height: 4px;
@@ -77,10 +93,22 @@
             border-radius: 2px;
             transform: translateY(-50%);
         }
+        .map-line-top { top: 35%; }
+        .map-line-bottom { top: 65%; }
+
+        /* 🔴 進行方向を示す1位/19位のラベル */
+        .map-label {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+            z-index: 5;
+        }
+        .label-start { left: 15px; bottom: 5px; }
+        .label-end { right: 15px; bottom: 5px; }
 
         .team-circle {
             position: absolute;
-            top: 50%;
             width: 40px; 
             height: 40px;
             background: #009688; 
@@ -93,7 +121,7 @@
             font-size: 13px; 
             font-weight: 900; 
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s, width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s, transform 0.8s, width 0.4s, height 0.4s, font-size 0.4s, background-color 0.4s;
             transform: translate(-50%, -50%); 
         }
 
@@ -102,17 +130,17 @@
         .team-circle.rank-3 { background: #00b0ff; width: 45px; height: 45px; font-size: 15px; z-index: 80; }  
         .team-circle.is-tie { width: 35px; height: 35px; font-size: 11px; opacity: 0.95; border: 2px solid #fff; }
 
-        /* 🔴 タイマー設定（座標指定＆完全黒背景） */
+        /* タイマー設定 */
         .timer-container {
             position: absolute;
             top: 965px;
             left: 1630px;
             width: 290px;
             height: 115px;
-            background: #000000; /* 透過なしの黒 */
+            background: #000000; 
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
-            box-sizing: border-box; /* 枠線を幅・高さに含める */
+            box-sizing: border-box; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -147,6 +175,7 @@
         .popup-title { font-size: 13px; font-weight: bold; color: #ff9800; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 4px; }
         
         .popup-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        /* 🔴 フルネームが表示できるようにチームの列幅を広げました */
         .popup-table th { padding: 4px; text-align: center; font-size: 10px; color: #aaa; border-bottom: 2px solid rgba(255,255,255,0.2); }
         .popup-table td { padding: 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
         
@@ -164,8 +193,12 @@
         <!-- JSで19チーム分生成 -->
     </div>
 
+    <!-- 🔴 順位表示コンテナ（2列線とラベル） -->
     <div class="position-map-container" id="map-container">
-        <div class="map-line"></div>
+        <div class="map-line map-line-top"></div>
+        <div class="map-line map-line-bottom"></div>
+        <div class="map-label label-start">◀ 19位</div>
+        <div class="map-label label-end">1位 ▶</div>
     </div>
 
     <div class="timer-container" id="timer-display">00:00:00</div>
@@ -175,9 +208,10 @@
         <table class="popup-table">
             <thead>
                 <tr>
-                    <th style="width: 15%;">順位</th>
-                    <th style="width: 35%;">チーム</th>
-                    <th style="width: 50%;">トップ差 / タイム</th>
+                    <th style="width: 10%;">順位</th>
+                    <!-- 🔴 列幅を調整 -->
+                    <th style="width: 55%;">チーム</th>
+                    <th style="width: 35%;">トップ差 / タイム</th>
                 </tr>
             </thead>
             <tbody id="popup-tbody"></tbody>
@@ -211,12 +245,27 @@
                 box.className = 'runner-box';
                 box.id = `runner-box-${i + 1}`;
                 box.innerHTML = `
-                    <span class="t-name">${teamsDataList[i]}</span>
+                    <span class="t-name" id="team-name-${i + 1}">${teamsDataList[i]}</span>
                     <span class="m-name" id="runner-name-${i + 1}">準備中...</span>
                 `;
             }
             runnersGrid.appendChild(box);
         }
+
+        // 🔴 チーム名が枠(180px)に収まるように文字サイズを自動調整
+        setTimeout(() => {
+            for (let i = 1; i <= 19; i++) {
+                const nameEl = document.getElementById(`team-name-${i}`);
+                if (nameEl) {
+                    let fontSize = 14;
+                    nameEl.style.fontSize = fontSize + 'px';
+                    while (nameEl.scrollWidth > 180 && fontSize > 9) {
+                        fontSize -= 0.5;
+                        nameEl.style.fontSize = fontSize + 'px';
+                    }
+                }
+            }
+        }, 100);
 
         selectedMembersRep.on('change', (newVal) => {
             if (!newVal) return;
@@ -297,6 +346,8 @@
                 const currentLapCount = laps.length;
                 const teamNumStr = String(colIdx);
                 const shortName = teamShortNames[colIdx - 1] || teamNumStr;
+                // 🔴 フルネームを取得（ポップアップ通知用）
+                const fullName = teamsDataList[colIdx - 1] || teamNumStr;
 
                 if (!isFirstLoad) {
                     const prevCount = previousTeamLapsMap[teamNumStr] || 0;
@@ -310,6 +361,7 @@
                 teamDataListObj.push({
                     id: `team-circle-node-${colIdx}`, 
                     displayNum: shortName, 
+                    fullName: fullName, // フルネームを保持
                     lapCount: currentLapCount,
                     lastTime: currentLapCount > 0 ? laps[currentLapCount - 1] : '--:--:--',
                     allLaps: laps 
@@ -360,6 +412,9 @@
                 circle.className = 'team-circle';
                 if (team.rank <= 3) circle.classList.add(`rank-${team.rank}`);
 
+                // 🔴 順位に応じて上下の列（奇数位は上:35%、偶数位は下:65%）に振り分け
+                let topPercent = (team.rank % 2 !== 0) ? 35 : 65;
+
                 const isTie = tieGroups[team.rank].length > 1;
                 if (isTie) {
                     circle.classList.add('is-tie');
@@ -367,11 +422,15 @@
                     const groupCount = tieGroups[team.rank].length;
                     const xOffset = (groupIndex - (groupCount - 1) / 2) * 2.5; 
                     leftPositionPercent += xOffset;
-                    const yOffset = (groupIndex % 2 === 0) ? '-15px' : '15px';
-                    circle.style.transform = `translate(-50%, calc(-50% + ${yOffset}))`;
+                    
+                    // 同じ行に重なるチーム同士でわずかにY軸をずらして見やすくする
+                    const yOffset = (groupIndex % 2 === 0) ? -10 : 10;
+                    circle.style.transform = `translate(-50%, calc(-50% + ${yOffset}px))`;
                 } else {
                     circle.style.transform = `translate(-50%, -50%)`;
                 }
+                
+                circle.style.top = `${topPercent}%`;
                 circle.style.left = `${leftPositionPercent}%`;
             });
 
@@ -380,7 +439,7 @@
 
                 const activePopupTeams = teamDataListObj.filter(t => t.lapCount >= triggeredLapIndex).map(t => {
                     return {
-                        displayNum: t.displayNum,
+                        displayNum: t.fullName, // 🔴 ポップアップ通知にフルネームを使用
                         lapTimeStr: t.allLaps[triggeredLapIndex - 1], 
                         lapSeconds: timeToSeconds(t.allLaps[triggeredLapIndex - 1])
                     };
@@ -405,6 +464,7 @@
                             timeCellHtml = `<span class="pop-time-diff">${formatTimeDiff(diff)}</span>`;
                         }
 
+                        // 🔴 短縮しない名前を表示
                         tr.innerHTML = `
                             <td class="${rank === 1 ? 'pop-rank-1' : ''}">${rank}位</td>
                             <td><span class="pop-team-num">${team.displayNum}</span></td>
