@@ -66,8 +66,6 @@
             { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] }
         ];
 
-        // 🔴 指定されたラップを通過したときに「何人目の走者に切り替えるか」の対応表
-        // ※ 0:1人目, 1:2人目, 2:3人目... というインデックス設定
         const lapToMemberIndex = {
             "DQ7終了/DQ1スタート": 1, // 2人目
             "DQ1終了/DQ4スタート": 2, // 3人目
@@ -116,12 +114,12 @@
             
             currentMemberIndexMap[teamNum] = 0; 
             
+            // 🔴 「メンバーを選択...」を削除し、純粋なリストのみを出力
             const memberOptions = team.members.map(m => `<option value="${m}">${m}</option>`).join('');
             
             box.innerHTML = `
                 <div class="team-title" title="${team.name}">${team.name}</div>
                 <select class="member-select" id="member-select-${teamNum}">
-                    <option value="">メンバーを選択...</option>
                     ${memberOptions}
                 </select>
                 <div class="btn-group">
@@ -150,22 +148,37 @@
             grid.appendChild(box);
         });
 
+        // 🔴 同期処理（初期値の自動セット機能を追加）
         selectedMembersRep.on('change', (newVal) => {
             if (!newVal) return;
             
+            let hasChanges = false;
+            let updatedState = JSON.parse(JSON.stringify(newVal));
+
             teamsData.forEach((team, index) => {
                 const teamNum = index + 1;
-                const selectElement = document.getElementById(`member-select-${teamNum}`);
                 
-                if (selectElement && newVal[teamNum] !== undefined) {
-                    if (selectElement.value !== newVal[teamNum]) {
-                        selectElement.value = newVal[teamNum];
+                // データが存在しない場合、1人目のメンバーを自動セット
+                if (!updatedState[teamNum]) {
+                    updatedState[teamNum] = team.members[0];
+                    hasChanges = true;
+                }
+
+                const selectElement = document.getElementById(`member-select-${teamNum}`);
+                if (selectElement && updatedState[teamNum] !== undefined) {
+                    if (selectElement.value !== updatedState[teamNum]) {
+                        selectElement.value = updatedState[teamNum];
                         
-                        const newIndex = team.members.indexOf(newVal[teamNum]);
+                        const newIndex = team.members.indexOf(updatedState[teamNum]);
                         if(newIndex !== -1) currentMemberIndexMap[teamNum] = newIndex;
                     }
                 }
             });
+
+            // もし初期値をセットした場合、Replicantを更新して全クライアントに同期
+            if (hasChanges) {
+                selectedMembersRep.value = updatedState;
+            }
         });
 
         function parseCSV(text) {
@@ -193,8 +206,6 @@
                 const teamNum = colIdx;
                 if (!teamsData[teamNum - 1]) continue; 
 
-                // 🔴 そのチームの記録済みラップを下（最新）から順に確認し、
-                // トリガーとなるラップを一番最初に通過したものを探す
                 let foundTriggerRowIdx = -1;
                 let foundTargetIndex = -1;
 
@@ -202,7 +213,6 @@
                     const cell = rows[rowIdx][colIdx];
                     if (cell && cell !== '-' && cell !== '') {
                         const lapName = rowTitles[rowIdx];
-                        // 辞書に存在するラップ名かどうかをチェック
                         if (lapToMemberIndex[lapName] !== undefined) {
                             foundTriggerRowIdx = rowIdx;
                             foundTargetIndex = lapToMemberIndex[lapName];
@@ -212,23 +222,19 @@
                 }
 
                 if (foundTriggerRowIdx !== -1) {
-                    // まだこのラップ行での切り替えを処理していない場合のみ実行（ロールバック・重複処理の防止）
                     if (lastTriggeredLapMap[teamNum] !== foundTriggerRowIdx) {
                         lastTriggeredLapMap[teamNum] = foundTriggerRowIdx; 
                         
                         const teamInfo = teamsData[teamNum - 1];
                         
-                        // 指定されたインデックスがメンバー数内に収まっているか確認
                         if (foundTargetIndex < teamInfo.members.length) {
                             const nextMemberName = teamInfo.members[foundTargetIndex];
                             
-                            // 既にそのメンバーが選択されている場合は何もしない（手動で先に変えていた場合など）
                             const selectElement = document.getElementById(`member-select-${teamNum}`);
                             if (selectElement && selectElement.value !== nextMemberName) {
                                 selectElement.value = nextMemberName;
                                 currentMemberIndexMap[teamNum] = foundTargetIndex;
                                 
-                                // 全クライアントに同期
                                 let state = JSON.parse(JSON.stringify(selectedMembersRep.value || {}));
                                 state[teamNum] = nextMemberName;
                                 selectedMembersRep.value = state;
@@ -238,7 +244,6 @@
                 }
             }
         });
-
     </script>
 </body>
 </html>
