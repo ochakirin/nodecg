@@ -29,9 +29,6 @@
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
         let currentSeconds = 0;
-        
-        let currentMemberIndexMap = {}; 
-        let lastTriggeredLapMap = {};
 
         timerRep.on('change', (newVal) => {
             if (newVal) currentSeconds = newVal.seconds;
@@ -65,15 +62,6 @@
             { name: "老化2026〜加齢なる一族〜", members: ["うめミンツ", "焼きさば", "西城みらん", "aotigers1234", "台所ch", "りおりなゆうた", "kota skywalker"] },
             { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] }
         ];
-
-        const lapToMemberIndex = {
-            "DQ7終了/DQ1スタート": 1, // 2人目
-            "DQ1終了/DQ4スタート": 2, // 3人目
-            "DQ4終了/DQ6スタート": 3, // 4人目
-            "DQ6終了/DQ5スタート": 4, // 5人目
-            "DQ5終了/DQ2スタート": 5, // 6人目
-            "DQ2終了/DQ3スタート": 6  // 7人目
-        };
 
         function handleLapAction(teamNum, action, buttons, selectElement) {
             buttons.forEach(b => b.disabled = true);
@@ -112,9 +100,6 @@
             const box = document.createElement('div');
             box.className = 'team-box';
             
-            currentMemberIndexMap[teamNum] = 0; 
-            
-            // 🔴 「メンバーを選択...」を削除し、純粋なリストのみを出力
             const memberOptions = team.members.map(m => `<option value="${m}">${m}</option>`).join('');
             
             box.innerHTML = `
@@ -133,13 +118,10 @@
             const selectElement = box.querySelector(`#member-select-${teamNum}`);
             const targetButtons = [btnForward, btnBackward];
 
+            // 手動でプルダウンを変えた場合の同期
             selectElement.addEventListener('change', (e) => {
-                const selectedValue = e.target.value;
-                const newIndex = team.members.indexOf(selectedValue);
-                if(newIndex !== -1) currentMemberIndexMap[teamNum] = newIndex;
-
                 if (!selectedMembersRep.value) selectedMembersRep.value = {};
-                selectedMembersRep.value[teamNum] = selectedValue;
+                selectedMembersRep.value[teamNum] = e.target.value;
             });
 
             btnForward.addEventListener('click', () => handleLapAction(teamNum + 1, 'forward', targetButtons, selectElement));
@@ -148,37 +130,20 @@
             grid.appendChild(box);
         });
 
-        // 🔴 同期処理（初期値の自動セット機能を追加）
+        // 🔴 ロールバックを引き起こしていた「初期化ロジック」を完全削除。純粋にUIを合わせるだけ
         selectedMembersRep.on('change', (newVal) => {
             if (!newVal) return;
             
-            let hasChanges = false;
-            let updatedState = JSON.parse(JSON.stringify(newVal));
-
             teamsData.forEach((team, index) => {
                 const teamNum = index + 1;
-                
-                // データが存在しない場合、1人目のメンバーを自動セット
-                if (!updatedState[teamNum]) {
-                    updatedState[teamNum] = team.members[0];
-                    hasChanges = true;
-                }
-
                 const selectElement = document.getElementById(`member-select-${teamNum}`);
-                if (selectElement && updatedState[teamNum] !== undefined) {
-                    if (selectElement.value !== updatedState[teamNum]) {
-                        selectElement.value = updatedState[teamNum];
-                        
-                        const newIndex = team.members.indexOf(updatedState[teamNum]);
-                        if(newIndex !== -1) currentMemberIndexMap[teamNum] = newIndex;
+                
+                if (selectElement && newVal[teamNum] !== undefined) {
+                    if (selectElement.value !== newVal[teamNum]) {
+                        selectElement.value = newVal[teamNum];
                     }
                 }
             });
-
-            // もし初期値をセットした場合、Replicantを更新して全クライアントに同期
-            if (hasChanges) {
-                selectedMembersRep.value = updatedState;
-            }
         });
 
         function parseCSV(text) {
@@ -193,55 +158,59 @@
             return rows;
         }
 
+        // 🔴 ラップの記録個数から走者のインデックス（0〜6）を算出する関数
+        function getMemberIndexByLapCount(count) {
+            if (count <= 3) return 0;       // 0〜3は1人目
+            if (count <= 6) return 1;       // 4〜6は2人目
+            if (count <= 11) return 2;      // 7〜11は3人目
+            if (count <= 18) return 3;      // 12〜18は4人目
+            if (count <= 24) return 4;      // 19〜24は5人目
+            if (count <= 28) return 5;      // 25〜28は6人目
+            return 6;                       // 29〜は7人目
+        }
+
+        // 🔴 CSVのデータが更新されたら、個数をベースに強制補正
         sharedCsvRep.on('change', (newVal) => {
             if (!newVal || typeof newVal !== 'string' || !newVal.trim()) return;
             
             const rows = parseCSV(newVal);
             if (rows.length === 0) return;
 
-            const rowTitles = rows.map(r => r[0]); 
             const headers = rows[0];
+            let state = JSON.parse(JSON.stringify(selectedMembersRep.value || {}));
+            let hasChanges = false;
 
             for (let colIdx = 1; colIdx < headers.length; colIdx++) {
                 const teamNum = colIdx;
                 if (!teamsData[teamNum - 1]) continue; 
 
-                let foundTriggerRowIdx = -1;
-                let foundTargetIndex = -1;
-
-                for (let rowIdx = rows.length - 1; rowIdx >= 1; rowIdx--) {
+                // そのチームの有効なラップ（タイムが記録されているセル）の数をカウント
+                let lapCount = 0;
+                for (let rowIdx = 1; rowIdx < rows.length; rowIdx++) {
                     const cell = rows[rowIdx][colIdx];
                     if (cell && cell !== '-' && cell !== '') {
-                        const lapName = rowTitles[rowIdx];
-                        if (lapToMemberIndex[lapName] !== undefined) {
-                            foundTriggerRowIdx = rowIdx;
-                            foundTargetIndex = lapToMemberIndex[lapName];
-                            break; 
-                        }
+                        lapCount++;
                     }
                 }
 
-                if (foundTriggerRowIdx !== -1) {
-                    if (lastTriggeredLapMap[teamNum] !== foundTriggerRowIdx) {
-                        lastTriggeredLapMap[teamNum] = foundTriggerRowIdx; 
-                        
-                        const teamInfo = teamsData[teamNum - 1];
-                        
-                        if (foundTargetIndex < teamInfo.members.length) {
-                            const nextMemberName = teamInfo.members[foundTargetIndex];
-                            
-                            const selectElement = document.getElementById(`member-select-${teamNum}`);
-                            if (selectElement && selectElement.value !== nextMemberName) {
-                                selectElement.value = nextMemberName;
-                                currentMemberIndexMap[teamNum] = foundTargetIndex;
-                                
-                                let state = JSON.parse(JSON.stringify(selectedMembersRep.value || {}));
-                                state[teamNum] = nextMemberName;
-                                selectedMembersRep.value = state;
-                            }
-                        }
+                // カウントから現在の走者を決定
+                const targetIndex = getMemberIndexByLapCount(lapCount);
+                const teamInfo = teamsData[teamNum - 1];
+
+                if (targetIndex < teamInfo.members.length) {
+                    const targetMember = teamInfo.members[targetIndex];
+                    
+                    // 現在選ばれている走者とズレていれば上書きして修正
+                    if (state[teamNum] !== targetMember) {
+                        state[teamNum] = targetMember;
+                        hasChanges = true;
                     }
                 }
+            }
+
+            // 変更があった場合のみReplicantを更新して全クライアントへ同期
+            if (hasChanges) {
+                selectedMembersRep.value = state;
             }
         });
     </script>
