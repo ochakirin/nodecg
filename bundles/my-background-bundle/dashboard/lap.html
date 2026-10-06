@@ -25,9 +25,13 @@
     <script>
         const timerRep = nodecg.Replicant('streamTimer');
         const selectedMembersRep = nodecg.Replicant('lapSelectedMembers', { defaultValue: {} });
+        const sharedCsvRep = nodecg.Replicant('sharedCsvData', { defaultValue: '' });
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1KWyNyHrp7gZV2_D3XP7Xlo0txsvySQ6iLSQO_tLVSH3YgkB_ncBuaY_1B6lA41Fu/exec';
         let currentSeconds = 0;
+        
+        let currentMemberIndexMap = {}; 
+        let lastTriggeredLapMap = {};
 
         timerRep.on('change', (newVal) => {
             if (newVal) currentSeconds = newVal.seconds;
@@ -40,7 +44,6 @@
             return `${hrs}:${mins}:${secs}`;
         }
 
-        // 🔴 スプレッドシート「チーム」シートの左から順番に完全一致
         const teamsData = [
             { name: "カタカナ", members: ["ヨハネス", "ユジン", "ラフ", "ペテア", "スッシィ", "タイドノ", "ダイダマル"] },
             { name: "くまぼく。Reimagined", members: ["Sawa", "ペコ", "くまさん", "るるりゅー", "えとら", "うつも", "マキナ"] },
@@ -62,6 +65,17 @@
             { name: "老化2026〜加齢なる一族〜", members: ["うめミンツ", "焼きさば", "西城みらん", "aotigers1234", "台所ch", "りおりなゆうた", "kota skywalker"] },
             { name: "ゆるふわ", members: ["れあちぃ", "CHA9", "えぐ", "なきぃ～", "peach", "i4", "アドレス"] }
         ];
+
+        // 🔴 指定されたラップを通過したときに「何人目の走者に切り替えるか」の対応表
+        // ※ 0:1人目, 1:2人目, 2:3人目... というインデックス設定
+        const lapToMemberIndex = {
+            "DQ7終了/DQ1スタート": 1, // 2人目
+            "DQ1終了/DQ4スタート": 2, // 3人目
+            "DQ4終了/DQ6スタート": 3, // 4人目
+            "DQ6終了/DQ5スタート": 4, // 5人目
+            "DQ5終了/DQ2スタート": 5, // 6人目
+            "DQ2終了/DQ3スタート": 6  // 7人目
+        };
 
         function handleLapAction(teamNum, action, buttons, selectElement) {
             buttons.forEach(b => b.disabled = true);
@@ -100,6 +114,8 @@
             const box = document.createElement('div');
             box.className = 'team-box';
             
+            currentMemberIndexMap[teamNum] = 0; 
+            
             const memberOptions = team.members.map(m => `<option value="${m}">${m}</option>`).join('');
             
             box.innerHTML = `
@@ -120,8 +136,12 @@
             const targetButtons = [btnForward, btnBackward];
 
             selectElement.addEventListener('change', (e) => {
+                const selectedValue = e.target.value;
+                const newIndex = team.members.indexOf(selectedValue);
+                if(newIndex !== -1) currentMemberIndexMap[teamNum] = newIndex;
+
                 if (!selectedMembersRep.value) selectedMembersRep.value = {};
-                selectedMembersRep.value[teamNum] = e.target.value;
+                selectedMembersRep.value[teamNum] = selectedValue;
             });
 
             btnForward.addEventListener('click', () => handleLapAction(teamNum + 1, 'forward', targetButtons, selectElement));
@@ -140,9 +160,83 @@
                 if (selectElement && newVal[teamNum] !== undefined) {
                     if (selectElement.value !== newVal[teamNum]) {
                         selectElement.value = newVal[teamNum];
+                        
+                        const newIndex = team.members.indexOf(newVal[teamNum]);
+                        if(newIndex !== -1) currentMemberIndexMap[teamNum] = newIndex;
                     }
                 }
             });
+        });
+
+        function parseCSV(text) {
+            const rows = [];
+            const pattern = /"([^"]*(?:""[^"]*)*)"|([^,]+)|(?<=,|^)(?=,|$)/g;
+            text.split(/\r?\n/).forEach(line => {
+                if (!line.trim()) return;
+                const matches = line.matchAll(pattern);
+                const row = Array.from(matches).map(m => (m[1] !== undefined ? m[1].replace(/""/g, '"') : m[2] || '').trim());
+                rows.push(row);
+            });
+            return rows;
+        }
+
+        sharedCsvRep.on('change', (newVal) => {
+            if (!newVal || typeof newVal !== 'string' || !newVal.trim()) return;
+            
+            const rows = parseCSV(newVal);
+            if (rows.length === 0) return;
+
+            const rowTitles = rows.map(r => r[0]); 
+            const headers = rows[0];
+
+            for (let colIdx = 1; colIdx < headers.length; colIdx++) {
+                const teamNum = colIdx;
+                if (!teamsData[teamNum - 1]) continue; 
+
+                // 🔴 そのチームの記録済みラップを下（最新）から順に確認し、
+                // トリガーとなるラップを一番最初に通過したものを探す
+                let foundTriggerRowIdx = -1;
+                let foundTargetIndex = -1;
+
+                for (let rowIdx = rows.length - 1; rowIdx >= 1; rowIdx--) {
+                    const cell = rows[rowIdx][colIdx];
+                    if (cell && cell !== '-' && cell !== '') {
+                        const lapName = rowTitles[rowIdx];
+                        // 辞書に存在するラップ名かどうかをチェック
+                        if (lapToMemberIndex[lapName] !== undefined) {
+                            foundTriggerRowIdx = rowIdx;
+                            foundTargetIndex = lapToMemberIndex[lapName];
+                            break; 
+                        }
+                    }
+                }
+
+                if (foundTriggerRowIdx !== -1) {
+                    // まだこのラップ行での切り替えを処理していない場合のみ実行（ロールバック・重複処理の防止）
+                    if (lastTriggeredLapMap[teamNum] !== foundTriggerRowIdx) {
+                        lastTriggeredLapMap[teamNum] = foundTriggerRowIdx; 
+                        
+                        const teamInfo = teamsData[teamNum - 1];
+                        
+                        // 指定されたインデックスがメンバー数内に収まっているか確認
+                        if (foundTargetIndex < teamInfo.members.length) {
+                            const nextMemberName = teamInfo.members[foundTargetIndex];
+                            
+                            // 既にそのメンバーが選択されている場合は何もしない（手動で先に変えていた場合など）
+                            const selectElement = document.getElementById(`member-select-${teamNum}`);
+                            if (selectElement && selectElement.value !== nextMemberName) {
+                                selectElement.value = nextMemberName;
+                                currentMemberIndexMap[teamNum] = foundTargetIndex;
+                                
+                                // 全クライアントに同期
+                                let state = JSON.parse(JSON.stringify(selectedMembersRep.value || {}));
+                                state[teamNum] = nextMemberName;
+                                selectedMembersRep.value = state;
+                            }
+                        }
+                    }
+                }
+            }
         });
 
     </script>
